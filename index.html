@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Long-Term Lens — Research conviction stocks for buy-and-hold</title>
+<meta name="description" content="An educational hub for beginner long-term investors: risk profiling, fundamentals glossary, a conviction journal, and account explainers. Educational only — not financial advice.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-emoji">🔭</span> Long-Term Lens</div>
+  <nav class="nav" aria-label="Main sections">
+    <button class="nav-btn active" data-nav="home">Home</button>
+    <button class="nav-btn" data-nav="risk">Risk Profile</button>
+    <button class="nav-btn" data-nav="fundamentals">Fundamentals</button>
+    <button class="nav-btn" data-nav="journal">Conviction Journal</button>
+    <button class="nav-btn" data-nav="accounts">Accounts</button>
+    <button class="nav-btn" data-nav="learn">Learn</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ HOME ============ -->
+  <section id="screen-home" class="screen">
+    <div class="wrap">
+      <div class="disclaimer-banner" role="note">
+        <strong>Educational only — not financial advice.</strong>
+        This site teaches you how to research. It never tells you what to buy.
+        Always do your own research before investing real money.
+      </div>
+
+      <h1>Research stocks you can <span class="accent">believe in for a decade</span>.</h1>
+      <p class="subtitle">Long-Term Lens is a free, offline learning hub for beginner investors who want more than
+        "just buy the index" — without becoming day traders. Learn to combine what you know from your own life
+        with real fundamental data, size your bets by your risk tolerance, and write down your thesis so your
+        future self can check it.</p>
+
+      <h2>How it works</h2>
+      <div class="how-grid">
+        <div class="how-card">
+          <div class="how-emoji">💡</div>
+          <div class="how-name">1 · Personal Conviction</div>
+          <p>You notice things before Wall Street does — the products you use daily, the trends in your industry,
+            the infrastructure being built around you. Conviction starts with what you genuinely understand.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-emoji">📊</div>
+          <div class="how-name">2 · Fundamentals</div>
+          <p>Belief alone isn't enough. Check the numbers: revenue growth, cash flow, margins, debt. Healthy
+            businesses survive the cycles that wipe out hype.</p>
+        </div>
+        <div class="how-card">
+          <div class="how-emoji">🧘</div>
+          <div class="how-name">3 · Long-term Discipline</div>
+          <p>Buy-and-hold works through patience, not timing. Write your thesis down, size positions to your
+            risk tolerance, and judge yourself in years — not weeks.</p>
+        </div>
+      </div>
+
+      <h2>Where to start</h2>
+      <div class="how-grid">
+        <button class="how-card link-card" data-goto="risk">
+          <div class="how-emoji">🎯</div>
+          <div class="how-name">Take the risk profiler →</div>
+          <p>Five questions. Get a suggested split between broad index funds and conviction stocks, matched to your life.</p>
+        </button>
+        <button class="how-card link-card" data-goto="fundamentals">
+          <div class="how-emoji">📖</div>
+          <div class="how-name">Learn the fundamentals →</div>
+          <p>P/E, PEG, free cash flow, margins, moats — plain-English explainers with what "healthy" generally looks like.</p>
+        </button>
+        <button class="how-card link-card" data-goto="journal">
+          <div class="how-emoji">📝</div>
+          <div class="how-name">Start a conviction journal →</div>
+          <p>Write your thesis, score it on five dimensions, and build a watchlist you're accountable to.</p>
+        </button>
+      </div>
+
+      <h2>A quick example of conviction + patience</h2>
+      <p class="subtitle"><strong>Historical illustration, not a recommendation.</strong> In the early 2020s, people who used AI tools
+        every day had a personal signal that AI was real — but "AI is big" isn't an investment thesis by itself. The useful
+        follow-up questions were: <em>who sells the picks and shovels?</em> (semiconductor and infrastructure companies like AMD
+        and Micron had genuine, data-center-driven revenue growth), <em>do they generate cash?</em>, and <em>can I hold for ten years
+        through volatility?</em> This site teaches you to ask those questions yourself — for whatever the next wave turns out to be.</p>
+    </div>
+  </section>
+
+  <!-- ============ RISK ============ -->
+  <section id="screen-risk" class="screen hidden">
+    <div class="wrap">
+      <h1>Risk profiler</h1>
+      <p class="subtitle">Answer honestly. Your result is a <strong>suggested allocation band</strong> between broad index funds
+        and individual conviction stocks — a starting point for thinking, not a prescription. Higher conviction-stock %
+        means higher risk, always.</p>
+      <div id="quiz" class="quiz"></div>
+      <div id="quiz-result" class="result hidden"></div>
+    </div>
+  </section>
+
+  <!-- ============ FUNDAMENTALS ============ -->
+  <section id="screen-fundamentals" class="screen hidden">
+    <div class="wrap">
+      <h1>Fundamentals checklist &amp; glossary</h1>
+      <p class="subtitle">Ten concepts worth understanding before you research any company. Click each for a plain-English
+        explanation, what "healthy" generally looks like, and red flags. These are <em>typical patterns</em>, not rules —
+        context (industry, company age, cycle) always matters.</p>
+      <div id="glossary"></div>
+      <h2>The 5-minute checklist</h2>
+      <ol class="checklist">
+        <li><strong>Revenue growing?</strong> Look for consistent year-over-year growth over 3–5 years.</li>
+        <li><strong>Actually profitable — or on a credible path?</strong> Check operating margin and free cash flow, not just headlines.</li>
+        <li><strong>Reasonable debt?</strong> Debt-to-equity that's low for its industry means survival room in downturns.</li>
+        <li><strong>A moat?</strong> Something competitors can't easily copy: network effects, switching costs, brand, scale, patents.</li>
+        <li><strong>Price vs. value?</strong> A great company at an extreme valuation can still be a poor decade-long hold.</li>
+        <li><strong>Would I still believe this in 10 years?</strong> If the answer depends on next quarter, it's not a long-term thesis.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ JOURNAL ============ -->
+  <section id="screen-journal" class="screen hidden">
+    <div class="wrap">
+      <h1>Conviction journal</h1>
+      <p class="subtitle">Writing a thesis forces honesty: <em>why</em> do I believe this, and <em>what would prove me wrong?</em>
+        Score each idea on five dimensions (1 = weak, 5 = strong). Entries are saved in your browser only.</p>
+
+      <div class="panel">
+        <h3>New thesis</h3>
+        <label class="field">Company / idea name
+          <input type="text" id="j-name" maxlength="80" placeholder="e.g. Acme Semiconductor">
+        </label>
+        <label class="field">Ticker(s) — optional, for your own tracking
+          <input type="text" id="j-tickers" maxlength="60" placeholder="e.g. ACME">
+        </label>
+        <label class="field">Tags
+          <input type="text" id="j-tags" maxlength="120" placeholder="e.g. AI infra, energy, healthcare">
+        </label>
+        <label class="field">Your thesis — what do you believe, and why?
+          <textarea id="j-thesis" rows="4" maxlength="2000" placeholder="I use this product daily. I believe this trend lasts 10+ years because…"></textarea>
+        </label>
+        <label class="field">What would prove me wrong?
+          <textarea id="j-falsify" rows="2" maxlength="1000" placeholder="If revenue growth stalls for 2 years, or a competitor takes the lead…"></textarea>
+        </label>
+        <div class="scores">
+          <div class="score-row"><span>Product belief <span class="hint">(do you truly understand and use it?)</span></span>
+            <div class="score-btns" data-score="product"></div></div>
+          <div class="score-row"><span>Fundamentals <span class="hint">(revenue, cash flow, margins)</span></span>
+            <div class="score-btns" data-score="fundamentals"></div></div>
+          <div class="score-row"><span>Moat <span class="hint">(hard to copy?)</span></span>
+            <div class="score-btns" data-score="moat"></div></div>
+          <div class="score-row"><span>Valuation comfort <span class="hint">(could you hold if it fell 30%?)</span></span>
+            <div class="score-btns" data-score="valuation"></div></div>
+          <div class="score-row"><span>Time horizon fit <span class="hint">(a genuine 10-year story?)</span></span>
+            <div class="score-btns" data-score="horizon"></div></div>
+        </div>
+        <p class="weighted-line">Weighted score: <strong id="j-weighted">—</strong> <span class="hint">(weights: Fundamentals 25%, Product 20%, Moat 20%, Horizon 20%, Valuation 15%)</span></p>
+        <div class="btn-row">
+          <button id="j-save" class="btn primary">Save thesis</button>
+          <button id="j-clear" class="btn">Clear form</button>
+        </div>
+      </div>
+
+      <h2>Your watchlist <span class="hint" id="watchlist-count"></span></h2>
+      <p class="fineprint">Sorted by weighted score. Stored in this browser's localStorage — nothing leaves your device.</p>
+      <div id="watchlist"></div>
+    </div>
+  </section>
+
+  <!-- ============ ACCOUNTS ============ -->
+  <section id="screen-accounts" class="screen hidden">
+    <div class="wrap">
+      <h1>Roth IRA &amp; account basics</h1>
+      <p class="subtitle"><strong>Where</strong> you invest matters almost as much as <strong>what</strong> you buy, because taxes
+        compound too. This is general education, not tax advice — check <a href="https://www.irs.gov" target="_blank" rel="noopener">irs.gov</a> for current-year figures.</p>
+
+      <h2>The three account types</h2>
+      <div class="table-wrap">
+      <table class="acct-table">
+        <thead><tr><th></th><th>Roth IRA</th><th>Traditional IRA / 401(k)</th><th>Taxable brokerage</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Tax deal</th><td>Pay tax now; qualified withdrawals in retirement are tax-free</td><td>Contributions often tax-deductible now; pay tax when you withdraw</td><td>No special treatment; you owe tax on gains and dividends</td></tr>
+          <tr><th scope="row">Best for</th><td>Young investors expecting higher future income; decades of tax-free growth</td><td>High earners wanting a deduction now</td><td>Overflow savings after tax-advantaged accounts are full</td></tr>
+          <tr><th scope="row">Withdrawal rules</th><td>Contributions withdrawable anytime; earnings generally penalty-free after 59½ + 5-year rule</td><td>Penalties before 59½ (with exceptions)</td><td>Sell anytime; short-term gains taxed as income, long-term at lower rates</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h2>2026 contribution limits (verify at irs.gov)</h2>
+      <ul class="checklist">
+        <li><strong>IRA (Roth or Traditional combined):</strong> $7,500 if under 50; $8,600 if 50+ (includes catch-up). Confirm the current year's figure at irs.gov before contributing.</li>
+        <li><strong>401(k) employee contribution:</strong> $24,500 if under 50; higher with catch-up if 50+. Employer plans vary — check your plan documents.</li>
+        <li><strong>Roth IRA income limits:</strong> eligibility phases out above certain incomes (check irs.gov for this year's thresholds); high earners sometimes use the "backdoor Roth" strategy — research it before attempting.</li>
+      </ul>
+
+      <h2>Why index funds fit tax-advantaged accounts so well</h2>
+      <ol class="checklist">
+        <li><strong>They rarely force taxable events on you.</strong> Broad index funds trade infrequently, so little of your return leaks to taxes each year — and inside a Roth/Traditional account, it wouldn't matter anyway.</li>
+        <li><strong>Your conviction stocks can live anywhere,</strong> but long holds (1+ year) in a taxable account get favorable long-term capital-gains rates — another reason to buy and <em>hold</em>.</li>
+        <li><strong>Common beginner structure:</strong> max out tax-advantaged accounts with index funds first, then hold a smaller conviction-stock slice wherever fits your plan. This mirrors the risk-profiler bands on the <button class="inline-link" data-goto="risk">Risk Profile</button> tab.</li>
+      </ol>
+      <p class="fineprint">Tip: many employers match 401(k) contributions — that's an instant return no stock can promise. Contribute at least enough to capture the full match before investing elsewhere.</p>
+    </div>
+  </section>
+
+  <!-- ============ LEARN ============ -->
+  <section id="screen-learn" class="screen hidden">
+    <div class="wrap">
+      <h1>Learn more</h1>
+      <p class="subtitle">Free, reputable places to keep learning. Start with primary sources — the company's own filings — before anyone's opinion of them.</p>
+      <h2>Primary sources &amp; references</h2>
+      <ul class="link-list">
+        <li><a href="https://www.sec.gov/edgar" target="_blank" rel="noopener"><strong>SEC EDGAR</strong></a> — every US public company's actual filings: 10-K annual reports, 10-Q quarterlies. The numbers behind every metric on the Fundamentals tab live here.</li>
+        <li><strong>Company investor relations pages</strong> — search "<em>[company name]</em> investor relations" for earnings calls, presentations, and annual letters in plain language.</li>
+        <li><a href="https://www.investopedia.com" target="_blank" rel="noopener"><strong>Investopedia</strong></a> — solid definitions and tutorials for every term in the glossary.</li>
+        <li><a href="https://www.bogleheads.org" target="_blank" rel="noopener"><strong>Bogleheads</strong></a> — a community built around low-cost index investing; excellent wiki on asset allocation and Roth vs Traditional.</li>
+      </ul>
+      <h2>Books worth your time</h2>
+      <ul class="link-list">
+        <li><strong><em>One Up On Wall Street</em> — Peter Lynch.</strong> The classic case for investing in what you know from your own life and work. Directly matches this site's "personal conviction" idea.</li>
+        <li><strong><em>The Intelligent Investor</em> — Benjamin Graham.</strong> The value-investing bible: margin of safety, Mr. Market, and why temperament beats intellect.</li>
+        <li><strong><em>A Random Walk Down Wall Street</em> — Burton Malkiel.</strong> The honest counter-argument: why beating the market is so hard, and why index funds are the default for most people.</li>
+      </ul>
+      <p class="fineprint">Read all three and you'll hold both sides of the argument in your head — which is exactly where a good investor lives.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
+    securities. All examples are historical illustrations. Do your own research — start at
+    <a href="https://www.sec.gov/edgar" target="_blank" rel="noopener">SEC EDGAR</a>.</p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v0.1.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

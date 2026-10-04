@@ -1,0 +1,72 @@
+# 🔭 Long-Term Lens
+
+**Research conviction stocks for buy-and-hold, backed by fundamentals — not trading tips.**
+
+🌐 **Live demo:** https://swimkevin.github.io/longterm-stock-lens/
+📦 **Repo:** https://github.com/swimkevin/longterm-stock-lens
+
+A free, offline, no-signup educational hub for beginner long-term investors: take a risk profiler quiz, learn fundamental metrics in plain English, keep a conviction journal with a scoring framework, and understand Roth IRAs and account types.
+
+> **⚠️ Educational only — not financial advice.** This site teaches research skills. It never recommends securities. Always do your own research before investing real money.
+
+## Why this exists
+
+I'm Kevin Song, a software engineer. I built this in October 2026 as a companion to [Poker Sparring](https://github.com/swimkevin/poker-sparring), my poker training app, with the same philosophy:
+
+1. **Build something genuinely useful.** Most investing content is either day-trading hype or "just buy index funds, stop asking questions." There's a middle path for beginners: learn to research companies you genuinely understand, size positions to your risk tolerance, and hold for years. I wanted a calm place that teaches exactly that — conviction + fundamentals + patience.
+2. **Keep leveling up as an engineer.** Like Poker Sparring, this is deliberate practice in AI-assisted development: prompting, reviewing and testing agent-written code, and shipping a polished, honest product. The code is vanilla HTML/CSS/JS with zero runtime dependencies, and it's built to be read.
+
+On the "AI" question, to be precise: there is no machine learning here at all — and that's the point. The scoring frameworks are transparent arithmetic you can check by hand. The site teaches *you* to do the thinking.
+
+## Features (v0.1.0)
+
+- **Risk profiler quiz** — 6 questions (age, timeline, volatility tolerance, income stability, experience, drawdown behavior) → a suggested allocation band between broad index funds and conviction stocks, e.g. 80% index / 20% conviction. Educational starting point, not a prescription.
+- **Fundamentals glossary** — P/E, PEG, P/S, free cash flow, revenue growth, gross/operating margin, ROE, debt-to-equity, moat. Plain-English explainers in expandable sections, typical "healthy" patterns, and red flags. No thresholds presented as rules.
+- **Conviction journal** — write your thesis ("I use X daily, I believe Y lasts 10 years because…"), name what would prove you wrong, tag themes, track tickers, and score 1–5 on Product Belief / Fundamentals / Moat / Valuation Comfort / Time Horizon → weighted score out of 5.
+- **Watchlist** — journal entries sorted by score, persisted in `localStorage`. Nothing leaves your browser.
+- **Roth IRA & account explainer** — Roth vs Traditional vs taxable comparison, 2026 contribution limits (labeled "verify at irs.gov"), why index funds fit tax-advantaged accounts.
+- **Learn section** — SEC EDGAR, company investor relations, Investopedia, Bogleheads, plus three books (*One Up On Wall Street*, *The Intelligent Investor*, *A Random Walk Down Wall Street*).
+- **100% offline** — no accounts, no servers, no tracking, no real-time prices. All data entry is manual.
+
+## Compliance notes
+
+- Educational content only. No buy/sell recommendations anywhere in the app or docs.
+- Historical company examples (AMD, Micron, Nvidia) appear **only as illustrations of past growth**, never as recommendations. No real-time prices are shown or fetched.
+- Footer and README carry the disclaimer: *"Educational only, not financial advice. Do your own research."*
+
+## Project structure
+
+```
+longterm-stock-lens/
+├── index.html          # All six screens: home, risk, fundamentals, journal, accounts, learn
+├── styles.css          # Calm dark research theme, responsive, no frameworks
+├── app.js              # Quiz logic, glossary render, journal + watchlist, localStorage
+├── tests/
+│   └── smoke.js        # Node smoke test: pure-logic assertions + jsdom UI boot
+├── docs/
+│   └── ARCHITECTURE.md # Module map and design decisions
+├── README.md
+├── CHANGELOG.md
+├── AGENTS.md
+└── package.json        # Dev tooling only (no runtime dependencies)
+```
+
+## Run it
+
+No build step. Open `index.html` directly in a browser, or serve it:
+
+```bash
+python3 -m http.server 8000   # then open http://localhost:8000
+npm test                      # runs the smoke test
+```
+
+Deploy to GitHub Pages from `main` — it's a static site, nothing to build.
+
+## Roadmap
+
+- **v0.2** — thesis review reminders ("revisit this thesis in 6 months"), export journal as JSON/Markdown
+- **v0.3** — compound-interest visualizer; dollar-cost averaging explainer
+- **v0.4** — 10-K reading walkthrough (how to find each metric in a real filing)
+- **Later** — PWA for offline phone use; analytics to measure usage before any monetization thoughts
+
+This project will not become a trading tool, will not show real-time prices, and will not give recommendations. Those are permanent boundaries, not backlog items.
