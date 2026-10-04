@@ -94,6 +94,15 @@ async function main() {
   // fundamentals 25% * 5 + product 20% * 1 = 1.45 / 0.45 weight = 3.222 -> 3.2
   assert(L.weightedScore({ fundamentals: 5, product: 1 }) === 3.2, 'partial weights compute correctly');
 
+  console.log('score count + labels:');
+  assert(L.scoreCount({}) === 0, 'no scores -> 0 counted');
+  assert(L.scoreCount({ fundamentals: 5 }) === 1, 'one dimension -> 1 counted');
+  assert(L.scoreCount({ product: 5, fundamentals: 4, moat: 3, valuation: 2, horizon: 1 }) === 5, 'all five -> 5 counted');
+  assert(L.scoreCount({ product: 0, fundamentals: 6, moat: 'x' }) === 0, 'invalid values not counted');
+  assert(L.thesesLabel(0) === '', '0 -> empty label');
+  assert(L.thesesLabel(1) === '(1 thesis)', '1 -> singular thesis');
+  assert(L.thesesLabel(2) === '(2 theses)', '2 -> plural theses');
+
   console.log('glossary:');
   assert(L.GLOSSARY.length === 10, '10 glossary terms');
   assert(L.GLOSSARY.every(g => g.abbr && g.name && g.what && g.healthy && g.flag), 'every term has all fields');
@@ -126,10 +135,13 @@ async function main() {
   // ---- journal flow ----
   console.log('journal flow:');
   document.querySelector('.nav-btn[data-nav="journal"]').click();
-  let alertMsg = null;
-  window.alert = m => { alertMsg = m; };
   document.getElementById('j-save').click();
-  assert(alertMsg && alertMsg.includes('company or idea name'), 'empty name blocked with alert');
+  const jerr = document.getElementById('j-error');
+  assert(!jerr.classList.contains('hidden') && jerr.textContent.includes('company or idea name'),
+    'empty name blocked with inline error (no alert dialog)');
+  assert(jerr.getAttribute('role') === 'alert', 'form error has role=alert');
+  assert(document.querySelector('.weighted-line .hint').textContent.includes('click a score again'),
+    'score toggle-off behavior documented in hint text');
 
   const probe = '<img src=x onerror=alert(1)>';
   document.getElementById('j-name').value = 'Acme ' + probe;
@@ -143,25 +155,68 @@ async function main() {
   dims.forEach((g, i) => g.querySelectorAll('.score-btn')[picks[i] - 1].click());
   const preview = document.getElementById('j-weighted').textContent;
   // 5*.2 + 4*.25 + 3*.2 + 2*.15 + 5*.2 = 1+1+.6+.3+1 = 3.9
-  assert(preview.includes('3.9'), 'weighted preview shows 3.9 (got "' + preview + '")');
+  assert(preview.includes('3.9') && preview.includes('5 of 5 scored'),
+    'weighted preview shows 3.9 with scored count (got "' + preview + '")');
   document.getElementById('j-save').click();
 
-  const entries = document.querySelectorAll('#watchlist .entry');
+  let entries = document.querySelectorAll('#watchlist .entry');
   assert(entries.length === 1, 'one watchlist entry rendered');
-  assert(!document.getElementById('watchlist').innerHTML.includes('<img src=x'), 'XSS probe escaped in watchlist HTML');
+  assert(document.getElementById('watchlist-count').textContent === '(1 thesis)', 'singular thesis label');
+  assert(document.querySelector('#watchlist img') === null, 'XSS probe created no real img element');
+  assert(![...document.querySelectorAll('#watchlist *')].some(el => el.hasAttribute('onerror')),
+    'no onerror handlers anywhere in watchlist');
   assert(entries[0].querySelector('.entry-name').textContent.includes(probe), 'probe visible as literal text');
   assert(entries[0].querySelector('.entry-score').textContent.includes('3.9'), 'entry shows 3.9 score');
   assert(entries[0].querySelector('.entry-tickers').textContent === 'ACME', 'ticker uppercased');
+  assert(entries[0].querySelector('.fineprint').textContent.includes('5 of 5 dimensions scored'),
+    'entry meta discloses scored dimensions');
 
   const stored = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
   assert(stored && stored.entries.length === 1 && stored.entries[0].weighted === 3.9, 'entry persisted to localStorage with score');
+  assert(stored.entries[0].scored === 5, 'scored count persisted on entry');
 
-  // delete
-  window.confirm = () => true;
-  entries[0].querySelector('.btn.danger').click();
-  assert(document.querySelectorAll('#watchlist .entry').length === 0, 'entry deleted from watchlist');
+  // partial scoring disclosure: only 2 of 5 dimensions scored
+  document.getElementById('j-name').value = 'Partial Co';
+  document.getElementById('j-thesis').value = 'Only scored two dimensions.';
+  const dims2 = document.querySelectorAll('.score-btns');
+  dims2[0].querySelectorAll('.score-btn')[4].click(); // product 5
+  dims2[1].querySelectorAll('.score-btn')[4].click(); // fundamentals 5
+  const preview2 = document.getElementById('j-weighted').textContent;
+  assert(preview2.includes('5.0') && preview2.includes('2 of 5 scored'),
+    'partial scoring shows 5.0 with 2-of-5 disclosure (got "' + preview2 + '")');
+  document.getElementById('j-save').click();
+
+  entries = document.querySelectorAll('#watchlist .entry');
+  assert(entries.length === 2, 'two watchlist entries rendered');
+  assert(document.getElementById('watchlist-count').textContent === '(2 theses)', 'plural theses label');
+  assert(entries[0].querySelector('.entry-name').textContent.includes('Partial Co'),
+    'partial 5.0 sorts above 3.9 (sort order unchanged, disclosure added)');
+  assert(entries[0].querySelector('.fineprint').textContent.includes('2 of 5 dimensions scored'),
+    'partial entry meta shows 2 of 5 dimensions scored');
+
+  // delete uses inline two-tap confirm (no native confirm dialog)
+  const delA = entries[0].querySelector('.btn.danger');
+  delA.click();
+  assert(document.querySelectorAll('#watchlist .entry').length === 2, 'first delete click only arms, entry stays');
+  assert(delA.classList.contains('armed') && delA.textContent.includes('confirm'), 'delete button shows armed confirm state');
+  const delB = entries[1].querySelector('.btn.danger');
+  delB.click(); // arming B must disarm A
+  assert(!delA.classList.contains('armed') && delA.textContent === 'Delete', 'arming second delete disarms the first');
+  delB.click(); // confirm B
+  entries = document.querySelectorAll('#watchlist .entry');
+  assert(entries.length === 1, 'confirmed delete removes entry');
+  assert(document.getElementById('watchlist-count').textContent === '(1 thesis)', 'count back to singular');
+  const storedMid = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
+  assert(storedMid.entries.length === 1, 'deleted entry removed from localStorage');
+
+  // delete the remaining entry the same way
+  const delLast = entries[0].querySelector('.btn.danger');
+  delLast.click();
+  delLast.click();
+  assert(document.querySelectorAll('#watchlist .entry').length === 0, 'last entry deleted via two-tap');
+  assert(document.getElementById('watchlist-count').textContent === '', 'count label empty when no entries');
   const stored2 = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  assert(stored2.entries.length === 0, 'entry deleted from localStorage');
+  assert(stored2.entries.length === 0, 'all entries deleted from localStorage');
 
   // disclaimer present
   document.querySelector('.nav-btn[data-nav="home"]').click();

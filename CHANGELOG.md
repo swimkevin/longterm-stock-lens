@@ -1,5 +1,23 @@
 # Changelog — Long-Term Lens
 
+## [0.1.1] — 2026-10-04
+
+First live-playtest fix round.
+
+### Fixed
+- Delete buttons no longer use the native `confirm()` dialog — replaced with an inline two-tap confirm ("Delete" → "Tap again to confirm delete", auto-disarms after 3s, arming one disarms the others). Deletion is now testable and consistent with the rest of the UI.
+- Form validation in the journal no longer uses `alert()` — inline `role="alert"` error message under the score preview instead.
+- Watchlist count grammar: "(1 thesis)" vs "(2 theses)".
+- Home screen card copy: "Five questions" → "Six questions" to match the actual quiz.
+
+### Added
+- Partial-scoring disclosure: the weighted preview and each watchlist entry now show how many of the 5 dimensions were scored (e.g. "5.0 / 5 · 2 of 5 scored"), so a partially-scored thesis can't be mistaken for a fully-scored one. Stored as `scored` on each entry (older entries fall back to counting their saved scores).
+- Score toggle-off is now documented in the hint text and in each score button's `aria-label`.
+- New pure helpers `scoreCount()` and `thesesLabel()` exposed on `window.LongTermLens` for tests.
+
+### Tests
+- `tests/smoke.js` extended: pure-logic coverage for `scoreCount`/`thesesLabel`; inline-error validation; two-tap delete flow (arm, confirm, cross-disarm, localStorage removal); partial-scoring disclosure in preview, entry meta, and persisted store; stronger XSS assertions (no `img` element, no `onerror` handlers in the watchlist).
+
 ## [0.1.0] — 2026-10-04
 
 Initial release.

@@ -150,6 +150,22 @@ function weightedScore(scores) {
   return Math.round((total / weight) * 10) / 10;
 }
 
+function scoreCount(scores) {
+  // How many of the five dimensions have a valid 1-5 score. DOM-free.
+  let n = 0;
+  SCORE_DIMS.forEach(d => {
+    const v = scores[d];
+    if (typeof v === 'number' && v >= 1 && v <= 5) n++;
+  });
+  return n;
+}
+
+function thesesLabel(n) {
+  // "(1 thesis)" / "(2 theses)" / "" — DOM-free.
+  if (!n) return '';
+  return '(' + n + (n === 1 ? ' thesis)' : ' theses)');
+}
+
 /* ---------------- storage ---------------- */
 const STORE_KEY = 'longterm-stock-lens-v1';
 function loadStore() {
@@ -286,7 +302,8 @@ function renderScoreButtons() {
       const b = document.createElement('button');
       b.className = 'score-btn' + (draftScores[dim] === v ? ' selected' : '');
       b.textContent = v;
-      b.setAttribute('aria-label', dim + ' score ' + v + ' of 5');
+      b.setAttribute('aria-label', dim + ' score ' + v + ' of 5' +
+        (draftScores[dim] === v ? ' — selected, click again to clear' : ''));
       b.setAttribute('aria-pressed', draftScores[dim] === v ? 'true' : 'false');
       b.addEventListener('click', () => {
         draftScores[dim] = (draftScores[dim] === v) ? undefined : v; // toggle off on re-click
@@ -300,21 +317,37 @@ function renderScoreButtons() {
 
 function updateWeightedPreview() {
   const w = weightedScore(draftScores);
-  $('j-weighted').textContent = (w === null) ? '—' : w.toFixed(1) + ' / 5';
+  const n = scoreCount(draftScores);
+  $('j-weighted').textContent = (w === null) ? '—' : w.toFixed(1) + ' / 5 · ' + n + ' of 5 scored';
+}
+
+function showFormError(msg, focusId) {
+  const err = $('j-error');
+  err.textContent = msg;
+  err.classList.remove('hidden');
+  if (focusId) $(focusId).focus();
+}
+
+function clearFormError() {
+  const err = $('j-error');
+  err.textContent = '';
+  err.classList.add('hidden');
 }
 
 function clearJournalForm() {
   ['j-name', 'j-tickers', 'j-tags', 'j-thesis', 'j-falsify'].forEach(id => { $(id).value = ''; });
   SCORE_DIMS.forEach(d => { delete draftScores[d]; });
+  clearFormError();
   renderScoreButtons();
   updateWeightedPreview();
 }
 
 function saveEntry() {
+  clearFormError();
   const name = $('j-name').value.trim();
   const thesis = $('j-thesis').value.trim();
-  if (!name) { alert('Give your thesis a company or idea name first.'); $('j-name').focus(); return; }
-  if (!thesis) { alert('Write a sentence or two of thesis — future you will thank present you.'); $('j-thesis').focus(); return; }
+  if (!name) { showFormError('Give your thesis a company or idea name first.', 'j-name'); return; }
+  if (!thesis) { showFormError('Write a sentence or two of thesis — future you will thank present you.', 'j-thesis'); return; }
   const entry = {
     id: 'e' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
     name,
@@ -324,6 +357,7 @@ function saveEntry() {
     falsify: $('j-falsify').value.trim(),
     scores: Object.assign({}, draftScores),
     weighted: weightedScore(draftScores),
+    scored: scoreCount(draftScores),
     createdAt: new Date().toISOString().slice(0, 10),
   };
   store.entries.push(entry);
@@ -333,7 +367,8 @@ function saveEntry() {
 }
 
 function deleteEntry(id) {
-  if (!confirm('Delete this thesis? This cannot be undone.')) return;
+  // No native confirm(): the delete button uses an inline two-tap arm/confirm
+  // so deletion stays testable and consistent with the rest of the UI.
   store.entries = store.entries.filter(e => e.id !== id);
   saveStore(store);
   renderWatchlist();
@@ -342,12 +377,20 @@ function deleteEntry(id) {
 function renderWatchlist() {
   const box = $('watchlist');
   const entries = store.entries.slice().sort((a, b) => (b.weighted || 0) - (a.weighted || 0));
-  $('watchlist-count').textContent = entries.length ? '(' + entries.length + ' theses)' : '';
+  $('watchlist-count').textContent = thesesLabel(entries.length);
   if (!entries.length) {
     box.innerHTML = '<div class="empty">No theses yet. Write your first one above — start with a product you already love.</div>';
     return;
   }
   box.innerHTML = '';
+  let armedDel = null, armedTimer = null;
+  function disarm(btn) {
+    if (!btn || !btn.isConnected) return;
+    btn.dataset.armed = '';
+    btn.textContent = 'Delete';
+    btn.classList.remove('armed');
+    btn.setAttribute('aria-label', btn.dataset.label || 'Delete');
+  }
   entries.forEach(e => {
     const card = document.createElement('div');
     card.className = 'entry';
@@ -394,14 +437,35 @@ function renderWatchlist() {
     }
     const meta = document.createElement('p');
     meta.className = 'fineprint';
-    meta.textContent = 'Written ' + e.createdAt + ' · saved in this browser only';
+    const scoredN = (typeof e.scored === 'number') ? e.scored : scoreCount(e.scores || {});
+    meta.textContent = 'Written ' + e.createdAt + ' · ' + scoredN + ' of 5 dimensions scored · saved in this browser only';
     card.appendChild(meta);
     const actions = document.createElement('div');
     actions.className = 'entry-actions';
     const del = document.createElement('button');
     del.className = 'btn danger';
     del.textContent = 'Delete';
-    del.addEventListener('click', () => deleteEntry(e.id));
+    del.dataset.label = 'Delete thesis: ' + e.name;
+    del.setAttribute('aria-label', del.dataset.label);
+    del.addEventListener('click', () => {
+      if (del.dataset.armed === '1') {
+        clearTimeout(armedTimer);
+        armedDel = null;
+        deleteEntry(e.id);
+        return;
+      }
+      disarm(armedDel);
+      clearTimeout(armedTimer);
+      armedDel = del;
+      del.dataset.armed = '1';
+      del.textContent = 'Tap again to confirm delete';
+      del.classList.add('armed');
+      del.setAttribute('aria-label', 'Confirm deletion of thesis: ' + e.name);
+      armedTimer = setTimeout(() => {
+        disarm(del);
+        if (armedDel === del) armedDel = null;
+      }, 3000);
+    });
     actions.appendChild(del);
     card.appendChild(actions);
     box.appendChild(card);
@@ -431,7 +495,7 @@ if (document.readyState === 'loading') {
 
 // Expose pure logic for the Node smoke test (browsers ignore this).
 if (typeof globalThis !== 'undefined') {
-  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, weightedScore, SCORE_WEIGHTS, esc };
+  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, weightedScore, scoreCount, thesesLabel, SCORE_WEIGHTS, esc };
 }
 
 })();
