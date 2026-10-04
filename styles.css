@@ -126,12 +126,13 @@ a { color: var(--blue); }
 /* journal */
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; font-weight: 600; font-size: 0.92rem; }
-.field input, .field textarea {
+.field input, .field textarea, .field select {
   background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
   color: var(--text); padding: 0.6rem 0.75rem; font: inherit; font-size: 0.95rem; font-weight: normal;
   width: 100%; resize: vertical;
 }
-.field input:focus, .field textarea:focus { border-color: var(--blue); outline: none; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--blue); outline: none; }
+.field select { width: auto; max-width: 220px; resize: none; }
 .scores { margin: 1rem 0; }
 .score-row { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .score-btns { display: flex; gap: 0.3rem; }
@@ -155,6 +156,15 @@ a { color: var(--blue); }
 .entry-falsify strong { color: var(--amber); }
 .entry-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
 .empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 1.5rem; text-align: center; }
+.due-badge {
+  background: #2a1f0d; border: 1px solid var(--amber); color: var(--amber);
+  font-weight: 800; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.85rem;
+}
+.entry.due { border-color: var(--amber); }
+#watchlist-due { color: var(--amber); font-weight: 600; }
+.export-row { margin: 0.8rem 0 1.2rem; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--line); }
 
 /* accounts */
 .table-wrap { overflow-x: auto; }

@@ -166,6 +166,79 @@ function thesesLabel(n) {
   return '(' + n + (n === 1 ? ' thesis)' : ' theses)');
 }
 
+/* ---------------- thesis revisit reminders ---------------- */
+// All date math is on ISO "YYYY-MM-DD" strings so it is deterministic and testable.
+
+function addMonths(dateStr, n) {
+  // Add n calendar months to an ISO date, clamping to the end of the month
+  // (Jan 31 + 1 month -> Feb 28/29). Returns null for invalid input.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  if (!m) return null;
+  let y = +m[1], mo = +m[2] - 1 + n, d = +m[3];
+  y += Math.floor(mo / 12);
+  mo = ((mo % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+  if (d > lastDay) d = lastDay;
+  const p = x => String(x).padStart(2, '0');
+  return y + '-' + p(mo + 1) + '-' + p(d);
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function reviewAtOf(entry) {
+  // Effective review date for an entry. Entries saved before v0.2 have no
+  // reviewAt — they gracefully default to createdAt + 6 months (lazy
+  // migration; no localStorage key bump or data wipe needed).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(entry.reviewAt || '')) return entry.reviewAt;
+  return addMonths(entry.createdAt, 6);
+}
+
+function isReviewDue(entry, today) {
+  today = today || todayISO();
+  const r = reviewAtOf(entry);
+  return !!r && r <= today;
+}
+
+function journalToJSON(entries) {
+  return JSON.stringify(entries, null, 2);
+}
+
+function journalToMarkdown(entries, stamp) {
+  // Plain-text export of the journal — one section per thesis. DOM-free.
+  const lines = [
+    '# Long-Term Lens — Conviction Journal',
+    '',
+    'Exported ' + stamp + '. Personal research notes — educational only, not financial advice.',
+    ''
+  ];
+  if (!entries.length) {
+    lines.push('_No theses yet._');
+    return lines.join('\n');
+  }
+  entries.forEach(e => {
+    const scoredN = (typeof e.scored === 'number') ? e.scored : scoreCount(e.scores || {});
+    const scoreLine = (e.weighted === null || e.weighted === undefined)
+      ? 'unscored'
+      : e.weighted.toFixed(1) + ' / 5 (' + scoredN + ' of 5 dimensions scored)';
+    lines.push('## ' + e.name + (e.tickers ? ' (' + e.tickers + ')' : ''));
+    lines.push('');
+    lines.push('- Score: ' + scoreLine);
+    lines.push('- Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
+    if (e.tags && e.tags.length) lines.push('- Tags: ' + e.tags.join(', '));
+    lines.push('');
+    lines.push('Thesis: ' + (e.thesis || ''));
+    lines.push('');
+    if (e.falsify) {
+      lines.push('Would prove me wrong: ' + e.falsify);
+      lines.push('');
+    }
+    lines.push('---', '');
+  });
+  return lines.join('\n');
+}
+
 /* ---------------- storage ---------------- */
 const STORE_KEY = 'longterm-stock-lens-v1';
 function loadStore() {
@@ -336,6 +409,7 @@ function clearFormError() {
 
 function clearJournalForm() {
   ['j-name', 'j-tickers', 'j-tags', 'j-thesis', 'j-falsify'].forEach(id => { $(id).value = ''; });
+  $('j-review').value = '6';
   SCORE_DIMS.forEach(d => { delete draftScores[d]; });
   clearFormError();
   renderScoreButtons();
@@ -348,6 +422,7 @@ function saveEntry() {
   const thesis = $('j-thesis').value.trim();
   if (!name) { showFormError('Give your thesis a company or idea name first.', 'j-name'); return; }
   if (!thesis) { showFormError('Write a sentence or two of thesis — future you will thank present you.', 'j-thesis'); return; }
+  const reviewMonths = parseInt($('j-review').value, 10) || 6;
   const entry = {
     id: 'e' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
     name,
@@ -358,7 +433,9 @@ function saveEntry() {
     scores: Object.assign({}, draftScores),
     weighted: weightedScore(draftScores),
     scored: scoreCount(draftScores),
-    createdAt: new Date().toISOString().slice(0, 10),
+    createdAt: todayISO(),
+    reviewMonths,
+    reviewAt: addMonths(todayISO(), reviewMonths),
   };
   store.entries.push(entry);
   saveStore(store);
@@ -374,10 +451,36 @@ function deleteEntry(id) {
   renderWatchlist();
 }
 
+function reloadJournal() {
+  // Re-read entries from localStorage and re-render. Exposed for tests;
+  // also the hook a future cross-tab `storage` listener would use.
+  store = loadStore();
+  renderWatchlist();
+}
+
 function renderWatchlist() {
   const box = $('watchlist');
-  const entries = store.entries.slice().sort((a, b) => (b.weighted || 0) - (a.weighted || 0));
+  const today = todayISO();
+  // Theses due for a re-check surface first, then sort by weighted score.
+  const entries = store.entries.slice().sort((a, b) => {
+    const aDue = isReviewDue(a, today) ? 0 : 1;
+    const bDue = isReviewDue(b, today) ? 0 : 1;
+    if (aDue !== bDue) return aDue - bDue;
+    return (b.weighted || 0) - (a.weighted || 0);
+  });
   $('watchlist-count').textContent = thesesLabel(entries.length);
+  const dueCount = entries.filter(e => isReviewDue(e, today)).length;
+  const dueLine = $('watchlist-due');
+  if (dueCount) {
+    dueLine.textContent = dueCount + (dueCount === 1 ? ' thesis is' : ' theses are') +
+      ' due for a re-check — re-read what you wrote and see what changed.';
+    dueLine.classList.remove('hidden');
+  } else {
+    dueLine.textContent = '';
+    dueLine.classList.add('hidden');
+  }
+  $('export-json').disabled = !entries.length;
+  $('export-md').disabled = !entries.length;
   if (!entries.length) {
     box.innerHTML = '<div class="empty">No theses yet. Write your first one above — start with a product you already love.</div>';
     return;
@@ -410,6 +513,13 @@ function renderWatchlist() {
     sc.className = 'entry-score';
     sc.textContent = (e.weighted === null || e.weighted === undefined) ? 'unscored' : e.weighted.toFixed(1) + ' / 5';
     head.appendChild(sc);
+    if (isReviewDue(e, today)) {
+      const badge = document.createElement('span');
+      badge.className = 'due-badge';
+      badge.textContent = 'Review due';
+      head.appendChild(badge);
+      card.classList.add('due');
+    }
     card.appendChild(head);
     if (e.tags && e.tags.length) {
       const tags = document.createElement('div');
@@ -438,7 +548,8 @@ function renderWatchlist() {
     const meta = document.createElement('p');
     meta.className = 'fineprint';
     const scoredN = (typeof e.scored === 'number') ? e.scored : scoreCount(e.scores || {});
-    meta.textContent = 'Written ' + e.createdAt + ' · ' + scoredN + ' of 5 dimensions scored · saved in this browser only';
+    meta.textContent = 'Written ' + e.createdAt + ' · review by ' + reviewAtOf(e) +
+      ' · ' + scoredN + ' of 5 dimensions scored · saved in this browser only';
     card.appendChild(meta);
     const actions = document.createElement('div');
     actions.className = 'entry-actions';
@@ -472,6 +583,34 @@ function renderWatchlist() {
   });
 }
 
+/* ---------------- journal export ---------------- */
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportJSON() {
+  const stamp = todayISO();
+  downloadBlob(
+    new Blob([journalToJSON(store.entries)], { type: 'application/json' }),
+    'longterm-lens-journal-' + stamp + '.json'
+  );
+}
+
+function exportMarkdown() {
+  const stamp = todayISO();
+  downloadBlob(
+    new Blob([journalToMarkdown(store.entries, stamp)], { type: 'text/markdown' }),
+    'longterm-lens-journal-' + stamp + '.md'
+  );
+}
+
 /* ---------------- init ---------------- */
 function init() {
   document.querySelectorAll('.nav-btn').forEach(b =>
@@ -485,6 +624,8 @@ function init() {
   renderWatchlist();
   $('j-save').addEventListener('click', saveEntry);
   $('j-clear').addEventListener('click', clearJournalForm);
+  $('export-json').addEventListener('click', exportJSON);
+  $('export-md').addEventListener('click', exportMarkdown);
 }
 
 if (document.readyState === 'loading') {
@@ -495,7 +636,8 @@ if (document.readyState === 'loading') {
 
 // Expose pure logic for the Node smoke test (browsers ignore this).
 if (typeof globalThis !== 'undefined') {
-  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, weightedScore, scoreCount, thesesLabel, SCORE_WEIGHTS, esc };
+  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, weightedScore, scoreCount, thesesLabel, SCORE_WEIGHTS, esc,
+    addMonths, todayISO, reviewAtOf, isReviewDue, journalToJSON, journalToMarkdown, reloadJournal };
 }
 
 })();

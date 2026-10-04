@@ -22,8 +22,8 @@ On the "AI" question, to be precise: there is no machine learning here at all �
 
 - **Risk profiler quiz** — 6 questions (age, timeline, volatility tolerance, income stability, experience, drawdown behavior) → a suggested allocation band between broad index funds and conviction stocks, e.g. 80% index / 20% conviction. Educational starting point, not a prescription.
 - **Fundamentals glossary** — P/E, PEG, P/S, free cash flow, revenue growth, gross/operating margin, ROE, debt-to-equity, moat. Plain-English explainers in expandable sections, typical "healthy" patterns, and red flags. No thresholds presented as rules.
-- **Conviction journal** — write your thesis ("I use X daily, I believe Y lasts 10 years because…"), name what would prove you wrong, tag themes, track tickers, and score 1–5 on Product Belief / Fundamentals / Moat / Valuation Comfort / Time Horizon → weighted score out of 5.
-- **Watchlist** — journal entries sorted by score, persisted in `localStorage`. Nothing leaves your browser.
+- **Conviction journal** — write your thesis ("I use X daily, I believe Y lasts 10 years because…"), name what would prove you wrong, tag themes, track tickers, and score 1–5 on Product Belief / Fundamentals / Moat / Valuation Comfort / Time Horizon → weighted score out of 5. Set a re-check reminder (1/3/6/12 months) per thesis.
+- **Watchlist** — journal entries sorted by score with "Review due" badges on overdue theses, persisted in `localStorage`. Export your journal as JSON or Markdown. Nothing leaves your browser.
 - **Roth IRA & account explainer** — Roth vs Traditional vs taxable comparison, 2026 contribution limits (labeled "verify at irs.gov"), why index funds fit tax-advantaged accounts.
 - **Learn section** — SEC EDGAR, company investor relations, Investopedia, Bogleheads, plus three books (*One Up On Wall Street*, *The Intelligent Investor*, *A Random Walk Down Wall Street*).
 - **100% offline** — no accounts, no servers, no tracking, no real-time prices. All data entry is manual.
@@ -64,8 +64,8 @@ Deploy to GitHub Pages from `main` — it's a static site, nothing to build.
 
 ## Roadmap
 
-- **v0.2** — thesis review reminders ("revisit this thesis in 6 months"), export journal as JSON/Markdown
-- **v0.3** — compound-interest visualizer; dollar-cost averaging explainer
+- **v0.2** — ✅ shipped 2026-10-04: thesis revisit reminders ("Review due" badges, due-first watchlist) + journal export as JSON/Markdown
+- **v0.3** — compound-interest visualizer; dollar-cost averaging explainer ← next
 - **v0.4** — 10-K reading walkthrough (how to find each metric in a real filing)
 - **Later** — PWA for offline phone use; analytics to measure usage before any monetization thoughts
 

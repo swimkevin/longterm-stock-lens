@@ -155,6 +155,15 @@
             <div class="score-btns" data-score="horizon"></div></div>
         </div>
         <p class="weighted-line">Weighted score: <strong id="j-weighted">—</strong> <span class="hint">(weights: Fundamentals 25%, Product 20%, Moat 20%, Horizon 20%, Valuation 15% · click a score again to clear it)</span></p>
+        <label class="field">Remind me to re-check this thesis in
+          <select id="j-review">
+            <option value="1">1 month</option>
+            <option value="3">3 months</option>
+            <option value="6" selected>6 months</option>
+            <option value="12">12 months</option>
+          </select>
+          <span class="hint">Revisiting your own thesis is the discipline — this nudges you to re-read what you wrote, never to buy or sell.</span>
+        </label>
         <p class="form-error hidden" id="j-error" role="alert"></p>
         <div class="btn-row">
           <button id="j-save" class="btn primary">Save thesis</button>
@@ -163,7 +172,12 @@
       </div>
 
       <h2>Your watchlist <span class="hint" id="watchlist-count"></span></h2>
-      <p class="fineprint">Sorted by weighted score. Stored in this browser's localStorage — nothing leaves your device.</p>
+      <p class="fineprint hidden" id="watchlist-due"></p>
+      <p class="fineprint">Theses due for a re-check surface first, then sorted by weighted score. Stored in this browser's localStorage — nothing leaves your device.</p>
+      <div class="btn-row export-row">
+        <button id="export-json" class="btn">Export JSON</button>
+        <button id="export-md" class="btn">Export Markdown</button>
+      </div>
       <div id="watchlist"></div>
     </div>
   </section>

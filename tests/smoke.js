@@ -103,6 +103,44 @@ async function main() {
   assert(L.thesesLabel(1) === '(1 thesis)', '1 -> singular thesis');
   assert(L.thesesLabel(2) === '(2 theses)', '2 -> plural theses');
 
+  console.log('review dates:');
+  assert(L.addMonths('2026-10-04', 6) === '2027-04-04', '6 months from Oct -> Apr next year');
+  assert(L.addMonths('2026-10-04', 1) === '2026-11-04', '1 month');
+  assert(L.addMonths('2026-10-04', 12) === '2027-10-04', '12 months');
+  assert(L.addMonths('2026-01-31', 1) === '2026-02-28', 'clamps to end of Feb (non-leap)');
+  assert(L.addMonths('2024-01-31', 1) === '2024-02-29', 'clamps to Feb 29 in leap year');
+  assert(L.addMonths('2026-12-15', 1) === '2027-01-15', 'rolls over year boundary');
+  assert(L.addMonths('nope', 6) === null, 'invalid input -> null');
+  assert(L.reviewAtOf({ reviewAt: '2027-01-01', createdAt: '2026-10-04' }) === '2027-01-01', 'explicit reviewAt wins');
+  assert(L.reviewAtOf({ createdAt: '2026-10-04' }) === '2027-04-04', 'legacy entry defaults to createdAt + 6 months');
+  assert(L.reviewAtOf({ reviewAt: 'garbage', createdAt: '2026-10-04' }) === '2027-04-04', 'invalid reviewAt falls back to default');
+  assert(L.isReviewDue({ reviewAt: '2020-01-01' }, '2026-10-04') === true, 'past review date is due');
+  assert(L.isReviewDue({ reviewAt: '2026-10-04' }, '2026-10-04') === true, 'review date == today is due');
+  assert(L.isReviewDue({ reviewAt: '2026-10-05' }, '2026-10-04') === false, 'future review date is not due');
+  assert(L.isReviewDue({ createdAt: '2020-01-01' }, '2026-10-04') === true, 'legacy entry long past is due');
+
+  console.log('export builders:');
+  const expEntries = [
+    { id: 'e1', name: 'Acme', tickers: 'ACME', tags: ['AI'], thesis: 'Great.', falsify: 'If not.',
+      scores: { product: 5 }, weighted: 5, scored: 1, createdAt: '2026-10-04', reviewMonths: 6, reviewAt: '2027-04-04' },
+    { id: 'e2', name: 'Beta', tickers: '', tags: [], thesis: 'Fine.', falsify: '',
+      scores: {}, weighted: null, scored: 0, createdAt: '2026-10-04' },
+  ];
+  const md = L.journalToMarkdown(expEntries, '2026-10-04');
+  assert(md.includes('## Acme (ACME)'), 'markdown has name + ticker heading');
+  assert(md.includes('## Beta'), 'markdown has second entry heading');
+  assert(md.includes('5.0 / 5 (1 of 5 dimensions scored)'), 'markdown shows score + scored count');
+  assert(md.includes('unscored'), 'markdown marks unscored entry');
+  assert(md.includes('- Written: 2026-10-04 · Review by: 2027-04-04'), 'markdown shows written + review dates');
+  assert(md.includes('Review by: 2027-04-04') && (md.match(/Review by: 2027-04-04/g) || []).length === 2,
+    'legacy entry gets default review date in markdown');
+  assert(md.includes('not financial advice'), 'markdown carries disclaimer');
+  assert(md.includes('Would prove me wrong: If not.'), 'markdown includes falsify text');
+  assert(md.includes('- Tags: AI'), 'markdown includes tags');
+  const js = JSON.parse(L.journalToJSON(expEntries));
+  assert(Array.isArray(js) && js.length === 2 && js[0].id === 'e1', 'JSON export round-trips entries array');
+  assert(L.journalToMarkdown([], '2026-10-04').includes('No theses yet'), 'empty markdown export handled');
+
   console.log('glossary:');
   assert(L.GLOSSARY.length === 10, '10 glossary terms');
   assert(L.GLOSSARY.every(g => g.abbr && g.name && g.what && g.healthy && g.flag), 'every term has all fields');
@@ -217,6 +255,87 @@ async function main() {
   assert(document.getElementById('watchlist-count').textContent === '', 'count label empty when no entries');
   const stored2 = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
   assert(stored2.entries.length === 0, 'all entries deleted from localStorage');
+
+  // ---- revisit reminders ----
+  console.log('revisit reminders:');
+  assert(document.getElementById('j-review').value === '6', 'review interval defaults to 6 months');
+  document.getElementById('j-name').value = 'Reminder Co';
+  document.getElementById('j-thesis').value = 'Testing review intervals.';
+  document.getElementById('j-review').value = '12';
+  document.getElementById('j-save').click();
+  let rst = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
+  assert(rst.entries.length === 1, 'reminder entry saved');
+  const expectedReview = L.addMonths(rst.entries[0].createdAt, 12);
+  assert(rst.entries[0].reviewMonths === 12, 'reviewMonths persisted');
+  assert(rst.entries[0].reviewAt === expectedReview, 'reviewAt = createdAt + 12 months');
+  assert(document.getElementById('j-review').value === '6', 'interval selector resets to 6 after save');
+  let rcards = document.querySelectorAll('#watchlist .entry');
+  assert(rcards[0].querySelector('.fineprint').textContent.includes('review by ' + expectedReview),
+    'entry meta shows review-by date');
+  assert(rcards[0].querySelector('.due-badge') === null, 'no due badge when review is in the future');
+  assert(document.getElementById('watchlist-due').classList.contains('hidden'), 'due summary hidden when nothing due');
+
+  // simulate an overdue review: backdate reviewAt in storage, reload journal
+  rst.entries[0].reviewAt = '2020-01-01';
+  window.localStorage.setItem('longterm-stock-lens-v1', JSON.stringify(rst));
+  L.reloadJournal();
+  rcards = document.querySelectorAll('#watchlist .entry');
+  const badge = rcards[0].querySelector('.due-badge');
+  assert(badge && badge.textContent === 'Review due', 'due badge rendered on overdue entry');
+  assert(rcards[0].classList.contains('due'), 'due card highlighted');
+  const dueLine = document.getElementById('watchlist-due');
+  assert(!dueLine.classList.contains('hidden') && dueLine.textContent.includes('1 thesis is due'),
+    'due summary line shown (got "' + dueLine.textContent + '")');
+
+  // due entry surfaces first even with a lower score
+  document.getElementById('j-name').value = 'Fresh Co';
+  document.getElementById('j-thesis').value = 'High score, not due.';
+  document.querySelectorAll('.score-btns').forEach(g => g.querySelectorAll('.score-btn')[4].click()); // all 5s
+  document.getElementById('j-save').click();
+  rcards = document.querySelectorAll('#watchlist .entry');
+  assert(rcards.length === 2, 'two entries present');
+  assert(rcards[0].querySelector('.entry-name').textContent.includes('Reminder Co'),
+    'due entry sorts above higher-scored non-due entry');
+  assert(rcards[1].querySelector('.due-badge') === null, 'no badge on non-due entry');
+
+  // ---- export ----
+  console.log('export:');
+  assert(document.getElementById('export-json').disabled === false, 'export JSON enabled with entries');
+  assert(document.getElementById('export-md').disabled === false, 'export Markdown enabled with entries');
+  const createdURLs = [];
+  window.URL.createObjectURL = blob => { createdURLs.push(blob); return 'blob:mock-' + createdURLs.length; };
+  window.URL.revokeObjectURL = () => {};
+  const clickedAnchors = [];
+  const origClick = window.HTMLAnchorElement.prototype.click;
+  window.HTMLAnchorElement.prototype.click = function () {
+    clickedAnchors.push({ href: this.getAttribute('href'), download: this.getAttribute('download') });
+  };
+  document.getElementById('export-json').click();
+  document.getElementById('export-md').click();
+  window.HTMLAnchorElement.prototype.click = origClick;
+  const stamp = new Date().toISOString().slice(0, 10);
+  assert(createdURLs.length === 2, 'two blobs created');
+  assert(createdURLs[0] instanceof window.Blob && createdURLs[0].type === 'application/json', 'JSON blob has right type');
+  assert(createdURLs[1].type === 'text/markdown', 'Markdown blob has right type');
+  assert(clickedAnchors[0].download === 'longterm-lens-journal-' + stamp + '.json', 'JSON download filename dated');
+  assert(clickedAnchors[1].download === 'longterm-lens-journal-' + stamp + '.md', 'Markdown download filename dated');
+  assert(clickedAnchors[0].href === 'blob:mock-1' && clickedAnchors[1].href === 'blob:mock-2',
+    'anchors wired to object URLs');
+  const mdText = await createdURLs[1].text();
+  assert(mdText.includes('## Reminder Co') && mdText.includes('## Fresh Co'), 'exported markdown contains both entries');
+  const jsonText = await createdURLs[0].text();
+  assert(JSON.parse(jsonText).length === 2, 'exported JSON contains both entries');
+
+  // cleanup: delete both entries via two-tap
+  let guard = 0;
+  while (document.querySelectorAll('#watchlist .entry').length && guard++ < 10) {
+    const b = document.querySelector('#watchlist .entry .btn.danger');
+    b.click(); b.click();
+  }
+  const finalStore = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
+  assert(finalStore.entries.length === 0, 'cleanup removed all entries');
+  assert(document.getElementById('export-json').disabled === true, 'export JSON disabled when empty');
+  assert(document.getElementById('export-md').disabled === true, 'export Markdown disabled when empty');
 
   // disclaimer present
   document.querySelector('.nav-btn[data-nav="home"]').click();
