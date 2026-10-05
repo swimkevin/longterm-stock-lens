@@ -7,6 +7,8 @@
 
 A free, offline, no-signup educational hub for beginner long-term investors: take a risk profiler quiz, learn fundamental metrics in plain English, keep a conviction journal with a scoring framework, and understand Roth IRAs and account types.
 
+![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-114%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
+
 > **⚠️ Educational only — not financial advice.** This site teaches research skills. It never recommends securities. Always do your own research before investing real money.
 
 ## Why this exists
