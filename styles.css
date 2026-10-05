@@ -12,13 +12,37 @@
   --text: #e6edf3;
   --muted: #8b949e;
 }
+/* Light (paper) theme — every surface re-tokened; toggle persisted in localStorage. */
+[data-theme="light"] {
+  --bg: #f6f4ec;
+  --panel: #fffdf7;
+  --panel2: #f0ece0;
+  --line: #ddd5c0;
+  --green: #1f7a38;
+  --green-dim: #1f7a38;
+  --blue: #1f5fc4;
+  --amber: #8a5f00;
+  --red: #c92a2a;
+  --text: #1c1a14;
+  --muted: #6f6a5c;
+}
+[data-theme="light"] .disclaimer-banner { background: #f5e9cf; color: #6b5416; }
+[data-theme="light"] .nav-btn.active { background: #e4efe6; }
+[data-theme="light"] .opt-btn.selected { background: #e4efe6; }
+[data-theme="light"] .btn.primary { color: #fffdf7; }
+[data-theme="light"] .btn.primary:hover { background: #186230; }
+[data-theme="light"] .btn.danger.armed { background: #f3d7d7; color: #a12323; }
+[data-theme="light"] .due-badge { background: #f5e9cf; }
+[data-theme="light"] .entry-score { background: #f0ece0; border-color: var(--line); color: var(--muted); }
+[data-theme="light"] .alloc-index { color: #fff; }
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 17px; line-height: 1.6; min-height: 100vh;
 }
-h1 { font-size: 2.2rem; margin: 0.6em 0 0.4em; letter-spacing: -0.5px; line-height: 1.2; }
+h1 { font-size: 2.2rem; margin: 0.6em 0 0.4em; letter-spacing: -0.5px; line-height: 1.2;
+  font-family: Georgia, 'Times New Roman', serif; }
 h2 { font-size: 1.25rem; margin: 2.2em 0 0.8em; color: var(--green); letter-spacing: -0.2px; }
 h3 { font-size: 1.05rem; margin: 0 0 0.8em; }
 .subtitle { color: var(--muted); max-width: 680px; font-size: 1.02rem; }
@@ -45,6 +69,12 @@ a { color: var(--blue); }
 .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: 0.3px; white-space: nowrap; }
 .brand-emoji { margin-right: 0.3rem; }
 .nav { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.theme-toggle {
+  margin-left: auto; background: transparent; border: 1px solid var(--line);
+  color: var(--text); border-radius: 8px; padding: 0.45rem 0.7rem; cursor: pointer;
+  font-size: 1rem; line-height: 1;
+}
+.theme-toggle:hover { border-color: var(--blue); }
 .nav-btn {
   background: transparent; border: 1px solid transparent; color: var(--muted);
   padding: 0.45rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.92rem;
@@ -87,8 +117,8 @@ a { color: var(--blue); }
 }
 .result h3 { color: var(--green); margin-top: 0; }
 .alloc-bar { display: flex; height: 2.2rem; border-radius: 8px; overflow: hidden; margin: 1rem 0; border: 1px solid var(--line); }
-.alloc-index { background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; }
-.alloc-conv { background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #06130a; }
+.alloc-index { background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.alloc-conv { background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #06130a; font-variant-numeric: tabular-nums; }
 .btn-row { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
 
 /* buttons */
@@ -143,12 +173,32 @@ a { color: var(--blue); }
 .score-btn:hover { border-color: var(--blue); }
 .score-btn.selected { background: var(--green-dim); border-color: var(--green); }
 .weighted-line { margin: 0.8rem 0; }
+.weighted-line strong { font-variant-numeric: tabular-nums; }
+
+/* Journal KPI strip: theses tracked / reviews due / avg conviction. */
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
+.kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.8rem 1rem; text-align: center; }
+.kpi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.kpi-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+
+/* Press physics + view transitions (visual only). */
+button { transition: transform 0.08s ease; }
+button:active { transform: scale(0.96); }
+@keyframes view-in { from { opacity: 0; transform: translateY(10px); } }
+.screen { animation: view-in 0.22s ease backwards; }
 
 .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; margin-bottom: 0.8rem; }
 .entry-head { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
 .entry-name { font-weight: 800; font-size: 1.05rem; }
 .entry-tickers { color: var(--blue); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.5px; }
-.entry-score { margin-left: auto; background: #0f1f14; border: 1px solid var(--green-dim); color: var(--green); font-weight: 800; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.9rem; }
+.entry-score { margin-left: auto; background: #0f1f14; border: 1px solid var(--green-dim); color: var(--green); font-weight: 800; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+/* Diverging conviction scale: 0-5 score mapped to 0-100 (score * 20). */
+.entry-score.s-low { background: #2b1515; border-color: var(--red); color: #f2a8a8; }
+.entry-score.s-mid { background: #2a1f0d; border-color: var(--amber); color: #eec27a; }
+.entry-score.s-high { background: #0f1f14; border-color: var(--green); color: var(--green); }
+[data-theme="light"] .entry-score.s-low { background: #fae8e8; border-color: #dfa3a3; color: #a12323; }
+[data-theme="light"] .entry-score.s-mid { background: #f6ead0; border-color: #d9b45f; color: #8a5f00; }
+[data-theme="light"] .entry-score.s-high { background: #e3f2e7; border-color: #7fbf90; color: #1f7a38; }
 .entry-tags { margin: 0.4rem 0; display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .tag { background: var(--panel2); border: 1px solid var(--line); border-radius: 20px; padding: 0.1rem 0.6rem; font-size: 0.78rem; color: var(--muted); }
 .entry-thesis { color: var(--muted); font-size: 0.93rem; margin: 0.5rem 0; white-space: pre-wrap; }
@@ -159,6 +209,7 @@ a { color: var(--blue); }
 .due-badge {
   background: #2a1f0d; border: 1px solid var(--amber); color: var(--amber);
   font-weight: 800; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 .entry.due { border-color: var(--amber); }
 #watchlist-due { color: var(--amber); font-weight: 600; }
@@ -193,5 +244,5 @@ a { color: var(--blue); }
   .topbar { padding: 0.5rem 0.8rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

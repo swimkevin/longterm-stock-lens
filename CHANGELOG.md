@@ -1,5 +1,32 @@
 # Changelog — Long-Term Lens
 
+## [0.3.0] — 2026-10-05
+
+Visual polish pass — no behavior or logic changes, no new features.
+
+### Added
+- **Light theme:** a fully re-tokened paper theme (`#f6f4ec` background) via a
+  `[data-theme="light"]` CSS-variable block covering every surface, including
+  previously hardcoded dark hexes (disclaimer banner, selected options,
+  score pills, badges). 🌓 toggle in the topbar; choice persists in
+  `localStorage` (`ltl_theme`, dark default). Offline-safe: system font
+  stacks only, no webfonts.
+- **Diverging conviction scale:** journal score pills now tint red / amber /
+  green by weighted score (<40 / 40–69 / 70+ on a 0–100 scale), in both themes.
+- **Journal KPI strip:** "Theses tracked / Reviews due / Avg conviction" tiles
+  above the watchlist, computed from in-memory entries, tabular numerals.
+- **Typography:** Georgia serif display headlines; `tabular-nums` on score
+  pills, due badges, allocation bars, KPI values, and the weighted preview.
+- **Micro-interactions:** `button:active { scale(.96) }` press physics and a
+  `view-in` transition restarted on every screen navigation; both disabled
+  under `prefers-reduced-motion`.
+
+### Notes
+- Sparkline-per-entry was evaluated and skipped: the data model stores a
+  single weighted score per thesis, no per-review score history — adding it
+  would require a storage migration, out of scope for a visual-only pass.
+- Footer version string corrected to v0.3.0 (it still read v0.1.0).
+
 ## [0.2.0] — 2026-10-04
 
 Thesis revisit reminders + journal export.

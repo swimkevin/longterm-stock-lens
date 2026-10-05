@@ -265,7 +265,13 @@ function $(id) { return document.getElementById(id); }
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
   const el = $('screen-' + name);
-  if (el) el.classList.remove('hidden');
+  if (el) {
+    el.classList.remove('hidden');
+    // Restart the view-enter animation on every navigation (visual only).
+    el.style.animation = 'none';
+    void el.offsetWidth; // force reflow so the animation restarts
+    el.style.animation = '';
+  }
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.nav === name));
   window.scrollTo(0, 0);
@@ -481,6 +487,33 @@ function renderWatchlist() {
   }
   $('export-json').disabled = !entries.length;
   $('export-md').disabled = !entries.length;
+  // KPI strip: journal-at-a-glance tiles computed from in-memory entries (visual only).
+  const kpis = $('journal-kpis');
+  kpis.innerHTML = '';
+  if (entries.length) {
+    kpis.hidden = false;
+    const scored = entries.filter(e => typeof e.weighted === 'number');
+    const avg = scored.length
+      ? (scored.reduce((s, e) => s + e.weighted, 0) / scored.length).toFixed(1) + ' / 5'
+      : '—';
+    [['Theses tracked', String(entries.length)],
+     ['Reviews due', String(dueCount)],
+     ['Avg conviction', avg]].forEach(pair => {
+      const card = document.createElement('div');
+      card.className = 'kpi-card';
+      const lab = document.createElement('div');
+      lab.className = 'kpi-label';
+      lab.textContent = pair[0];
+      const val = document.createElement('div');
+      val.className = 'kpi-value';
+      val.textContent = pair[1];
+      card.appendChild(lab);
+      card.appendChild(val);
+      kpis.appendChild(card);
+    });
+  } else {
+    kpis.hidden = true;
+  }
   if (!entries.length) {
     box.innerHTML = '<div class="empty">No theses yet. Write your first one above — start with a product you already love.</div>';
     return;
@@ -512,6 +545,11 @@ function renderWatchlist() {
     const sc = document.createElement('span');
     sc.className = 'entry-score';
     sc.textContent = (e.weighted === null || e.weighted === undefined) ? 'unscored' : e.weighted.toFixed(1) + ' / 5';
+    if (typeof e.weighted === 'number') {
+      // Diverging conviction scale: 0-5 score mapped to 0-100 (score * 20).
+      const pct = e.weighted * 20;
+      sc.classList.add(pct < 40 ? 's-low' : pct < 70 ? 's-mid' : 's-high');
+    }
     head.appendChild(sc);
     if (isReviewDue(e, today)) {
       const badge = document.createElement('span');
@@ -613,6 +651,17 @@ function exportMarkdown() {
 
 /* ---------------- init ---------------- */
 function init() {
+  // Theme toggle (visual only): persisted light/dark choice, dark default.
+  const THEME_KEY = 'ltl_theme';
+  let theme = 'dark';
+  try { theme = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { /* storage blocked */ }
+  if (theme !== 'light' && theme !== 'dark') theme = 'dark';
+  document.documentElement.dataset.theme = theme;
+  $('theme-toggle').addEventListener('click', () => {
+    theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage blocked */ }
+  });
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.addEventListener('click', () => showScreen(b.dataset.nav)));
   document.querySelectorAll('[data-goto]').forEach(b =>

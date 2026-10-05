@@ -6,6 +6,9 @@
 <title>Long-Term Lens — Research conviction stocks for buy-and-hold</title>
 <meta name="description" content="An educational hub for beginner long-term investors: risk profiling, fundamentals glossary, a conviction journal, and account explainers. Educational only — not financial advice.">
 <link rel="stylesheet" href="styles.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 </head>
 <body>
 <header class="topbar">
@@ -18,6 +21,7 @@
     <button class="nav-btn" data-nav="accounts">Accounts</button>
     <button class="nav-btn" data-nav="learn">Learn</button>
   </nav>
+  <button id="theme-toggle" class="theme-toggle" aria-label="Toggle light and dark theme" title="Toggle theme">🌓</button>
 </header>
 
 <main>
@@ -178,6 +182,7 @@
         <button id="export-json" class="btn">Export JSON</button>
         <button id="export-md" class="btn">Export Markdown</button>
       </div>
+      <div id="journal-kpis" class="kpi-strip" hidden></div>
       <div id="watchlist"></div>
     </div>
   </section>
@@ -245,7 +250,7 @@
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research — start at
     <a href="https://www.sec.gov/edgar" target="_blank" rel="noopener">SEC EDGAR</a>.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v0.1.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v0.3.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
 </footer>
 
 <script src="app.js"></script>
