@@ -9,6 +9,17 @@ A free, offline, no-signup educational hub for beginner long-term investors: tak
 
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-114%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 
+## Key decisions
+
+- **Educational-only boundary, enforced as repo law** — no recommendations, no live prices, no personalized advice; historical examples are labeled illustrations. See [ADR 0001](docs/adr/0001-educational-only-boundary.md).
+- **Vanilla HTML/CSS/JS, zero runtime dependencies, no build step** — instant load, fully offline, tests run in plain Node. See [ADR 0002](docs/adr/0002-vanilla-js-zero-dependencies.md).
+- **Conviction journal persists in localStorage** (`longterm-stock-lens-v1`), local-first: zero cost, nothing leaves the browser. See [ADR 0003](docs/adr/0003-localstorage-journal.md).
+- **No backend, no price feeds — not even free ones** — keeps the educational boundary airtight by construction. See [ADR 0004](docs/adr/0004-no-backend-no-price-feeds.md).
+
+## Verification
+
+**114 assertions**, all passing (`npm test` → `tests/smoke.js`). The strategy is documented in [docs/TESTING.md](docs/TESTING.md): pure-logic coverage of the scoring and review-date math, a jsdom boot of the real page (nav, quiz, journal CRUD, exports, localStorage round-trips), and XSS-escaping checks with a literal probe string. Assertions are added with every logic change; the suite gates every commit. AI-assisted development follows documented guardrails — see [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
+
 > **⚠️ Educational only — not financial advice.** This site teaches research skills. It never recommends securities. Always do your own research before investing real money.
 
 ## Why this exists
@@ -46,7 +57,11 @@ longterm-stock-lens/
 ├── tests/
 │   └── smoke.js        # Node smoke test: pure-logic assertions + jsdom UI boot
 ├── docs/
-│   └── ARCHITECTURE.md # Module map and design decisions
+│   ├── ARCHITECTURE.md # Module map and design decisions
+│   ├── ROADMAP.md      # Release plan
+│   ├── TESTING.md      # Testing strategy (114 assertions)
+│   ├── AI-WORKFLOW.md  # How AI-assisted development is run here
+│   └── adr/            # Architecture decision records (0001–0004)
 ├── README.md
 ├── CHANGELOG.md
 ├── AGENTS.md
@@ -67,8 +82,9 @@ Deploy to GitHub Pages from `main` — it's a static site, nothing to build.
 ## Roadmap
 
 - **v0.2** — ✅ shipped 2026-10-04: thesis revisit reminders ("Review due" badges, due-first watchlist) + journal export as JSON/Markdown
-- **v0.3** — compound-interest visualizer; dollar-cost averaging explainer ← next
-- **v0.4** — 10-K reading walkthrough (how to find each metric in a real filing)
+- **v0.3** — ✅ shipped 2026-10-05: light/dark themes, conviction color scale (red/amber/green), journal KPI strip, serif/tabular typography, press physics
+- **v0.4** — compound-interest visualizer; dollar-cost averaging explainer ← next
+- **v0.5** — 10-K reading walkthrough (how to find each metric in a real filing)
 - **Later** — PWA for offline phone use; analytics to measure usage before any monetization thoughts
 
 This project will not become a trading tool, will not show real-time prices, and will not give recommendations. Those are permanent boundaries, not backlog items.

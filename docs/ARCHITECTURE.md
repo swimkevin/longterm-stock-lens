@@ -17,6 +17,30 @@ step, no backend. All user data persists in `localStorage` under one key
 
 ## Data flow
 
+```mermaid
+flowchart TD
+    subgraph browser["Browser (zero deps, offline)"]
+        HTML["index.html<br/>6 screens, static content"]
+        CSS["styles.css<br/>CSS variables, light/dark"]
+        APP["app.js (single IIFE)"]
+        LS[("localStorage<br/>longterm-stock-lens-v1")]
+    end
+    subgraph node["Node test harness (dev only)"]
+        SMOKE["tests/smoke.js<br/>114 assertions"]
+    end
+    subgraph pure["DOM-free pure core<br/>(exposed on globalThis.LongTermLens)"]
+        QUIZ["QUIZ / BANDS / scoreRisk"]
+        JOUR["weightedScore / reviewAtOf<br/>isReviewDue / journalToJSON<br/>journalToMarkdown / esc"]
+        GLOSS["GLOSSARY"]
+    end
+    HTML --> APP
+    CSS --> HTML
+    APP --> pure
+    APP <--> LS
+    pure --> SMOKE
+    APP --> SMOKE
+```
+
 ```
 QUIZ answers (0-3 each) --scoreRisk--> { total, band } --> allocation bar UI
 Journal form + draftScores --weightedScore--> entry { scores, weighted }
