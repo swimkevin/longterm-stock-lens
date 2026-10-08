@@ -145,6 +145,47 @@ async function main() {
   assert(L.GLOSSARY.length === 10, '10 glossary terms');
   assert(L.GLOSSARY.every(g => g.abbr && g.name && g.what && g.healthy && g.flag), 'every term has all fields');
 
+  console.log('glossary search:');
+  assert(typeof L.filterGlossaryTerms === 'function', 'filterGlossaryTerms exposed');
+  assert(L.filterGlossaryTerms('').length === 10, 'empty query matches all terms');
+  assert(L.filterGlossaryTerms(null).length === 10, 'null query matches all terms');
+  const moat = L.filterGlossaryTerms('moat');
+  assert(moat.length === 1 && moat[0].abbr === 'Moat', 'query "moat" finds Economic moat');
+  const margins = L.filterGlossaryTerms('MARGIN');
+  assert(margins.length === 3 && margins.some(g => g.name === 'Gross margin') &&
+    margins.some(g => g.name === 'Operating margin') && margins.some(g => g.abbr === 'Moat'),
+    'case-insensitive search finds both margin terms + Moat (flag text mentions margins)');
+  const debt = L.filterGlossaryTerms('debt');
+  assert(debt.length === 3 && debt.some(g => g.abbr === 'D/E'), 'body-text search finds D/E + FCF + ROE for "debt"');
+  assert(L.filterGlossaryTerms('xyzzy').length === 0, 'no-match query returns empty');
+  // UI flow: type, filter, announce, clear
+  document.querySelector('.nav-btn[data-nav="fundamentals"]').click();
+  const gSearch = document.getElementById('glossary-search');
+  const fireInput = () => gSearch.dispatchEvent(new window.Event('input', { bubbles: true }));
+  gSearch.value = 'moat';
+  fireInput();
+  const visibleTerms = Array.from(document.querySelectorAll('#glossary .gloss'))
+    .filter(d => !d.classList.contains('hidden'));
+  assert(visibleTerms.length === 1 && visibleTerms[0].textContent.includes('Economic moat'),
+    'UI filter shows only the matching term');
+  const countLine = document.getElementById('glossary-count');
+  assert(!countLine.classList.contains('hidden') && countLine.textContent.includes('1 of 10'),
+    'match count announced (got "' + countLine.textContent + '")');
+  gSearch.value = 'xyzzy';
+  fireInput();
+  assert(!document.getElementById('glossary-empty').classList.contains('hidden'), 'no-match shows empty state');
+  // XSS probe: the query must stay text, never markup
+  gSearch.value = '<img src=x onerror=alert(1)>';
+  fireInput();
+  assert(!document.querySelector('#glossary-count img'), 'search query not parsed as HTML');
+  assert(document.getElementById('glossary-count').innerHTML.includes('&lt;img'),
+    'search query escaped in count line');
+  gSearch.value = '';
+  fireInput();
+  assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === 10, 'clearing search restores all terms');
+  assert(document.getElementById('glossary-empty').classList.contains('hidden'), 'empty state hidden after clear');
+  assert(document.getElementById('glossary-count').classList.contains('hidden'), 'count line hidden after clear');
+
   // ---- navigation ----
   console.log('navigation:');
   const tabs = ['home', 'risk', 'fundamentals', 'journal', 'accounts', 'learn'];
@@ -164,6 +205,14 @@ async function main() {
   const res = document.getElementById('quiz-result');
   assert(!res.classList.contains('hidden'), 'result appears after answering all questions');
   assert(res.textContent.includes('80% index') && res.textContent.includes('20% conviction'), 'result shows 80/20 allocation');
+  // narrow conviction slice: short label avoids clipping in the allocation bar
+  document.querySelectorAll('#quiz .q').forEach(q => q.querySelectorAll('.opt-btn')[3].click()); // all s=0 -> 0/18
+  document.querySelector('#quiz .btn.primary').click();
+  assert(res.querySelector('.alloc-conv').textContent === '2%', 'narrow conv segment uses short label (got "' +
+    res.querySelector('.alloc-conv').textContent + '")');
+  assert(res.querySelector('.alloc-index').textContent === '98% index', 'index segment keeps full label');
+  assert(res.querySelector('.alloc-bar').getAttribute('aria-label').includes('2 percent conviction stocks'),
+    'aria-label still carries the full wording');
   // incomplete quiz warns
   document.querySelector('.nav-btn[data-nav="journal"]').click();
   document.querySelector('.nav-btn[data-nav="risk"]').click();

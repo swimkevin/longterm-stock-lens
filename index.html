@@ -109,7 +109,12 @@
       <p class="subtitle">Ten concepts worth understanding before you research any company. Click each for a plain-English
         explanation, what "healthy" generally looks like, and red flags. These are <em>typical patterns</em>, not rules —
         context (industry, company age, cycle) always matters.</p>
+      <label class="field search-field">Search the glossary
+        <input type="search" id="glossary-search" maxlength="60" placeholder="e.g. margin, debt, moat…">
+      </label>
+      <p class="fineprint hidden" id="glossary-count" role="status"></p>
       <div id="glossary"></div>
+      <div class="empty hidden" id="glossary-empty">No terms match — try a broader word like "debt" or "growth".</div>
       <h2>The 5-minute checklist</h2>
       <ol class="checklist">
         <li><strong>Revenue growing?</strong> Look for consistent year-over-year growth over 3–5 years.</li>
@@ -250,7 +255,7 @@
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research — start at
     <a href="https://www.sec.gov/edgar" target="_blank" rel="noopener">SEC EDGAR</a>.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v0.3.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v0.4.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
 </footer>
 
 <script src="app.js"></script>

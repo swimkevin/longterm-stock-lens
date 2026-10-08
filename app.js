@@ -135,6 +135,17 @@ const GLOSSARY = [
     flag: 'Management claims a moat, but margins and market share have been eroding for years.' },
 ];
 
+/* ---------------- glossary search ---------------- */
+// DOM-free: case-insensitive match against abbreviation, name, and body text.
+// Empty/null query matches everything.
+function filterGlossaryTerms(query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return GLOSSARY.slice();
+  return GLOSSARY.filter(g =>
+    (g.abbr + ' ' + g.name + ' ' + g.what + ' ' + g.healthy + ' ' + g.flag)
+      .toLowerCase().includes(q));
+}
+
 /* ---------------- journal scoring ---------------- */
 const SCORE_DIMS = ['product', 'fundamentals', 'moat', 'valuation', 'horizon'];
 const SCORE_WEIGHTS = { product: 0.20, fundamentals: 0.25, moat: 0.20, valuation: 0.15, horizon: 0.20 };
@@ -330,12 +341,16 @@ function showQuizResult() {
   }
   const { total, max, band } = scoreRisk(quizAnswers);
   res.classList.remove('hidden');
+  // Narrow conviction segments (2%, 7%) can't fit the full word without
+  // clipping inside the overflow:hidden bar — use the short label there.
+  // The aria-label above always carries the full wording for AT.
+  const convText = band.conv < 10 ? band.conv + '%' : band.conv + '% conviction';
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
     '<p class="fineprint">Score ' + total + ' / ' + max + ' — educational starting point, not advice.</p>' +
     '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent conviction stocks">' +
       '<div class="alloc-index" style="width:' + band.index + '%">' + band.index + '% index</div>' +
-      '<div class="alloc-conv" style="width:' + band.conv + '%">' + band.conv + '% conviction</div>' +
+      '<div class="alloc-conv" style="width:' + band.conv + '%">' + convText + '</div>' +
     '</div>' +
     '<p>' + esc(band.why) + '</p>' +
     '<p class="fineprint">Remember: a higher conviction-stock percentage always means higher risk. ' +
@@ -344,12 +359,17 @@ function showQuizResult() {
 }
 
 /* ---------------- glossary UI ---------------- */
+// {el, term} pairs in render order — the search filter toggles their .hidden.
+let glossaryNodes = [];
+
 function renderGlossary() {
   const box = $('glossary');
   box.innerHTML = '';
+  glossaryNodes = [];
   GLOSSARY.forEach(g => {
     const d = document.createElement('details');
     d.className = 'gloss';
+    glossaryNodes.push({ el: d, term: g });
     const summary = document.createElement('summary');
     const tag = document.createElement('span');
     tag.className = 'ticker';
@@ -367,6 +387,30 @@ function renderGlossary() {
     d.appendChild(summary); d.appendChild(body);
     box.appendChild(d);
   });
+}
+
+function applyGlossaryFilter() {
+  // Instant text filter: non-matching terms hide; the count line announces
+  // results (role="status"). The query is only ever matched and set via
+  // textContent — never rendered as HTML.
+  const q = ($('glossary-search').value || '').trim();
+  const visible = new Set(filterGlossaryTerms(q));
+  let shown = 0;
+  glossaryNodes.forEach(n => {
+    const show = visible.has(n.term);
+    n.el.classList.toggle('hidden', !show);
+    if (show) shown++;
+  });
+  const count = $('glossary-count');
+  const empty = $('glossary-empty');
+  if (!q) {
+    count.classList.add('hidden');
+    empty.classList.add('hidden');
+    return;
+  }
+  count.textContent = shown + ' of ' + GLOSSARY.length + ' terms match "' + q + '"';
+  count.classList.remove('hidden');
+  empty.classList.toggle('hidden', shown !== 0);
 }
 
 /* ---------------- journal UI ---------------- */
@@ -668,6 +712,7 @@ function init() {
     b.addEventListener('click', () => showScreen(b.dataset.goto)));
   renderQuiz();
   renderGlossary();
+  $('glossary-search').addEventListener('input', applyGlossaryFilter);
   renderScoreButtons();
   updateWeightedPreview();
   renderWatchlist();
@@ -685,7 +730,7 @@ if (document.readyState === 'loading') {
 
 // Expose pure logic for the Node smoke test (browsers ignore this).
 if (typeof globalThis !== 'undefined') {
-  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, weightedScore, scoreCount, thesesLabel, SCORE_WEIGHTS, esc,
+  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms, weightedScore, scoreCount, thesesLabel, SCORE_WEIGHTS, esc,
     addMonths, todayISO, reviewAtOf, isReviewDue, journalToJSON, journalToMarkdown, reloadJournal };
 }
 

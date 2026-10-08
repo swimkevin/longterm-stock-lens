@@ -1,5 +1,42 @@
 # Changelog — Long-Term Lens
 
+## [0.4.0] — 2026-10-07
+
+Glossary search + mobile/a11y polish pass — no behavior changes to scoring or data.
+
+### Added
+- **Glossary search:** a "Search the glossary" field filters the 10 terms
+  instantly (matches abbreviation, name, and body text, case-insensitive).
+  A `role="status"` count line announces "N of 10 terms match", and a
+  no-match empty state suggests broader words. The query is only ever
+  compared and set via `textContent` — never rendered as HTML. New pure
+  helper `filterGlossaryTerms()` exposed on `window.LongTermLens`.
+- **Input focus rings:** text inputs, textareas, and selects now show the same
+  blue `:focus-visible` outline as buttons for keyboard users (mouse focus
+  keeps the subtle border-color change).
+
+### Fixed
+- **Journal score buttons** are now 44×44px (was 34px), meeting the WCAG
+  2.5.8 touch-target minimum — easier tapping on phones.
+- **Allocation bar labels:** narrow conviction segments (2%, 7%) used to clip
+  "2% conviction" inside the `overflow:hidden` bar; they now render the short
+  label ("2%") while the `aria-label` keeps the full wording for assistive tech.
+- Mobile topbar: the theme toggle can no longer shrink in the horizontal-scroll nav.
+
+### Notes
+- QA re-verified the ambiguous Export Markdown observation from the last
+  pass: the download path is fully covered by the smoke test (two blobs,
+  `text/markdown` type, dated `.md` filename, object-URL wiring, exported
+  content) — no app bug; the earlier uncertainty was a browser-dialog quirk.
+
+### Tests
+- `tests/smoke.js` extended to 132 assertions: pure-logic coverage for
+  `filterGlossaryTerms` (empty/null, abbreviation, case-insensitive name,
+  body-text, no-match); UI flow for the search (filter, count announcement,
+  empty state, clear restores all); an HTML-probe query asserting the search
+  never parses as markup; and quiz coverage for the narrow-segment short
+  label plus the preserved full `aria-label`.
+
 ## [0.3.0] — 2026-10-05
 
 Visual polish pass — no behavior or logic changes, no new features.

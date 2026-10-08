@@ -117,8 +117,8 @@ a { color: var(--blue); }
 }
 .result h3 { color: var(--green); margin-top: 0; }
 .alloc-bar { display: flex; height: 2.2rem; border-radius: 8px; overflow: hidden; margin: 1rem 0; border: 1px solid var(--line); }
-.alloc-index { background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.alloc-conv { background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #06130a; font-variant-numeric: tabular-nums; }
+.alloc-index { background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+.alloc-conv { background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #06130a; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
 .btn-row { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
 
 /* buttons */
@@ -162,12 +162,18 @@ a { color: var(--blue); }
   width: 100%; resize: vertical;
 }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--blue); outline: none; }
+/* Keyboard users get the same blue ring as buttons (mouse :focus keeps the subtle border change). */
+.field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible {
+  outline: 2px solid var(--blue); outline-offset: 2px;
+}
 .field select { width: auto; max-width: 220px; resize: none; }
+.search-field { max-width: 420px; }
 .scores { margin: 1rem 0; }
 .score-row { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .score-btns { display: flex; gap: 0.3rem; }
 .score-btn {
-  width: 2.1rem; height: 2.1rem; border-radius: 8px; border: 1px solid var(--line);
+  /* 44px minimum touch target (WCAG 2.5.8); 5 fit in a row at 390px widths. */
+  width: 2.75rem; height: 2.75rem; border-radius: 8px; border: 1px solid var(--line);
   background: var(--panel2); color: var(--text); cursor: pointer; font: inherit; font-weight: 700;
 }
 .score-btn:hover { border-color: var(--blue); }
@@ -254,6 +260,7 @@ button:active { transform: scale(0.96); }
   .nav::-webkit-scrollbar { display: none; }
   .nav-btn { white-space: nowrap; flex-shrink: 0; }
   .brand { flex-shrink: 0; }
+  .theme-toggle { flex-shrink: 0; }
   /* Better mobile spacing (Muse-like breathing room) */
   .wrap { padding: 0 1rem; }
   .how-grid { grid-template-columns: 1fr; gap: 0.75rem; }
