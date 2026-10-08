@@ -7,7 +7,7 @@
 
 A free, offline, no-signup educational hub for beginner long-term investors: take a risk profiler quiz, learn fundamental metrics in plain English, keep a conviction journal with a scoring framework, and understand Roth IRAs and account types.
 
-![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-114%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
+![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-132%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 
 ## Key decisions
 
@@ -18,7 +18,11 @@ A free, offline, no-signup educational hub for beginner long-term investors: tak
 
 ## Verification
 
-**114 assertions**, all passing (`npm test` → `tests/smoke.js`). The strategy is documented in [docs/TESTING.md](docs/TESTING.md): pure-logic coverage of the scoring and review-date math, a jsdom boot of the real page (nav, quiz, journal CRUD, exports, localStorage round-trips), and XSS-escaping checks with a literal probe string. Assertions are added with every logic change; the suite gates every commit. AI-assisted development follows documented guardrails — see [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
+**132 assertions**, all passing (`npm test` → `tests/smoke.js`). The strategy is documented in [docs/TESTING.md](docs/TESTING.md): pure-logic coverage of the scoring and review-date math, a jsdom boot of the real page (nav, quiz, journal CRUD, exports, localStorage round-trips), and XSS-escaping checks with a literal probe string. Assertions are added with every logic change; the suite gates every commit. AI-assisted development follows documented guardrails — see [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
+
+## Automated daily improvements
+
+A scheduled job runs every morning: test suite, live browser check, 1–2 small improvements (mobile polish, UX refinements, accessibility), auto-push. Recent improvements: glossary search/filter, 44px touch targets, visible keyboard focus rings.
 
 > **⚠️ Educational only — not financial advice.** This site teaches research skills. It never recommends securities. Always do your own research before investing real money.
 
@@ -31,14 +35,15 @@ I'm Kevin Song, a software engineer. I built this in October 2026 as a companion
 
 On the "AI" question, to be precise: there is no machine learning here at all — and that's the point. The scoring frameworks are transparent arithmetic you can check by hand. The site teaches *you* to do the thinking.
 
-## Features (v0.1.0)
+## Features (v0.4.0)
 
 - **Risk profiler quiz** — 6 questions (age, timeline, volatility tolerance, income stability, experience, drawdown behavior) → a suggested allocation band between broad index funds and conviction stocks, e.g. 80% index / 20% conviction. Educational starting point, not a prescription.
-- **Fundamentals glossary** — P/E, PEG, P/S, free cash flow, revenue growth, gross/operating margin, ROE, debt-to-equity, moat. Plain-English explainers in expandable sections, typical "healthy" patterns, and red flags. No thresholds presented as rules.
-- **Conviction journal** — write your thesis ("I use X daily, I believe Y lasts 10 years because…"), name what would prove you wrong, tag themes, track tickers, and score 1–5 on Product Belief / Fundamentals / Moat / Valuation Comfort / Time Horizon → weighted score out of 5. Set a re-check reminder (1/3/6/12 months) per thesis.
-- **Watchlist** — journal entries sorted by score with "Review due" badges on overdue theses, persisted in `localStorage`. Export your journal as JSON or Markdown. Nothing leaves your browser.
-- **Roth IRA & account explainer** — Roth vs Traditional vs taxable comparison, 2026 contribution limits (labeled "verify at irs.gov"), why index funds fit tax-advantaged accounts.
+- **Fundamentals glossary** — P/E, PEG, P/S, free cash flow, revenue growth, gross/operating margin, ROE, debt-to-equity, moat. Plain-English explainers with **search/filter**, typical "healthy" patterns, and red flags. No thresholds presented as rules.
+- **Conviction journal** — write your thesis (\"I use X daily, I believe Y lasts 10 years because…\"), name what would prove you wrong, tag themes, track tickers, and score 1–5 on Product Belief / Fundamentals / Moat / Valuation Comfort / Time Horizon → weighted score out of 5. Set a re-check reminder (1/3/6/12 months) per thesis.
+- **Watchlist** — journal entries sorted by score with \"Review due\" badges on overdue theses, persisted in `localStorage`. Export your journal as JSON or Markdown. Nothing leaves your browser.
+- **Roth IRA & account explainer** — Roth vs Traditional vs taxable comparison, 2026 contribution limits (labeled \"verify at irs.gov\"), why index funds fit tax-advantaged accounts.
 - **Learn section** — SEC EDGAR, company investor relations, Investopedia, Bogleheads, plus three books (*One Up On Wall Street*, *The Intelligent Investor*, *A Random Walk Down Wall Street*).
+- **Mobile-friendly** — horizontal-scroll nav, 44px touch targets, readable on phones.
 - **100% offline** — no accounts, no servers, no tracking, no real-time prices. All data entry is manual.
 
 ## Compliance notes
