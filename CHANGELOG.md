@@ -1,5 +1,31 @@
 # Changelog — Long-Term Lens
 
+## [0.4.1] — 2026-10-08
+
+Closes the thesis-revisit loop + a screen-reader announcement fix.
+
+### Added
+- **"Mark reviewed" on due theses:** a "Review due" badge used to sit there
+  forever with no way to close the loop. Due entries now show a "Mark
+  reviewed" button next to Delete, plus a remind-again-in interval select
+  (1/3/6/12 months, defaulting to the thesis's own interval). Marking a
+  thesis reviewed sets its next check to today + N months, clears the badge,
+  and re-sorts the watchlist. New pure helper `rescheduleReview()` exposed
+  on `window.LongTermLens`.
+
+### Fixed
+- **Due-review summary is now announced:** `#watchlist-due` carries
+  `role="status"`, so screen-reader users hear when theses come due — the
+  same pattern the glossary search count line already used. No visual change.
+
+### Tests
+- `tests/smoke.js` extended: pure-logic coverage for `rescheduleReview`
+  (valid/custom/invalid months, invalid today fallback, entry immutability);
+  UI flow for the mark-reviewed loop (backdate → due → mark reviewed with
+  default and custom intervals → badge clears, `reviewAt` re-scheduled in
+  localStorage); assertion that only due entries render the controls; and
+  `role="status"` on the due summary.
+
 ## [0.4.0] — 2026-10-07
 
 Glossary search + mobile/a11y polish pass — no behavior changes to scoring or data.

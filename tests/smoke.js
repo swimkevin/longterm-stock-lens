@@ -119,6 +119,22 @@ async function main() {
   assert(L.isReviewDue({ reviewAt: '2026-10-05' }, '2026-10-04') === false, 'future review date is not due');
   assert(L.isReviewDue({ createdAt: '2020-01-01' }, '2026-10-04') === true, 'legacy entry long past is due');
 
+  console.log('rescheduleReview:');
+  const base = { id: 'e1', name: 'Base', thesis: 'T', createdAt: '2026-10-04', reviewMonths: 6, reviewAt: '2020-01-01' };
+  const r6 = L.rescheduleReview(base, '6', '2026-10-08');
+  assert(r6.reviewAt === '2027-04-08' && r6.reviewMonths === 6, '6 months from explicit today');
+  const r12 = L.rescheduleReview(base, 12, '2026-10-08');
+  assert(r12.reviewAt === '2027-10-08' && r12.reviewMonths === 12, '12 months (numeric input)');
+  const r1 = L.rescheduleReview(base, '1', '2026-10-08');
+  assert(r1.reviewAt === '2026-11-08' && r1.reviewMonths === 1, '1 month honored');
+  const rBad = L.rescheduleReview(base, '99', '2026-10-08');
+  assert(rBad.reviewAt === '2027-04-08' && rBad.reviewMonths === 6, 'invalid months fall back to 6');
+  assert(base.reviewAt === '2020-01-01', 'original entry object not mutated');
+  assert(r6.name === 'Base' && r6.id === 'e1' && r6.thesis === 'T', 'other entry fields preserved');
+  const rToday = L.rescheduleReview(base, '3', 'garbage');
+  assert(rToday.reviewAt === L.addMonths(L.todayISO(), 3) && rToday.reviewMonths === 3,
+    'invalid today falls back to todayISO');
+
   console.log('export builders:');
   const expEntries = [
     { id: 'e1', name: 'Acme', tickers: 'ACME', tags: ['AI'], thesis: 'Great.', falsify: 'If not.',
@@ -346,6 +362,52 @@ async function main() {
   assert(rcards[0].querySelector('.entry-name').textContent.includes('Reminder Co'),
     'due entry sorts above higher-scored non-due entry');
   assert(rcards[1].querySelector('.due-badge') === null, 'no badge on non-due entry');
+
+  // ---- mark reviewed: closes the revisit loop ----
+  console.log('mark reviewed:');
+  rcards = document.querySelectorAll('#watchlist .entry');
+  assert(document.getElementById('watchlist-due').getAttribute('role') === 'status',
+    'due summary line uses role=status for screen readers');
+  const dueCard = rcards[0];
+  const freshCard = rcards[1];
+  assert(freshCard.querySelector('.review-again') === null,
+    'non-due entry renders no remind-again select');
+  assert(!Array.from(freshCard.querySelectorAll('.entry-actions .btn'))
+    .some(b => b.textContent === 'Mark reviewed'),
+    'non-due entry renders no mark-reviewed button');
+  const againSel = dueCard.querySelector('.review-again');
+  assert(againSel && againSel.value === '12',
+    'remind-again select defaults to the thesis own interval (12) (got "' + (againSel && againSel.value) + '")');
+  const markBtn = Array.from(dueCard.querySelectorAll('.entry-actions .btn'))
+    .find(b => b.textContent === 'Mark reviewed');
+  assert(markBtn, 'due entry renders Mark reviewed button');
+  markBtn.click();
+  rcards = document.querySelectorAll('#watchlist .entry');
+  assert(rcards.length === 2, 'still two entries after mark-reviewed');
+  assert(!Array.from(rcards).some(c => c.querySelector('.due-badge')), 'due badge cleared after mark-reviewed');
+  assert(document.getElementById('watchlist-due').classList.contains('hidden'),
+    'due summary hidden after mark-reviewed');
+  const afterMark = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
+  const rc = afterMark.entries.find(x => x.name === 'Reminder Co');
+  assert(rc.reviewAt === L.addMonths(L.todayISO(), 12) && rc.reviewMonths === 12,
+    'reviewAt re-scheduled to today + thesis interval in localStorage (got ' + rc.reviewAt + ')');
+
+  // custom interval: re-backdate, pick 3 months, mark reviewed
+  afterMark.entries.forEach(x => { if (x.name === 'Reminder Co') x.reviewAt = '2020-01-01'; });
+  window.localStorage.setItem('longterm-stock-lens-v1', JSON.stringify(afterMark));
+  L.reloadJournal();
+  rcards = document.querySelectorAll('#watchlist .entry');
+  const dueAgain = rcards[0];
+  assert(dueAgain.querySelector('.due-badge'), 'due badge back after re-backdating');
+  const sel3 = dueAgain.querySelector('.review-again');
+  sel3.value = '3';
+  Array.from(dueAgain.querySelectorAll('.entry-actions .btn'))
+    .find(b => b.textContent === 'Mark reviewed').click();
+  const after3 = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
+  const rc3 = after3.entries.find(x => x.name === 'Reminder Co');
+  assert(rc3.reviewAt === L.addMonths(L.todayISO(), 3) && rc3.reviewMonths === 3,
+    'custom 3-month interval honored (got ' + rc3.reviewAt + ')');
+  assert(document.querySelectorAll('#watchlist .entry').length === 2, 'entries intact after re-scheduling');
 
   // ---- export ----
   console.log('export:');

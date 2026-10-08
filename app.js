@@ -212,6 +212,18 @@ function isReviewDue(entry, today) {
   return !!r && r <= today;
 }
 
+/* Closing the revisit loop: after re-reading a due thesis, schedule the next
+ * check N months out. DOM-free; returns a new entry object — the original is
+ * left untouched. Only the 1/3/6/12 intervals the UI offers are honored. */
+const REVIEW_INTERVALS = [1, 3, 6, 12];
+
+function rescheduleReview(entry, months, today) {
+  const m = parseInt(months, 10);
+  const n = REVIEW_INTERVALS.includes(m) ? m : 6;
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
+  return Object.assign({}, entry, { reviewMonths: n, reviewAt: addMonths(t, n) });
+}
+
 function journalToJSON(entries) {
   return JSON.stringify(entries, null, 2);
 }
@@ -595,7 +607,8 @@ function renderWatchlist() {
       sc.classList.add(pct < 40 ? 's-low' : pct < 70 ? 's-mid' : 's-high');
     }
     head.appendChild(sc);
-    if (isReviewDue(e, today)) {
+    const due = isReviewDue(e, today);
+    if (due) {
       const badge = document.createElement('span');
       badge.className = 'due-badge';
       badge.textContent = 'Review due';
@@ -660,6 +673,32 @@ function renderWatchlist() {
       }, 3000);
     });
     actions.appendChild(del);
+    // Due theses get a "Mark reviewed" loop-closer: re-read the thesis, then
+    // schedule the next check instead of leaving the badge on forever.
+    if (due) {
+      const sel = document.createElement('select');
+      sel.className = 'review-again';
+      sel.setAttribute('aria-label', 'Remind me to re-check again in');
+      REVIEW_INTERVALS.forEach(n => {
+        const o = document.createElement('option');
+        o.value = String(n);
+        o.textContent = n + (n === 1 ? ' month' : ' months');
+        if (n === (e.reviewMonths || 6)) o.selected = true;
+        sel.appendChild(o);
+      });
+      const mark = document.createElement('button');
+      mark.className = 'btn';
+      mark.textContent = 'Mark reviewed';
+      mark.setAttribute('aria-label', 'Mark thesis reviewed and schedule the next re-check');
+      mark.addEventListener('click', () => {
+        const updated = rescheduleReview(e, sel.value, todayISO());
+        store.entries = store.entries.map(x => x.id === e.id ? updated : x);
+        saveStore(store);
+        renderWatchlist();
+      });
+      actions.appendChild(sel);
+      actions.appendChild(mark);
+    }
     card.appendChild(actions);
     box.appendChild(card);
   });
@@ -731,7 +770,7 @@ if (document.readyState === 'loading') {
 // Expose pure logic for the Node smoke test (browsers ignore this).
 if (typeof globalThis !== 'undefined') {
   globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms, weightedScore, scoreCount, thesesLabel, SCORE_WEIGHTS, esc,
-    addMonths, todayISO, reviewAtOf, isReviewDue, journalToJSON, journalToMarkdown, reloadJournal };
+    addMonths, todayISO, reviewAtOf, isReviewDue, rescheduleReview, journalToJSON, journalToMarkdown, reloadJournal };
 }
 
 })();
