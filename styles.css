@@ -246,3 +246,17 @@ button:active { transform: scale(0.96); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Mobile: horizontal scroll nav instead of wrapping */
+@media (max-width: 640px) {
+  .topbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .nav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn { white-space: nowrap; flex-shrink: 0; }
+  .brand { flex-shrink: 0; }
+  /* Better mobile spacing (Muse-like breathing room) */
+  .wrap { padding: 0 1rem; }
+  .how-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+  h1 { line-height: 1.25; }
+  .disclaimer-banner { font-size: 0.85rem; padding: 0.7rem 0.9rem; }
+}
