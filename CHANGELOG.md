@@ -1,5 +1,22 @@
 # Changelog — Long-Term Lens
 
+## [1.5.0] — 2026-10-09
+
+### Added
+- **Learn expansion (3 new micro-lessons, 10 → 13):** "Estimating value: three
+  lenses" (discounted cash flow, comparables, reverse-engineering — the
+  valuation framework the checklist's "Price vs. value?" item was asking for
+  but never taught), "Reading a trend before the companies exist" (who pays
+  whom for what, who captures the value — feeds the Trends & misses loop),
+  and "Case study: an incumbent stumbles" (AMD/Zen vs. Intel delays, labeled
+  as illustration only — the past informs pattern recognition, never
+  predictions). Same 2-minute format: plain-English explainer, healthy
+  patterns, red flags, 3-question check.
+
+### Fixed
+- Investor-profile "Last result" line showed the *previous* quiz result until
+  a page reload; it now refreshes immediately to the result just saved.
+
 ## [1.4.3] — 2026-10-09
 
 ### Fixed

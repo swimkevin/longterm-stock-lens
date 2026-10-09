@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '1.4.3';
+const APP_VERSION = '1.5.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -247,7 +247,51 @@ const GLOSSARY = [
         options: ['the moat is getting stronger', 'the claimed moat may not be real — trust the numbers', 'margins don\'t matter', 'it\'s a buying opportunity'],
         a: 1, why: 'A moat is a claim about durability; eroding economics is evidence against it.' },
     ] },
-];
+  { abbr: 'Value', name: 'Estimating value: three lenses',
+    what: 'A stock price is a claim on future cash. Investors estimate what that claim is worth with three lenses: (1) discounted cash flow — project future cash and discount it back to today; (2) comparables — what multiples do similar businesses trade at; (3) reverse-engineering — what growth is already priced in at today\'s price.',
+    healthy: 'Using at least two lenses and writing down the assumptions that would have to be true. Valuation is a range, not a number.',
+    flag: 'False precision — one method, one exact price target. Or skipping valuation entirely because "the story is great."',
+    quiz: [
+      { q: 'Discounted cash flow (DCF) means…',
+        options: ['Projecting future cash and discounting it to today', 'Adding up last year\'s revenue', 'Dividing price by earnings', 'Copying an analyst\'s price target'],
+        a: 0, why: 'DCF values the cash a business will produce, adjusted for the time value of money.' },
+      { q: '"Reverse-engineering" a stock price asks…',
+        options: ['Who the CEO is', 'What the price was last year', 'What growth is already priced in at this price', 'How many shares exist'],
+        a: 2, why: 'Instead of predicting price, ask what the market already assumes — then judge whether that assumption is reasonable.' },
+      { q: 'Why do investors say valuation is a range, not a number?',
+        options: ['Stock prices are random', 'Every input is an estimate, so precision is false', 'Math doesn\'t apply to stocks', 'Ranges are easier to remember'],
+        a: 1, why: 'Growth, margins, discount rates — all guesses. A range respects the uncertainty; a single target hides it.' },
+    ] },
+  { abbr: 'Trend', name: 'Reading a trend before the companies exist',
+    what: 'Trends arrive before tickers. To judge one, ask: who pays whom for what (the mechanism), how big could the spending become, what could kill it, and who captures the value — the inventor, the platform, or the supplier?',
+    healthy: 'Writing the mechanism in one sentence before naming any company. Re-reading your Trends & misses log for rhymes with past waves.',
+    flag: 'Confusing attention with revenue — a technology everyone talks about and nobody pays for. Or assuming the inventor automatically wins.',
+    quiz: [
+      { q: 'Before naming any company, a trend investor should first…',
+        options: ['Buy the most talked-about stock', 'Wait for a hot IPO', 'Check social media sentiment', 'Write the mechanism: who pays whom for what'],
+        a: 3, why: 'If you can\'t say who pays whom for what, you don\'t understand the trend yet — only the hype.' },
+      { q: 'Why might the inventor of a technology not capture its value?',
+        options: ['Inventors never make money', 'Platforms, distributors, or suppliers can take the profits', 'Patents always fail', 'New technology is always free'],
+        a: 1, why: 'Value flows to bottlenecks and distribution — often not the original inventor.' },
+      { q: 'Your Trends & misses log is most useful when you…',
+        options: ['Delete old misses', 'Only log wins', 'Re-read it for patterns before the next wave', 'Share it publicly'],
+        a: 2, why: 'Misses become a pattern library only if you revisit them — that\'s what the log is for.' },
+    ] },
+  { abbr: 'Case', name: 'Case study: an incumbent stumbles (illustration)',
+    what: 'Illustration only — the past is not a prediction. In the mid-2010s, Intel, the dominant CPU maker, repeatedly delayed its next manufacturing process while AMD bet on a new chip architecture (Zen). When Zen delivered competitive performance, AMD regained share in PCs and data centers over several years.',
+    healthy: 'Asking "what was knowable at the time?" — the pattern was an incumbent stumble plus a credible alternative, not a guaranteed outcome.',
+    flag: 'Reading this as "I should have bought AMD" — hindsight makes every past winner look obvious. The lesson is the pattern, not the pick.',
+    quiz: [
+      { q: 'This case study is labeled "illustration" because…',
+        options: ['The events didn\'t really happen', 'Past patterns inform thinking but never predict outcomes', 'Illustrations are legally required', 'It\'s about art'],
+        a: 1, why: 'History rhymes; it doesn\'t repeat. The value is pattern recognition, not a script.' },
+      { q: 'What was the core pattern in the AMD illustration?',
+        options: ['A CEO gave great interviews', 'The stock had a catchy ticker', 'An incumbent stumbled while a credible alternative emerged', 'Analysts all agreed'],
+        a: 2, why: 'The knowable pattern was Intel\'s delays plus AMD\'s Zen delivering — the outcome was still uncertain for years.' },
+      { q: 'The wrong takeaway from a case study is…',
+        options: ['Studying what was knowable at the time', 'Looking for similar patterns today', 'Writing down the lesson', '"I should have bought X" — hindsight certainty'],
+        a: 3, why: 'Hindsight turns every winner obvious. Ask what was knowable then, not what\'s obvious now.' },
+    ] },];
 
 function filterGlossaryTerms(query) {
   const q = (query || '').trim().toLowerCase();
@@ -848,7 +892,7 @@ function renderQuiz() {
 
   if (store.quizProfile) {
     const saved = document.createElement('p');
-    saved.className = 'fineprint';
+    saved.className = 'fineprint quiz-saved';
     saved.textContent = 'Last result (' + store.quizProfile.date + '): ' +
       store.quizProfile.bandLabel + ' — score ' + store.quizProfile.total +
       ' / ' + store.quizProfile.max + '. Re-take anytime; the latest result is what\'s saved.';
@@ -868,6 +912,15 @@ function showQuizResult() {
   const { total, max, band } = scoreRisk(quizAnswers);
   store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO() };
   saveStore(store);
+  // Refresh the "Last result" line so it reflects the result just saved.
+  const quizBox = $('quiz');
+  quizBox.querySelectorAll('.quiz-saved').forEach(n => n.remove());
+  const saved = document.createElement('p');
+  saved.className = 'fineprint quiz-saved';
+  saved.textContent = 'Last result (' + store.quizProfile.date + '): ' +
+    store.quizProfile.bandLabel + ' — score ' + total +
+    ' / ' + max + '. Re-take anytime; the latest result is what\'s saved.';
+  quizBox.appendChild(saved);
   res.classList.remove('hidden');
 
   const convText = band.conv + '%';

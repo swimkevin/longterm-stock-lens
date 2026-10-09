@@ -307,13 +307,13 @@ async function main() {
   assert(Array.isArray(js) && js.length === 2 && js[0].name === 'Acme', 'JSON export round-trips ideas array');
 
   console.log('glossary micro-lessons:');
-  assert(L.GLOSSARY.length === 10, '10 glossary terms');
+  assert(L.GLOSSARY.length === 13, '13 glossary terms');
   assert(L.GLOSSARY.every(g => g.quiz && g.quiz.length === 3), 'every term has a 3-question quiz');
   assert(L.GLOSSARY.every(g => g.quiz.every(q => q.options.length >= 3 && q.a >= 0 && q.a < q.options.length && q.why)),
     'every quiz question has options, a valid answer index, and an explanation');
 
   console.log('glossary search:');
-  assert(L.filterGlossaryTerms('').length === 10, 'empty query matches all');
+  assert(L.filterGlossaryTerms('').length === 13, 'empty query matches all');
   assert(L.filterGlossaryTerms('moat').length === 1, 'query "moat" finds Economic moat');
   assert(L.filterGlossaryTerms('xyzzy').length === 0, 'no-match query returns empty');
 
@@ -344,6 +344,9 @@ async function main() {
     'aria-label carries full wording');
   const prof = readStore().quizProfile;
   assert(prof && prof.bandLabel === 'Growth-leaning' && prof.total === 18, 'quiz result persisted to store (quizProfile)');
+  const savedLine = document.querySelector('#quiz .quiz-saved');
+  assert(savedLine && savedLine.textContent.includes('Growth-leaning') && savedLine.textContent.includes('18 / 18'),
+    'Last-result line refreshes immediately to the new result (got "' + (savedLine ? savedLine.textContent : 'none') + '")');
 
   // ---- migration through the real boot path ----
   console.log('migration via reloadJournal:');
@@ -725,14 +728,14 @@ async function main() {
   assert(visibleLessons.length === 1 && visibleLessons[0].textContent.includes('Economic moat'),
     'search filters to the matching lesson');
   const countLine = document.getElementById('glossary-count');
-  assert(!countLine.classList.contains('hidden') && countLine.textContent.includes('1 of 10 lessons match'),
+  assert(!countLine.classList.contains('hidden') && countLine.textContent.includes('1 of 13 lessons match'),
     'match count announced (got "' + countLine.textContent + '")');
   gSearch.value = '<img src=x onerror=alert(1)>';
   fireInput();
   assert(!document.querySelector('#glossary-count img'), 'search query not parsed as HTML');
   gSearch.value = '';
   fireInput();
-  assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === 10, 'clearing search restores all lessons');
+  assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === 13, 'clearing search restores all lessons');
   // P/E lesson quiz: correct answers are option indexes 0, 1, 1
   const peQuiz = document.querySelectorAll('#glossary .gloss')[0].querySelectorAll('.lesson-quiz .q');
   const correctIdx = [0, 1, 1];
@@ -741,6 +744,28 @@ async function main() {
     '3/3 on the lesson quiz shows the completed badge');
   assert(readStore().glossary['P/E'] && readStore().glossary['P/E'].best === 3,
     'lesson progress persisted (P/E best = 3)');
+  // new v1.5.0 lessons: valuation, trend-reading, illustration-labeled case study
+  assert(L.GLOSSARY.length === 13, '13 lessons total (got ' + L.GLOSSARY.length + ')');
+  assert(L.GLOSSARY.every(g => g.quiz.length === 3 && g.quiz.every(q => q.options.length === 4)),
+    'every lesson has a 3-question, 4-option quiz');
+  assert(L.GLOSSARY.some(g => g.abbr === 'Value' && g.name.includes('three lenses')),
+    'valuation-methods lesson present');
+  assert(L.GLOSSARY.some(g => g.abbr === 'Case' && /illustration/i.test(g.name + ' ' + g.what)),
+    'case study labeled as illustration');
+  gSearch.value = 'reverse-engineering';
+  fireInput();
+  const valLessons = Array.from(document.querySelectorAll('#glossary .gloss'))
+    .filter(d => !d.classList.contains('hidden'));
+  assert(valLessons.length === 1 && valLessons[0].textContent.includes('Estimating value'),
+    'search finds the new valuation lesson');
+  gSearch.value = '';
+  fireInput();
+  // Trend lesson quiz: correct indexes are 3, 1, 2
+  const trendQuiz = Array.from(document.querySelectorAll('#glossary .gloss'))
+    .find(d => d.textContent.includes('Reading a trend')).querySelectorAll('.lesson-quiz .q');
+  [3, 1, 2].forEach((idx, qi) => trendQuiz[qi].querySelectorAll('.opt-btn')[idx].click());
+  assert(readStore().glossary['Trend'] && readStore().glossary['Trend'].best === 3,
+    'new lesson quiz completes and persists (Trend best = 3)');
 
   // ---- export ----
   console.log('export:');
