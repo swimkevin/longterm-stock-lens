@@ -28,6 +28,7 @@
 }
 [data-theme="light"] .disclaimer-banner { background: #f5e9cf; color: #6b5416; }
 [data-theme="light"] .nav-btn.active { background: #e4efe6; }
+[data-theme="light"] .nav-more.active > .nav-more-btn { background: #e4efe6; }
 [data-theme="light"] .opt-btn.selected { background: #e4efe6; }
 [data-theme="light"] .btn.primary { color: #fffdf7; }
 [data-theme="light"] .btn.primary:hover { background: #186230; }
