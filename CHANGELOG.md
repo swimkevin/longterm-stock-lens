@@ -1,5 +1,20 @@
 # Changelog — Long-Term Lens
 
+## [1.2.0] — 2026-10-09
+
+### Added
+- **Trends & misses log (under More → Trends).** The "spot a trend" stage of the
+  core loop finally has a home: log a trend while it's early — the shift you can
+  see but can't invest in yet — with no company required. Each trend is
+  Watching, Missed, or Chased. "Make an idea" turns a trend into a research idea
+  in one tap (thesis pre-filled with the original observation, back-linked via
+  `trendId`). "Missed it" moves it to the Missed waves list, where a lesson field
+  turns past misses into a pattern library for the next wave.
+- Markdown export now includes a Trends & misses section when trends exist.
+- `store.trends` collection; schema bumped 2 → 3 with an additive, lossless
+  v2→v3 migration (`migrateV2ToV3`: ideas, glossary, and profile carry over
+  untouched).
+
 ## [1.1.0] — 2026-10-09
 
 ### Added
