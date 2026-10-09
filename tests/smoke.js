@@ -46,6 +46,7 @@ async function main() {
   const port = server.address().port;
 
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const pkgVer = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', e => errors.push('jsdomError: ' + e.message));
@@ -509,7 +510,7 @@ async function main() {
   assert(typeof L.updateReloadURL === 'function', 'updateReloadURL exposed for tests');
   assert(L.updateReloadURL('/longterm-stock-lens/', '1.3.1', '') === '/longterm-stock-lens/?v=1.3.1',
     'update URL carries the new version (cache-busting navigation)');
-  assert(L.APP_VERSION === '1.4.1', 'APP_VERSION matches release');
+  assert(L.APP_VERSION === pkgVer, 'APP_VERSION matches release');
   assert(L.isNewerVersion('1.4.1', '1.4.0') === true, 'newer patch detected');
   assert(L.isNewerVersion('1.4.0', '1.4.0') === false, 'same version is not newer');
   assert(L.isNewerVersion('1.3.1', '1.4.0') === false, 'stale cached version.txt never triggers a false update');
@@ -772,6 +773,16 @@ async function main() {
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   assert(document.querySelector('.disclaimer-banner').textContent.includes('not financial advice'), 'hero disclaimer present');
   assert(document.querySelector('.footer').textContent.includes('Educational only, not financial advice'), 'footer disclaimer present');
+
+  // ---- version consistency (partial bumps caused a false update prompt in v1.4.2) ----
+  const txtVer = fs.readFileSync(path.join(ROOT, 'version.txt'), 'utf8').trim();
+  const htmlSrc = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  assert(L.APP_VERSION === pkgVer, 'APP_VERSION matches package.json (' + pkgVer + ')');
+  assert(L.APP_VERSION === txtVer, 'APP_VERSION matches version.txt (' + txtVer + ')');
+  assert(document.querySelector('#app-version').textContent === 'v' + L.APP_VERSION,
+    'footer #app-version matches APP_VERSION');
+  assert(htmlSrc.includes('app.js?v=' + L.APP_VERSION) && htmlSrc.includes('styles.css?v=' + L.APP_VERSION),
+    '?v= cache-busters match APP_VERSION');
 
   console.log(failures === 0 ? '\nALL SMOKE TESTS PASSED' : '\n' + failures + ' FAILURES');
   server.close();

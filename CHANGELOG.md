@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [1.4.3] — 2026-10-09
+
+### Fixed
+- The v1.4.2 bump missed the `APP_VERSION` constant in app.js (it was still
+  '1.4.1'), so the deployed app falsely prompted "Update available — reload"
+  even though it was current — a regression of the v1.4.1 update-check fix,
+  caught by live verification. Added a smoke-test assertion that
+  `APP_VERSION`, package.json, version.txt, the footer label, and the `?v=`
+  cache-busters all agree, so a partial bump fails `npm test` loudly.
+
 ## [1.4.2] — 2026-10-09
 
 ### Fixed
