@@ -68,6 +68,8 @@ async function main() {
   const { document } = window;
   const L = window.LongTermLens;
   const KEY = 'longterm-stock-lens-v1';
+  // Update this when lessons are added/removed — every lesson-count assertion below derives from it.
+  const EXPECTED_LESSONS = 13;
   const readStore = () => JSON.parse(window.localStorage.getItem(KEY));
 
   console.log('script errors:');
@@ -307,13 +309,13 @@ async function main() {
   assert(Array.isArray(js) && js.length === 2 && js[0].name === 'Acme', 'JSON export round-trips ideas array');
 
   console.log('glossary micro-lessons:');
-  assert(L.GLOSSARY.length === 13, '13 glossary terms');
+  assert(L.GLOSSARY.length === EXPECTED_LESSONS, EXPECTED_LESSONS + ' glossary terms');
   assert(L.GLOSSARY.every(g => g.quiz && g.quiz.length === 3), 'every term has a 3-question quiz');
   assert(L.GLOSSARY.every(g => g.quiz.every(q => q.options.length >= 3 && q.a >= 0 && q.a < q.options.length && q.why)),
     'every quiz question has options, a valid answer index, and an explanation');
 
   console.log('glossary search:');
-  assert(L.filterGlossaryTerms('').length === 13, 'empty query matches all');
+  assert(L.filterGlossaryTerms('').length === EXPECTED_LESSONS, 'empty query matches all');
   assert(L.filterGlossaryTerms('moat').length === 1, 'query "moat" finds Economic moat');
   assert(L.filterGlossaryTerms('xyzzy').length === 0, 'no-match query returns empty');
 
@@ -728,14 +730,14 @@ async function main() {
   assert(visibleLessons.length === 1 && visibleLessons[0].textContent.includes('Economic moat'),
     'search filters to the matching lesson');
   const countLine = document.getElementById('glossary-count');
-  assert(!countLine.classList.contains('hidden') && countLine.textContent.includes('1 of 13 lessons match'),
+  assert(!countLine.classList.contains('hidden') && countLine.textContent.includes('1 of ' + EXPECTED_LESSONS + ' lessons match'),
     'match count announced (got "' + countLine.textContent + '")');
   gSearch.value = '<img src=x onerror=alert(1)>';
   fireInput();
   assert(!document.querySelector('#glossary-count img'), 'search query not parsed as HTML');
   gSearch.value = '';
   fireInput();
-  assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === 13, 'clearing search restores all lessons');
+  assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === EXPECTED_LESSONS, 'clearing search restores all lessons');
   // P/E lesson quiz: correct answers are option indexes 0, 1, 1
   const peQuiz = document.querySelectorAll('#glossary .gloss')[0].querySelectorAll('.lesson-quiz .q');
   const correctIdx = [0, 1, 1];
@@ -745,7 +747,7 @@ async function main() {
   assert(readStore().glossary['P/E'] && readStore().glossary['P/E'].best === 3,
     'lesson progress persisted (P/E best = 3)');
   // new v1.5.0 lessons: valuation, trend-reading, illustration-labeled case study
-  assert(L.GLOSSARY.length === 13, '13 lessons total (got ' + L.GLOSSARY.length + ')');
+  assert(L.GLOSSARY.length === EXPECTED_LESSONS, EXPECTED_LESSONS + ' lessons total (got ' + L.GLOSSARY.length + ')');
   assert(L.GLOSSARY.every(g => g.quiz.length === 3 && g.quiz.every(q => q.options.length === 4)),
     'every lesson has a 3-question, 4-option quiz');
   assert(L.GLOSSARY.some(g => g.abbr === 'Value' && g.name.includes('three lenses')),
