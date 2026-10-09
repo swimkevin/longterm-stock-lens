@@ -198,6 +198,10 @@ async function main() {
   assert(prompt.includes('[x] Does it have a durable edge?') && prompt.includes('[ ] Is debt at a safe level?'),
     'prompt marks checklist state');
   assert(prompt.includes('Quality: 4 / 5') && prompt.includes('40%'), 'prompt carries scorecard + weights');
+  assert(!prompt.includes('weights are mine') && !prompt.includes('my weight'), 'prompt no longer claims weights are user-set');
+  const eqPrompt = L.buildAnalyzePrompt(L.makeIdea('Eq Co', 'EQ', '2026-10-09'));
+  assert(eqPrompt.includes('(weight: 33%)'), 'equal-weight idea reports honest 33% shares (got ' +
+    (eqPrompt.match(/\(weight: [^)]*\)/g) || []).join(', ') + ')');
   assert(prompt.includes('/ 100'), 'prompt carries the composite score');
   assert(prompt.includes('never tell me whether to buy or sell'), 'prompt keeps the educational-only boundary');
   assert(prompt.includes('Similar companies'), 'prompt asks for similar companies');
@@ -493,6 +497,19 @@ async function main() {
   document.querySelector('.nav > .nav-btn[data-nav="ideas"]').click();
   assert(!document.querySelector('details.nav-more').classList.contains('active'), 'More unhighlights back on Ideas');
   assert(document.getElementById('reviews-badge') !== null, 'reviews due badge still exists inside More');
+
+  console.log('brand goes home + update check:');
+  const brandBtn = document.getElementById('brand-home');
+  assert(brandBtn && brandBtn.tagName === 'BUTTON', 'brand is a real button');
+  document.querySelector('.nav-more-menu .nav-btn[data-nav="learn"]').click();
+  assert(!document.getElementById('screen-learn').classList.contains('hidden'), 'on Learn screen before brand tap');
+  brandBtn.click();
+  assert(!document.getElementById('screen-ideas').classList.contains('hidden'), 'brand tap returns to Ideas home');
+  assert(document.getElementById('btn-check-update') !== null, 'footer has Check for updates button');
+  assert(typeof L.updateReloadURL === 'function', 'updateReloadURL exposed for tests');
+  assert(L.updateReloadURL('/longterm-stock-lens/', '1.3.1', '') === '/longterm-stock-lens/?v=1.3.1',
+    'update URL carries the new version (cache-busting navigation)');
+  assert(L.APP_VERSION === '1.3.1', 'APP_VERSION matches release');
 
   console.log('idea detail back + XSS in name:');
   document.getElementById('idea-back').click();

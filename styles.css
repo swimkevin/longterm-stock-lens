@@ -68,6 +68,14 @@ a { color: var(--blue); }
   flex-wrap: wrap;
 }
 .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: 0.3px; white-space: nowrap; }
+/* The brand is a real button: tapping it goes home. */
+button.brand { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; }
+button.brand:hover { color: var(--green); }
+button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
+/* Quiet text-button for the footer update check. */
+.linklike { background: none; border: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.linklike:hover { color: var(--text); }
+.linklike.update-available { color: var(--green); font-weight: 700; text-decoration: none; }
 .brand-emoji { margin-right: 0.3rem; }
 .nav { display: flex; gap: 0.3rem; flex-wrap: wrap; }
 .theme-toggle {
@@ -358,6 +366,8 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
 
 .composite-line { margin: 0.8rem 0 0; font-size: 1.05rem; }
 .composite-line strong { font-variant-numeric: tabular-nums; }
+/* The helper sits on its own line so it can never collide with the score. */
+.composite-line .hint { display: block; margin-top: 0.25rem; }
 
 /* Notes. */
 .notes-list { margin-bottom: 1rem; }

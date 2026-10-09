@@ -6,6 +6,16 @@
 (function () {
 'use strict';
 
+/* App version — mirrored in version.txt, package.json, and the footer.
+ * The "Check for updates" footer button compares this against version.txt. */
+const APP_VERSION = '1.3.1';
+
+function updateReloadURL(pathname, v, hash) {
+  // Navigating (not reloading in place): a plain reload can keep serving the
+  // cached index.html, while a changed ?v= URL bypasses the HTTP cache.
+  return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
+}
+
 /* ---------------- data: investor profile quiz ---------------- */
 // Each option carries a 0-3 score; higher = more capacity/tolerance for risk.
 const QUIZ = [
@@ -379,12 +389,15 @@ function buildAnalyzePrompt(idea) {
     return '- [' + (done ? 'x' : ' ') + '] ' + item.label;
   }).join('\n');
 
+  // Weights are equal for new ideas but legacy ideas may carry custom ones —
+  // report the normalized share so the prompt is honest either way.
+  const shares = normalizeWeights(idea && idea.weights) || {};
   const scoreLines = SCORE_DIMS.map(d => {
     const v = idea && idea.scores ? idea.scores[d] : null;
-    const w = idea && idea.weights ? idea.weights[d] : null;
     const shortLabel = d.charAt(0).toUpperCase() + d.slice(1);
+    const pct = shares[d] != null ? Math.round(shares[d] * 100) + '%' : '?';
     return '- ' + shortLabel + ': ' + (typeof v === 'number' ? v + ' / 5' : 'unscored') +
-      ' (my weight: ' + (typeof w === 'number' ? w + '%' : '?') + ')';
+      ' (weight: ' + pct + ')';
   }).join('\n');
   const comp = compositeScore(idea);
   const conviction = idea ? (CONVICTION_LEVEL_LABELS[idea.convictionLevel] || idea.convictionLevel) : '?';
@@ -406,7 +419,7 @@ function buildAnalyzePrompt(idea) {
     'MY PRE-DECISION CHECKLIST (I only raise conviction when every item is true):',
     checklistBlock,
     '',
-    'MY SCORECARD (1-5 each, weights are mine):',
+    'MY SCORECARD (1-5 each):',
     scoreLines,
     'Composite: ' + (comp === null ? 'unscored' : comp + ' / 100 \u2014 ' + convictLabel(comp)) + ' \u00b7 Conviction level: ' + conviction,
     'Review by: ' + reviewBy,
@@ -2242,6 +2255,50 @@ function init() {
   });
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.addEventListener('click', () => showScreen(b.dataset.nav)));
+  // Brand goes home — tapping the top-left logo returns to Ideas.
+  const brandHome = $('brand-home');
+  if (brandHome) brandHome.addEventListener('click', () => { renderIdeasHome(); showScreen('ideas'); });
+  // Update check (poker-sparring pattern): version.txt is cache-busted, so a
+  // stale phone always learns the truth. Auto-detects on load; one tap reloads.
+  const cu = $('btn-check-update');
+  function refreshUpdateButton(latest) {
+    if (!cu) return;
+    if (latest && latest !== APP_VERSION) {
+      cu.textContent = 'Update available — reload';
+      cu.classList.add('update-available');
+    }
+  }
+  function checkForUpdates(manual) {
+    if (!cu) return;
+    if (manual) cu.textContent = 'Checking…';
+    fetch('version.txt?v=' + Date.now())
+      .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })
+      .then(t => {
+        const v = (t || '').trim();
+        if (v && v !== APP_VERSION) {
+          refreshUpdateButton(v);
+          if (manual && confirm('New version ' + v + ' available (you have ' + APP_VERSION + '). Reload now?')) {
+            window.location.href = updateReloadURL(window.location.pathname, v, window.location.hash);
+          } else if (manual) {
+            cu.textContent = 'Update available — reload';
+          }
+        } else if (manual) {
+          cu.textContent = 'Up to date ✓';
+          setTimeout(() => { cu.textContent = 'Check for updates'; }, 2000);
+        }
+      })
+      .catch(() => {
+        if (manual) {
+          cu.textContent = 'Check failed';
+          setTimeout(() => { cu.textContent = 'Check for updates'; }, 2000);
+        }
+      });
+  }
+  if (cu) {
+    cu.addEventListener('click', () => checkForUpdates(true));
+    // Silent auto-detect shortly after load — no dialog unless the user taps.
+    setTimeout(() => checkForUpdates(false), 2500);
+  }
   document.querySelectorAll('[data-goto]').forEach(b =>
     b.addEventListener('click', () => showScreen(b.dataset.goto)));
   $('idea-back').addEventListener('click', () => { renderIdeasHome(); showScreen('ideas'); });
@@ -2297,7 +2354,8 @@ if (typeof globalThis !== 'undefined') {
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
     applyReview, trackRecord, buildAnalyzePrompt,
-    journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY };
+    journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
+    APP_VERSION, updateReloadURL };
 }
 
 })();

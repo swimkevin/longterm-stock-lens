@@ -1,5 +1,21 @@
 # Changelog — Long-Term Lens
 
+## [1.3.1] — 2026-10-09
+
+### Added
+- **Update check (poker-sparring pattern):** the footer now has a "Check for
+  updates" button backed by a cache-busted `version.txt`. The app also
+  auto-detects a newer version shortly after load and turns the button into
+  "Update available — reload". One tap navigates to a fresh `?v=` URL, which
+  bypasses the HTTP cache that was keeping phones on stale versions.
+- **Brand goes home:** tapping the top-left Long-Term Lens logo returns to the
+  Ideas home screen.
+
+### Fixed
+- AI verify prompt no longer claims scorecard weights are user-set ("my
+  weight: 1%") — it reports honest normalized shares (33% each for new ideas).
+- Scorecard helper text moved to its own line so it can't overlap the composite.
+
 ## [1.3.0] — 2026-10-09
 
 ### Changed
