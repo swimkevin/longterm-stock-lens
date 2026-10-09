@@ -1,5 +1,17 @@
 # Changelog — Long-Term Lens
 
+## [1.5.1] — 2026-10-09
+
+### Fixed
+- **Score-band vocabulary collision:** the composite score bands reused the
+  conviction-level vocabulary ("Strong conviction", "Growing conviction",
+  "Watching", "Early research"), so an idea card could read "80/100 · Strong
+  conviction · Conviction: Watching" — the same words meaning two different
+  things in one line. Bands are now signal language, distinct from the
+  conviction levels: "Strong signal" / "Moderate signal" / "Weak signal" /
+  "Early days" (`scoreBand`, renamed from `convictLabel`; smoke assertions
+  updated to match).
+
 ## [1.5.0] — 2026-10-09
 
 ### Added

@@ -104,11 +104,11 @@ async function main() {
   assert(L.normalizeWeights({ quality: 0, value: 0, conviction: 0 }) === null, 'normalizeWeights null on zero total');
 
   console.log('conviction labels:');
-  assert(L.convictLabel(null) === 'Unscored', 'null -> Unscored');
-  assert(L.convictLabel(80) === 'Strong conviction', '80 -> Strong conviction');
-  assert(L.convictLabel(60) === 'Growing conviction', '60 -> Growing conviction');
-  assert(L.convictLabel(45) === 'Watching', '45 -> Watching');
-  assert(L.convictLabel(20) === 'Early research', '20 -> Early research');
+  assert(L.scoreBand(null) === 'Unscored', 'null -> Unscored');
+  assert(L.scoreBand(80) === 'Strong signal', '80 -> Strong signal');
+  assert(L.scoreBand(60) === 'Moderate signal', '60 -> Moderate signal');
+  assert(L.scoreBand(45) === 'Weak signal', '45 -> Weak signal');
+  assert(L.scoreBand(20) === 'Early days', '20 -> Early days');
 
   console.log('checklist gate:');
   const mk = () => ({ checklist: { moat: true, earnings: true, debt: true, valuation: true, circle: true } });
@@ -417,8 +417,8 @@ async function main() {
   dimBtns()[1].querySelectorAll('.score-btn')[3].click(); // value 4
   dimBtns()[2].querySelectorAll('.score-btn')[2].click(); // conviction 3
   let compText = document.querySelector('.composite-line strong').textContent;
-  assert(compText.includes('80 / 100') && compText.includes('Strong conviction'),
-    'composite 80 / Strong conviction with equal weights (got "' + compText + '")');
+  assert(compText.includes('80 / 100') && compText.includes('Strong signal'),
+    'composite 80 / Strong signal with equal weights (got "' + compText + '")');
   // toggle a score off: click the selected 5 again
   dimBtns()[0].querySelectorAll('.score-btn')[4].click();
   compText = document.querySelector('.composite-line strong').textContent;

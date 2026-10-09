@@ -30,7 +30,7 @@ The design comes from a research pass over ten comparable products (thesis journ
 
 ## Verification
 
-**212 assertions, all passing** (`npm test` → `tests/smoke.js`). Strategy documented in [docs/TESTING.md](docs/TESTING.md): pure-logic coverage of scorecard math, checklist gate, prompt builder, migration, and review-date logic; a jsdom boot of the real page exercising nav, quiz, idea CRUD, review flow, track record, lesson quizzes, exports, and localStorage round-trips; XSS-escaping checks with a literal probe string. Assertions are added with every logic change; the suite gates every commit. AI-assisted development follows documented guardrails — [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
+**283 assertions, all passing** (`npm test` → `tests/smoke.js`). Strategy documented in [docs/TESTING.md](docs/TESTING.md): pure-logic coverage of scorecard math, checklist gate, prompt builder, migration, and review-date logic; a jsdom boot of the real page exercising nav, quiz, idea CRUD, review flow, track record, lesson quizzes, exports, and localStorage round-trips; XSS-escaping checks with a literal probe string. Assertions are added with every logic change; the suite gates every commit. AI-assisted development follows documented guardrails — [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
 
 A scheduled daily job runs the suite, live-tests the deployed site (desktop + 390px screenshots), and ships small improvements — always with a run report, never silent.
 

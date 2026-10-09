@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -375,12 +375,12 @@ function compositeScore(idea) {
   return Math.round((total / wSum) * 100);
 }
 
-function convictLabel(score) {
+function scoreBand(score) {
   if (score === null || score === undefined) return 'Unscored';
-  if (score >= 75) return 'Strong conviction';
-  if (score >= 55) return 'Growing conviction';
-  if (score >= 40) return 'Watching';
-  return 'Early research';
+  if (score >= 75) return 'Strong signal';
+  if (score >= 55) return 'Moderate signal';
+  if (score >= 40) return 'Weak signal';
+  return 'Early days';
 }
 
 function buildAnalyzePrompt(idea) {
@@ -432,7 +432,7 @@ function buildAnalyzePrompt(idea) {
     '',
     'MY SCORECARD (1-5 each):',
     scoreLines,
-    'Composite: ' + (comp === null ? 'unscored' : comp + ' / 100 \u2014 ' + convictLabel(comp)) + ' \u00b7 Conviction level: ' + conviction,
+    'Composite: ' + (comp === null ? 'unscored' : comp + ' / 100 \u2014 ' + scoreBand(comp)) + ' \u00b7 Conviction level: ' + conviction,
     'Review by: ' + reviewBy,
     '',
     'Please do a full workup:',
@@ -637,7 +637,7 @@ function journalToMarkdown(ideas, stamp, trends) {
     const score = compositeScore(e);
     lines.push('## ' + e.name + (e.tickers ? ' (' + e.tickers + ')' : ''));
     lines.push('');
-    lines.push('- Composite score: ' + (score === null ? 'unscored' : score + ' / 100 (' + convictLabel(score) + ')'));
+    lines.push('- Composite score: ' + (score === null ? 'unscored' : score + ' / 100 (' + scoreBand(score) + ')'));
     lines.push('- Conviction level: ' + (CONVICTION_LEVEL_LABELS[e.convictionLevel] || e.convictionLevel));
     lines.push('- Status: ' + (e.status || 'open') + ' · Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
     if (e.tags && e.tags.length) lines.push('- Tags: ' + e.tags.join(', '));
@@ -973,7 +973,7 @@ function ideaRow(idea, opts) {
   const meta = document.createElement('div');
   meta.className = 'idea-meta';
   const lvl = document.createElement('span');
-  lvl.textContent = convictLabel(score);
+  lvl.textContent = scoreBand(score);
   meta.appendChild(lvl);
   meta.appendChild(document.createTextNode(' · '));
   const cl = document.createElement('span');
@@ -1121,7 +1121,7 @@ function renderIdeaDetail(idea) {
   pills.appendChild(sp);
   const lp = document.createElement('span');
   lp.className = 'tag';
-  lp.textContent = convictLabel(score);
+  lp.textContent = scoreBand(score);
   pills.appendChild(lp);
   const cp = document.createElement('span');
   cp.className = 'tag';
@@ -1414,7 +1414,7 @@ function renderScorecardSection(box, idea) {
   const compLine = document.createElement('p');
   compLine.className = 'composite-line';
   const strong = document.createElement('strong');
-  strong.textContent = comp === null ? 'Unscored' : comp + ' / 100 — ' + convictLabel(comp);
+  strong.textContent = comp === null ? 'Unscored' : comp + ' / 100 — ' + scoreBand(comp);
   compLine.appendChild(strong);
   const hint = document.createElement('span');
   hint.className = 'hint';
@@ -2261,7 +2261,7 @@ if (typeof globalThis !== 'undefined') {
     CHECKLIST_ITEMS, SCORE_DIMS, SCORE_DIM_LABELS, DEFAULT_WEIGHTS,
     CONVICTION_LEVELS, CONVICTION_LEVEL_LABELS, REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
-    normalizeWeights, compositeScore, convictLabel, checklistComplete, canRaiseConviction,
+    normalizeWeights, compositeScore, scoreBand, checklistComplete, canRaiseConviction,
     ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
