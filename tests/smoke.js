@@ -1,4 +1,4 @@
-/* Long-Term Lens smoke test (v1.1: one core feature + AI verify).
+/* Long-Term Lens smoke test (v1.2: trends & misses).
  * 1. Boots the real index.html in jsdom (reusing the sibling poker-sparring
  *    install — dev-only, the shipped site has zero dependencies).
  * 2. Asserts pure-logic behavior via window.LongTermLens.
@@ -73,7 +73,7 @@ async function main() {
   assert(errors.length === 0, 'no console/script errors on boot (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));
   assert(L && typeof L.scoreRisk === 'function', 'LongTermLens API exposed');
-  assert(L.SCHEMA_VERSION === 2, 'schema version is 2');
+  assert(L.SCHEMA_VERSION === 3, 'schema version is 3');
 
   // ---- pure logic ----
   console.log('risk scoring:');
@@ -217,7 +217,7 @@ async function main() {
       scores: {}, weighted: null, scored: 0, createdAt: '2026-10-04' },
   ]};
   const mig = L.migrateStore(legacy);
-  assert(mig.schema === 2 && mig.ideas.length === 2, 'legacy entries become 2 ideas, schema 2');
+  assert(mig.schema === 3 && mig.ideas.length === 2, 'legacy entries become 2 ideas, schema 3');
   const m0 = mig.ideas[0];
   assert(m0.name === 'Acme' && m0.tickers === 'ACME' && m0.tags.join() === 'AI', 'name/ticker/tags preserved');
   assert(m0.thesis.belief === 'Great company.' && m0.thesis.falsify === 'If not.', 'thesis + falsify preserved in template');
@@ -230,13 +230,66 @@ async function main() {
   assert(m1.reviewAt === '2027-04-04' && m1.reviewMonths === 6, 'pre-reviewAt legacy entry defaults to createdAt + 6mo');
   assert(m1.scores.quality === null && L.compositeScore(m1) === null, 'unscored legacy entry stays unscored');
   const migEmpty = L.migrateStore(null);
-  assert(migEmpty.schema === 2 && migEmpty.ideas.length === 0, 'null raw -> blank v2 store');
+  assert(migEmpty.schema === 3 && migEmpty.ideas.length === 0, 'null raw -> blank v3 store');
   const migV2 = L.migrateStore({ schema: 1, ideas: [{ id: 'x', name: 'X' }] });
   assert(migV2.ideas.length === 1 && migV2.ideas[0].name === 'X', 'ideas-shape store adopted as-is');
   const thin = L.normalizeIdea({ id: 't', name: 'Thin' });
   assert(thin.thesis.belief === '' && Array.isArray(thin.notes) && thin.convictionLevel === 'watching',
     'normalizeIdea fills missing thesis/notes/convictionLevel');
   assert(/^\d{4}-\d{2}-\d{2}$/.test(thin.reviewAt), 'normalizeIdea derives a valid reviewAt');
+
+  console.log('trends:');
+  assert(typeof L.makeTrend === 'function' && typeof L.trendToIdea === 'function' &&
+    typeof L.markTrendMissed === 'function' && typeof L.setTrendLesson === 'function' &&
+    typeof L.normalizeTrend === 'function' && typeof L.migrateV2ToV3 === 'function',
+    'trend functions exported');
+  assert(JSON.stringify(L.TREND_STATUSES) === JSON.stringify(['watching', 'missed', 'chased']),
+    'trend statuses are watching/missed/chased');
+  const tr0 = L.makeTrend('AI coding agents', 'Every dev I know uses one daily', '2026-10-09');
+  assert(tr0.status === 'watching' && tr0.lesson === '' && tr0.ideaId === null,
+    'makeTrend defaults to watching with empty lesson/ideaId');
+  assert(tr0.createdAt === '2026-10-09' && /^t[0-9a-z]+$/.test(tr0.id), 'makeTrend id + createdAt');
+  assert(L.makeTrend('x'.repeat(200), 'y'.repeat(2000), '2026-10-09').name.length === 80 &&
+    L.makeTrend('x', 'y'.repeat(2000), '2026-10-09').why.length === 1000,
+    'makeTrend slices name to 80 and why to 1000');
+  const thinTrend = L.normalizeTrend({ name: 'Thin' });
+  assert(thinTrend.status === 'watching' && thinTrend.why === '' && thinTrend.lesson === '' &&
+    thinTrend.ideaId === null, 'normalizeTrend fills missing fields');
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(thinTrend.createdAt) && typeof thinTrend.id === 'string',
+    'normalizeTrend derives createdAt + id');
+  const badTrend = L.normalizeTrend({ status: 'bogus', name: 42, why: null });
+  assert(badTrend.status === 'watching' && badTrend.name === '' && badTrend.why === '',
+    'normalizeTrend repairs bad status and non-string fields');
+  const missedT = L.markTrendMissed(tr0, '2026-11-01');
+  assert(missedT.status === 'missed' && missedT.updatedAt === '2026-11-01' && tr0.status === 'watching',
+    'markTrendMissed flips status immutably');
+  const lessonT = L.setTrendLesson(missedT, 'z'.repeat(2000));
+  assert(lessonT.lesson.length === 1000 && missedT.lesson === '', 'setTrendLesson slices to 1000, immutable');
+  const made = L.trendToIdea(tr0, '2026-10-10');
+  assert(made.idea.name === 'AI coding agents' && made.idea.trendId === tr0.id,
+    'trendToIdea seeds idea name + trendId back-link');
+  assert(made.idea.thesis.belief.includes('2026-10-09') && made.idea.thesis.belief.includes('Every dev I know'),
+    'thesis belief seeded with spotted date + why');
+  assert(made.idea.thesis.reasons === '' && made.idea.thesis.falsify === '', 'other thesis fields start empty');
+  assert(made.trend.status === 'chased' && made.trend.ideaId === made.idea.id,
+    'trend marked chased with ideaId');
+  assert(tr0.status === 'watching', 'trendToIdea leaves the original trend untouched');
+  const emptyMade = L.trendToIdea(L.makeTrend('Nameless wave', '', '2026-10-09'));
+  assert(emptyMade.idea.thesis.belief === '', 'empty why -> empty thesis belief, no crash');
+  const v2store = { schema: 2, ideas: [{ id: 'e1', name: 'Kept' }],
+    glossary: { 'P/E': { best: 3 } }, quizProfile: { bandLabel: 'X' } };
+  const v3 = L.migrateV2ToV3(v2store);
+  assert(v3.schema === 3 && Array.isArray(v3.trends) && v3.trends.length === 0,
+    'v2->v3 adds empty trends, schema 3');
+  assert(v3.ideas.length === 1 && v3.ideas[0].name === 'Kept' && v3.ideas[0].trendId === null,
+    'v2->v3 preserves ideas (trendId defaulted)');
+  assert(v3.glossary['P/E'].best === 3 && v3.quizProfile.bandLabel === 'X',
+    'v2->v3 preserves glossary + profile');
+  const mdTrends = L.journalToMarkdown([], '2026-10-04', [tr0, missedT]);
+  assert(mdTrends.includes('## Trend: AI coding agents (Watching)'), 'markdown exports watching trend w/ status label');
+  assert(mdTrends.includes('## Trend: AI coding agents (Missed)'), 'markdown exports missed trend');
+  assert(mdTrends.includes('Why it could matter: Every dev I know'), 'markdown exports the why note');
+  assert(mdTrends.includes('No ideas yet'), 'markdown still handles empty ideas when trends exist');
 
   console.log('export builders:');
   const md = L.journalToMarkdown(mig.ideas, '2026-10-04');
@@ -261,7 +314,7 @@ async function main() {
 
   // ---- navigation ----
   console.log('navigation:');
-  const tabs = ['ideas', 'reviews', 'track', 'profile', 'learn', 'accounts'];
+  const tabs = ['ideas', 'reviews', 'track', 'trends', 'profile', 'learn', 'accounts'];
   tabs.forEach(t => {
     document.querySelector('.nav-btn[data-nav="' + t + '"]').click();
     const visible = !document.getElementById('screen-' + t).classList.contains('hidden');
@@ -296,7 +349,7 @@ async function main() {
   assert(rows.length === 2, 'migrated ideas render in the ideas list (got ' + rows.length + ')');
   assert(rows[0].querySelector('.idea-name').textContent === 'Acme', 'higher-scored migrated idea sorts first');
   assert(rows[0].querySelector('.idea-score').textContent === '68 / 100', 'migrated composite renders as 68 / 100');
-  assert(readStore().schema === 2, 'store upgraded to schema 2');
+  assert(readStore().schema === 3, 'store upgraded to schema 3');
   // wipe for the rest of the UI tests
   window.localStorage.removeItem(KEY);
   L.reloadJournal();
@@ -434,7 +487,7 @@ async function main() {
 
   console.log('quiet secondary nav:');
   assert(document.querySelector('details.nav-more') !== null, 'secondary nav lives in a details menu');
-  ['reviews', 'track', 'profile', 'learn', 'accounts'].forEach(t => {
+  ['reviews', 'track', 'trends', 'profile', 'learn', 'accounts'].forEach(t => {
     const btn = document.querySelector('.nav-more-menu .nav-btn[data-nav="' + t + '"]');
     assert(btn !== null, 'secondary tab "' + t + '" reachable under More');
   });
@@ -583,6 +636,67 @@ async function main() {
     .find(rw => rw.querySelector('.idea-name').textContent === 'Test Co');
   assert(resRow && resRow.textContent.includes('Resolved'), 'resolved idea stays in the list with a Resolved tag');
 
+  // ---- trends & misses ----
+  console.log('trends UI:');
+  document.querySelector('.nav-btn[data-nav="trends"]').click();
+  assert(!document.getElementById('screen-trends').classList.contains('hidden'), 'trends screen shows');
+  assert(document.querySelector('details.nav-more').classList.contains('active'), 'More highlights on trends screen');
+  document.getElementById('trend-add').click();
+  const trErr = document.getElementById('trend-error');
+  assert(!trErr.classList.contains('hidden') && trErr.getAttribute('role') === 'alert',
+    'empty trend name blocked with inline error');
+  document.getElementById('trend-name').value = 'XSS ' + probe;
+  document.getElementById('trend-why').value = 'why ' + probe;
+  document.getElementById('trend-add').click();
+  let wRows = document.querySelectorAll('#trends-watching .note-card');
+  assert(wRows.length === 1, 'quick-added trend appears in Watching (got ' + wRows.length + ')');
+  assert(wRows[0].querySelector('.entry-name').textContent.includes(probe), 'trend name probe as literal text');
+  assert(wRows[0].querySelector('img') === null, 'trend name probe created no img element');
+  assert(wRows[0].querySelector('.note-text').textContent.includes(probe), 'trend why probe as literal text');
+  assert(document.getElementById('trends-count').textContent === '1 trend watched', 'watching count label');
+  st = readStore();
+  assert(st.trends.length === 1 && st.trends[0].status === 'watching', 'trend persisted with watching status');
+  // Make an idea: seeds the idea, marks the trend chased, opens the idea detail
+  wRows[0].querySelector('.btn.primary').click();
+  assert(!document.getElementById('screen-idea').classList.contains('hidden'), 'Make an idea opens the idea detail');
+  assert(document.querySelector('#idea-detail h1').textContent.includes('XSS'), 'idea seeded with the trend name');
+  st = readStore();
+  assert(st.ideas.some(i => i.trendId === st.trends[0].id), 'idea carries the trendId back-link');
+  assert(st.trends[0].status === 'chased' && st.trends[0].ideaId !== null, 'trend marked chased with ideaId');
+  document.querySelector('.nav-btn[data-nav="trends"]').click();
+  assert(document.querySelectorAll('#trends-chased .note-card').length === 1, 'chased trend under Became ideas');
+  assert(document.querySelectorAll('#trends-watching .note-card').length === 0, 'watching list empty after chase');
+  const chasedBtn = document.querySelector('#trends-chased .note-card .btn');
+  assert(chasedBtn && !chasedBtn.disabled && chasedBtn.textContent.includes('Open idea'),
+    'chased row links back to the idea');
+  chasedBtn.click();
+  assert(!document.getElementById('screen-idea').classList.contains('hidden'), 'chased row opens the linked idea');
+  document.querySelector('.nav-btn[data-nav="trends"]').click();
+  // Missed flow: log another trend, mark it missed, save the lesson
+  document.getElementById('trend-name').value = 'Missed Wave';
+  document.getElementById('trend-why').value = '';
+  document.getElementById('trend-add').click();
+  wRows = document.querySelectorAll('#trends-watching .note-card');
+  assert(wRows.length === 1, 'second trend lands in Watching');
+  const missBtn = Array.from(wRows[0].querySelectorAll('.btn')).find(b => b.textContent === 'Missed it');
+  assert(missBtn, 'watching row offers Missed it');
+  missBtn.click();
+  assert(document.querySelectorAll('#trends-missed .note-card').length === 1, 'missed trend under Missed waves');
+  const mRow = document.querySelector('#trends-missed .note-card');
+  assert(mRow.querySelector('.tag').textContent === 'Missed', 'missed row tagged');
+  mRow.querySelector('textarea').value = 'Waited for a dip that never came';
+  const saveLessonBtn = Array.from(mRow.querySelectorAll('.btn')).find(b => b.textContent === 'Save lesson');
+  saveLessonBtn.click();
+  st = readStore();
+  const missedTrend = st.trends.find(t => t.status === 'missed');
+  assert(missedTrend && missedTrend.lesson === 'Waited for a dip that never came', 'lesson persisted on the missed trend');
+  // Watching-again undo returns it to the watching list
+  const rewatchBtn = Array.from(document.querySelector('#trends-missed .note-card').querySelectorAll('.btn'))
+    .find(b => b.textContent === 'Watching again');
+  rewatchBtn.click();
+  assert(document.querySelectorAll('#trends-watching .note-card').length === 1 &&
+    document.querySelectorAll('#trends-missed .note-card').length === 0, 'Watching again moves it back');
+
   // ---- learn: search + micro-quiz ----
   console.log('learn:');
   document.querySelector('.nav-btn[data-nav="learn"]').click();
@@ -637,7 +751,7 @@ async function main() {
   assert(mdText.includes('## Test Co (TST)') && mdText.includes('## Second Co'), 'exported markdown contains ideas');
   assert(mdText.includes('/ 100'), 'exported markdown includes composite scores');
   const jsonText = await createdURLs[0].text();
-  assert(JSON.parse(jsonText).length === 5, 'exported JSON contains all ideas');
+  assert(JSON.parse(jsonText).length === readStore().ideas.length, 'exported JSON contains all ideas');
 
   // ---- disclaimers ----
   document.querySelector('.nav-btn[data-nav="ideas"]').click();

@@ -517,6 +517,77 @@ function makeIdea(name, tickers, today) {
   };
 }
 
+/* ---------------- trends & misses ----------------
+ * The "spot a trend" stage of the loop: a trend is logged before any company
+ * is known. status: 'watching' (still early) | 'missed' (the wave passed —
+ * write the lesson, it becomes the pattern library) | 'chased' (turned into
+ * a research idea). All DOM-free. */
+const TREND_STATUSES = ['watching', 'missed', 'chased'];
+const TREND_STATUS_LABELS = { watching: 'Watching', missed: 'Missed', chased: 'Became an idea' };
+
+function makeTrend(name, why, today) {
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
+  return {
+    id: 't' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+    name: (name || '').slice(0, 80),
+    why: (why || '').slice(0, 1000),
+    createdAt: t,
+    updatedAt: t,
+    status: 'watching',
+    lesson: '',
+    ideaId: null,
+  };
+}
+
+/* Defensive fill so a hand-edited or older trend object can never crash the
+ * renderers. DOM-free. */
+function normalizeTrend(raw) {
+  const trend = Object.assign({
+    name: '', why: '', status: 'watching', lesson: '', ideaId: null,
+  }, raw || {});
+  if (!TREND_STATUSES.includes(trend.status)) trend.status = 'watching';
+  if (typeof trend.name !== 'string') trend.name = '';
+  if (typeof trend.why !== 'string') trend.why = '';
+  if (typeof trend.lesson !== 'string') trend.lesson = '';
+  if (typeof trend.ideaId !== 'string') trend.ideaId = null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trend.createdAt || '')) trend.createdAt = todayISO();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trend.updatedAt || '')) trend.updatedAt = trend.createdAt;
+  if (typeof trend.id !== 'string' || !trend.id) {
+    trend.id = 't' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+  }
+  return trend;
+}
+
+/* Mark a trend missed. Returns a new trend; the caller writes the lesson. */
+function markTrendMissed(trend, today) {
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
+  return Object.assign({}, trend, { status: 'missed', updatedAt: t });
+}
+
+function setTrendLesson(trend, lesson) {
+  return Object.assign({}, trend, {
+    lesson: (lesson || '').slice(0, 1000),
+    updatedAt: todayISO(),
+  });
+}
+
+/* The bridge from "spotted a trend" to "researching a company": seeds a new
+ * idea from the trend (thesis pre-filled with the original observation) and
+ * marks the trend chased. DOM-free; returns { idea, trend }. */
+function trendToIdea(trend, today) {
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
+  const idea = makeIdea(trend.name || 'Untitled idea', '', t);
+  const why = (trend.why || '').trim();
+  idea.thesis = {
+    belief: why ? 'Spotted ' + trend.createdAt + ': ' + why : '',
+    reasons: '',
+    falsify: '',
+  };
+  idea.trendId = trend.id;
+  const nextTrend = Object.assign({}, trend, { status: 'chased', ideaId: idea.id, updatedAt: t });
+  return { idea, trend: nextTrend };
+}
+
 /* Fatebook-style review entry. outcome: 'intact' | 'changed' | 'resolved'.
  * reasonMatch: 'yes' | 'no' | 'na' — did it move for the stated reason? */
 function applyReview(idea, review, today) {
@@ -564,8 +635,9 @@ function journalToJSON(ideas) {
   return JSON.stringify(ideas, null, 2);
 }
 
-function journalToMarkdown(ideas, stamp) {
-  // Plain-text export of the research — one section per idea. DOM-free.
+function journalToMarkdown(ideas, stamp, trends) {
+  // Plain-text export of the research — one section per idea, plus the trends
+  // & misses log when present. DOM-free.
   const lines = [
     '# Long-Term Lens — Research Ideas',
     '',
@@ -573,8 +645,7 @@ function journalToMarkdown(ideas, stamp) {
     ''
   ];
   if (!ideas.length) {
-    lines.push('_No ideas yet._');
-    return lines.join('\n');
+    lines.push('_No ideas yet._', '');
   }
   ideas.forEach(e => {
     const score = compositeScore(e);
@@ -608,15 +679,34 @@ function journalToMarkdown(ideas, stamp) {
     }
     lines.push('---', '');
   });
+  (trends || []).forEach(t => {
+    lines.push('## Trend: ' + (t.name || 'Untitled') + ' (' + (TREND_STATUS_LABELS[t.status] || t.status) + ')');
+    lines.push('');
+    lines.push('- Spotted: ' + (t.createdAt || '—'));
+    if (t.why) { lines.push('- Why it could matter: ' + t.why); }
+    if (t.lesson) { lines.push('- Lesson from the miss: ' + t.lesson); }
+    lines.push('');
+    lines.push('---', '');
+  });
   return lines.join('\n');
 }
 
 /* ---------------- storage + migration ---------------- */
 const STORE_KEY = 'longterm-stock-lens-v1';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
+
+/* v2 -> v3: the trends collection is new and purely additive — ideas, the
+ * glossary, and the investor profile carry over untouched. Never loses data. */
+function migrateV2ToV3(parsed) {
+  const upgraded = blankStore();
+  upgraded.ideas = (parsed.ideas || []).map(normalizeIdea);
+  upgraded.glossary = parsed.glossary || {};
+  upgraded.quizProfile = parsed.quizProfile || null;
+  return upgraded;
+}
 
 function blankStore() {
-  return { schema: SCHEMA_VERSION, ideas: [], glossary: {}, quizProfile: null };
+  return { schema: SCHEMA_VERSION, ideas: [], trends: [], glossary: {}, quizProfile: null };
 }
 
 /* Migrate legacy stores (v0.x: { entries: [...] } or the v1 two-tap era) into
@@ -688,7 +778,7 @@ function migrateStore(raw) {
  * hand-edited or future-older idea object can never crash the UI. DOM-free. */
 function normalizeIdea(rawIdea) {
   const idea = Object.assign({
-    tags: [], status: 'open',
+    tags: [], status: 'open', trendId: null,
     thesis: {}, assumptions: [], checklist: {}, scores: {},
     weights: {}, convictionLevel: 'watching',
     reviewMonths: DEFAULT_REVIEW_MONTHS,
@@ -714,8 +804,15 @@ function loadStore() {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.schema === SCHEMA_VERSION && Array.isArray(parsed.ideas)) {
       parsed.ideas = parsed.ideas.map(normalizeIdea);
+      parsed.trends = Array.isArray(parsed.trends) ? parsed.trends.map(normalizeTrend) : [];
       parsed.glossary = parsed.glossary || {};
       return parsed;
+    }
+    if (parsed && parsed.schema === 2 && Array.isArray(parsed.ideas)) {
+      // v2 store (predates trends): additive upgrade, persisted once.
+      const upgraded = migrateV2ToV3(parsed);
+      saveStore(upgraded);
+      return upgraded;
     }
     // Legacy shape: migrate and persist the upgrade so the next load is cheap.
     const migrated = migrateStore(parsed);
@@ -753,7 +850,7 @@ function showScreen(name) {
     b.classList.toggle('active', b.dataset.nav === name));
   // The secondary nav lives in a <details>; highlight its summary while a
   // secondary screen is active, and close the menu after navigating.
-  const SECONDARY = ['reviews', 'track', 'profile', 'learn', 'accounts'];
+  const SECONDARY = ['reviews', 'track', 'trends', 'profile', 'learn', 'accounts'];
   document.querySelectorAll('details.nav-more').forEach(d => {
     d.classList.toggle('active', SECONDARY.indexOf(name) !== -1);
     d.removeAttribute('open');
@@ -1948,6 +2045,153 @@ function renderTrackRecord() {
   }
 }
 
+/* ---------------- trends & misses UI ---------------- */
+function updateTrend(id, fn) {
+  store.trends = (store.trends || []).map(t => {
+    if (t.id !== id) return t;
+    const next = fn(t) || t;
+    next.updatedAt = todayISO();
+    return next;
+  });
+  saveStore(store);
+}
+
+function trendRow(trend) {
+  // DOM-built, escaped. Watching rows get actions; missed rows get the lesson
+  // editor (the pattern library); chased rows link back to the idea.
+  const row = document.createElement('div');
+  row.className = 'note-card';
+  const head = document.createElement('div');
+  head.className = 'entry-head';
+  const nm = document.createElement('span');
+  nm.className = 'entry-name';
+  nm.textContent = trend.name || 'Untitled trend';
+  head.appendChild(nm);
+  const st = document.createElement('span');
+  st.className = 'tag';
+  st.textContent = TREND_STATUS_LABELS[trend.status] || trend.status;
+  head.appendChild(st);
+  row.appendChild(head);
+  const meta = document.createElement('p');
+  meta.className = 'fineprint';
+  meta.textContent = 'Spotted ' + (trend.createdAt || '—');
+  row.appendChild(meta);
+  if (trend.why) {
+    const why = document.createElement('p');
+    why.className = 'note-text';
+    why.textContent = trend.why;
+    row.appendChild(why);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'btn-row';
+  if (trend.status === 'watching') {
+    const mk = document.createElement('button');
+    mk.className = 'btn primary';
+    mk.textContent = 'Make an idea';
+    mk.addEventListener('click', () => {
+      const made = trendToIdea(trend, todayISO());
+      store.ideas.push(made.idea);
+      updateTrend(trend.id, () => made.trend);
+      renderTrends();
+      openIdea(made.idea.id);
+    });
+    actions.appendChild(mk);
+    const miss = document.createElement('button');
+    miss.className = 'btn';
+    miss.textContent = 'Missed it';
+    miss.addEventListener('click', () => {
+      updateTrend(trend.id, t => markTrendMissed(t, todayISO()));
+      renderTrends();
+    });
+    actions.appendChild(miss);
+  } else if (trend.status === 'missed') {
+    const lab = document.createElement('label');
+    lab.className = 'field';
+    lab.appendChild(document.createTextNode('What did this miss teach you?'));
+    const ta = document.createElement('textarea');
+    ta.rows = 2;
+    ta.maxLength = 1000;
+    ta.placeholder = 'e.g. I noticed it early but waited for a dip that never came.';
+    ta.value = trend.lesson || '';
+    lab.appendChild(ta);
+    row.appendChild(lab);
+    const save = document.createElement('button');
+    save.className = 'btn';
+    save.textContent = 'Save lesson';
+    save.addEventListener('click', () => {
+      updateTrend(trend.id, t => setTrendLesson(t, ta.value));
+      renderTrends();
+    });
+    actions.appendChild(save);
+    const back = document.createElement('button');
+    back.className = 'btn';
+    back.textContent = 'Watching again';
+    back.addEventListener('click', () => {
+      updateTrend(trend.id, t => Object.assign({}, t, { status: 'watching' }));
+      renderTrends();
+    });
+    actions.appendChild(back);
+  } else if (trend.status === 'chased') {
+    const idea = trend.ideaId ? getIdea(trend.ideaId) : null;
+    const open = document.createElement('button');
+    open.className = 'btn';
+    open.textContent = idea ? 'Open idea: ' + idea.name : 'Idea no longer exists';
+    open.disabled = !idea;
+    if (idea) open.addEventListener('click', () => openIdea(idea.id));
+    actions.appendChild(open);
+  }
+  row.appendChild(actions);
+  return row;
+}
+
+function renderTrends() {
+  const trends = (store.trends || []).slice()
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const watching = trends.filter(t => t.status === 'watching');
+  const missed = trends.filter(t => t.status === 'missed');
+  const chased = trends.filter(t => t.status === 'chased');
+  const fill = (id, list, emptyText) => {
+    const box = $(id);
+    box.innerHTML = '';
+    if (!list.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = emptyText;
+      box.appendChild(d);
+    } else {
+      list.forEach(t => box.appendChild(trendRow(t)));
+    }
+  };
+  fill('trends-watching', watching,
+    'Nothing on your radar. Spot a trend above — the shift you can see but can\u2019t invest in yet.');
+  fill('trends-missed', missed,
+    'No missed waves logged. When one gets away, mark it here with the lesson \u2014 that\u2019s the pattern library.');
+  fill('trends-chased', chased, 'No trends turned into ideas yet.');
+  $('trends-count').textContent =
+    watching.length === 1 ? '1 trend watched' : watching.length + ' trends watched';
+}
+
+function quickAddTrend() {
+  const err = $('trend-error');
+  err.textContent = '';
+  err.classList.add('hidden');
+  const name = $('trend-name').value.trim();
+  const why = $('trend-why').value.trim();
+  if (!name) {
+    err.textContent = 'Give the trend a name first \u2014 e.g. the shift you keep noticing.';
+    err.classList.remove('hidden');
+    $('trend-name').focus();
+    return;
+  }
+  const trend = makeTrend(name, why);
+  store.trends = store.trends || [];
+  store.trends.push(trend);
+  saveStore(store);
+  $('trend-name').value = '';
+  $('trend-why').value = '';
+  renderTrends();
+}
+
 /* ---------------- learn: micro-lesson UI ---------------- */
 // {el, term} pairs in render order — the search filter toggles their .hidden.
 let lessonNodes = [];
@@ -2098,7 +2342,7 @@ function exportJSON() {
 function exportMarkdown() {
   const stamp = todayISO();
   downloadBlob(
-    new Blob([journalToMarkdown(store.ideas || [], stamp)], { type: 'text/markdown' }),
+    new Blob([journalToMarkdown(store.ideas || [], stamp, store.trends || [])], { type: 'text/markdown' }),
     'longterm-lens-ideas-' + stamp + '.md'
   );
 }
@@ -2127,15 +2371,21 @@ function init() {
   renderIdeasHome();
   renderReviews();
   renderTrackRecord();
+  renderTrends();
   $('qa-add').addEventListener('click', quickAddIdea);
   ['qa-name', 'qa-tickers'].forEach(id => {
     $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddIdea(); });
+  });
+  $('trend-add').addEventListener('click', quickAddTrend);
+  ['trend-name', 'trend-why'].forEach(id => {
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddTrend(); });
   });
   $('export-json').addEventListener('click', exportJSON);
   $('export-md').addEventListener('click', exportMarkdown);
   // Re-render dynamic screens when navigating to them (reviews/data may change).
   document.querySelector('.nav-btn[data-nav="reviews"]').addEventListener('click', renderReviews);
   document.querySelector('.nav-btn[data-nav="track"]').addEventListener('click', renderTrackRecord);
+  document.querySelector('.nav-btn[data-nav="trends"]').addEventListener('click', renderTrends);
   document.querySelector('.nav-btn[data-nav="ideas"]').addEventListener('click', renderIdeasHome);
 }
 
@@ -2146,6 +2396,7 @@ function reloadJournal() {
   renderIdeasHome();
   renderReviews();
   renderTrackRecord();
+  renderTrends();
   renderGlossary();
 }
 
@@ -2160,9 +2411,12 @@ if (typeof globalThis !== 'undefined') {
   globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms,
     CHECKLIST_ITEMS, SCORE_DIMS, SCORE_DIM_LABELS, DEFAULT_WEIGHTS,
     CONVICTION_LEVELS, CONVICTION_LEVEL_LABELS, REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
+    TREND_STATUSES, TREND_STATUS_LABELS,
     normalizeWeights, compositeScore, convictLabel, checklistComplete, canRaiseConviction,
     ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
-    rescheduleReview, makeIdea, applyReview, trackRecord, buildAnalyzePrompt,
+    rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
+    trendToIdea, migrateV2ToV3,
+    applyReview, trackRecord, buildAnalyzePrompt,
     journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY };
 }
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Long-Term Lens — Research conviction stocks for buy-and-hold</title>
 <meta name="description" content="An educational hub for beginner long-term investors: investor profile, ideas research loop, fundamentals micro-lessons, and account explainers. Educational only — not financial advice.">
-<link rel="stylesheet" href="styles.css?v=1.1.0">
+<link rel="stylesheet" href="styles.css?v=1.2.0">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1117">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -20,6 +20,7 @@
       <div class="nav-more-menu" role="menu">
         <button class="nav-btn" data-nav="reviews" role="menuitem">Reviews</button>
         <button class="nav-btn" data-nav="track" role="menuitem">Track record</button>
+        <button class="nav-btn" data-nav="trends" role="menuitem">Trends</button>
         <button class="nav-btn" data-nav="profile" role="menuitem">Profile</button>
         <button class="nav-btn" data-nav="learn" role="menuitem">Learn</button>
         <button class="nav-btn" data-nav="accounts" role="menuitem">Accounts</button>
@@ -103,6 +104,42 @@
       <p class="subtitle">Your calibration score. Separating right-for-the-right-reasons from
         right-for-the-wrong-reasons is the whole point of keeping a journal.</p>
       <div id="track-record"></div>
+    </div>
+  </section>
+
+  <!-- ============ TRENDS & MISSES ============ -->
+  <section id="screen-trends" class="screen hidden">
+    <div class="wrap">
+      <h1>Trends &amp; misses</h1>
+      <p class="subtitle">Catch the wave before you know the companies. Log a trend while it's
+        early — the shift you can see but can't invest in yet. Turn the promising ones into
+        research ideas with one tap. Mark the ones that got away and write down what they taught
+        you: your misses are the pattern library for the next wave.</p>
+
+      <h2>Spot a trend</h2>
+      <div class="panel quick-add">
+        <label class="field">Trend name
+          <input type="text" id="trend-name" maxlength="80" placeholder="e.g. AI coding agents">
+        </label>
+        <label class="field">Why this could matter — optional
+          <textarea id="trend-why" rows="2" maxlength="1000" placeholder="What are you actually seeing? Who's using it?"></textarea>
+        </label>
+        <p class="form-error hidden" id="trend-error" role="alert"></p>
+        <div class="btn-row">
+          <button id="trend-add" class="btn primary">Log trend</button>
+        </div>
+        <p class="fineprint">No company needed — that's the point. When a candidate emerges, one tap turns the trend into a research idea.</p>
+      </div>
+
+      <h2>Watching <span class="hint" id="trends-count"></span></h2>
+      <div id="trends-watching"></div>
+
+      <h2>Missed waves — the pattern library</h2>
+      <p class="fineprint">Re-read these before the next wave. What did your misses have in common?</p>
+      <div id="trends-missed"></div>
+
+      <h2>Became ideas</h2>
+      <div id="trends-chased"></div>
     </div>
   </section>
 
@@ -219,9 +256,9 @@
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research — start at
     <a href="https://www.sec.gov/edgar" target="_blank" rel="noopener">SEC EDGAR</a>.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v1.1.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v1.2.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
 </footer>
 
-<script src="app.js?v=1.1.0"></script>
+<script src="app.js?v=1.2.0"></script>
 </body>
 </html>
