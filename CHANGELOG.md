@@ -1,5 +1,12 @@
 # Changelog — Long-Term Lens
 
+## [1.4.1] — 2026-10-09
+
+### Fixed
+- Update check no longer false-positives on a stale cached `version.txt`: it
+  now compares versions semantically and only prompts when the fetched version
+  is actually newer.
+
 ## [1.4.0] — 2026-10-09
 
 ### Added

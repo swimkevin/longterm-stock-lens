@@ -2,10 +2,20 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
+}
+
+function isNewerVersion(latest, current) {
+  const pa = String(latest).trim().split('.').map(Number);
+  const pb = String(current).trim().split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const a = pa[i] || 0, b = pb[i] || 0;
+    if (a !== b) return a > b;
+  }
+  return false;
 }
 
 const QUIZ = [
@@ -2123,7 +2133,7 @@ function init() {
       .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })
       .then(t => {
         const v = (t || '').trim();
-        if (v && v !== APP_VERSION) {
+        if (v && isNewerVersion(v, APP_VERSION)) {
           refreshUpdateButton(v);
           if (manual && confirm('New version ' + v + ' available (you have ' + APP_VERSION + '). Reload now?')) {
             window.location.href = updateReloadURL(window.location.pathname, v, window.location.hash);
@@ -2201,6 +2211,6 @@ if (typeof globalThis !== 'undefined') {
     trendToIdea, migrateV2ToV3,
     applyReview, trackRecord, buildAnalyzePrompt,
     journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
-    APP_VERSION, updateReloadURL };
+    APP_VERSION, updateReloadURL, isNewerVersion };
 }
 })();
