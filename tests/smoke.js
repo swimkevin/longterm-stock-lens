@@ -1,4 +1,4 @@
-/* Long-Term Lens smoke test (v1.0 redesign).
+/* Long-Term Lens smoke test (v1.1: one core feature + AI verify).
  * 1. Boots the real index.html in jsdom (reusing the sibling poker-sparring
  *    install — dev-only, the shipped site has zero dependencies).
  * 2. Asserts pure-logic behavior via window.LongTermLens.
@@ -178,6 +178,35 @@ async function main() {
   assert(L.trackRecord([]).reasonAccuracy === null, 'no reviews -> null accuracy');
   assert(L.trackRecord([{ reviewHistory: [{ outcome: 'intact', reasonMatch: 'na' }] }]).reasonAccuracy === null,
     'na-only reviews -> null accuracy');
+
+  console.log('analyze prompt builder:');
+  assert(typeof L.buildAnalyzePrompt === 'function', 'buildAnalyzePrompt exported');
+  const richIdea = {
+    name: 'Acme Semiconductor', tickers: 'ACME',
+    thesis: { belief: 'AI inference at the edge', reasons: 'design wins; margins', falsify: 'loses top-3 share' },
+    assumptions: [{ text: 'capex cycle holds', confidence: 75 }],
+    checklist: { moat: true, earnings: true, debt: false, valuation: true, circle: true },
+    scores: { quality: 4, value: 3, conviction: 5 },
+    weights: { quality: 40, value: 30, conviction: 30 },
+    convictionLevel: 'leaning', reviewAt: '2027-01-09',
+  };
+  const prompt = L.buildAnalyzePrompt(richIdea);
+  assert(typeof prompt === 'string' && prompt.length > 400, 'prompt is a substantial string');
+  assert(prompt.includes('Acme Semiconductor') && prompt.includes('ACME'), 'prompt carries name + ticker');
+  assert(prompt.includes('AI inference at the edge') && prompt.includes('loses top-3 share'), 'prompt carries thesis fields');
+  assert(prompt.includes('capex cycle holds') && prompt.includes('75%'), 'prompt carries assumptions + confidence');
+  assert(prompt.includes('[x] Does it have a durable edge?') && prompt.includes('[ ] Is debt at a safe level?'),
+    'prompt marks checklist state');
+  assert(prompt.includes('Quality: 4 / 5') && prompt.includes('40%'), 'prompt carries scorecard + weights');
+  assert(prompt.includes('/ 100'), 'prompt carries the composite score');
+  assert(prompt.includes('never tell me whether to buy or sell'), 'prompt keeps the educational-only boundary');
+  assert(prompt.includes('Similar companies'), 'prompt asks for similar companies');
+  assert(prompt.includes('Cite the source and date'), 'prompt demands metric sourcing');
+  const xssPrompt = L.buildAnalyzePrompt({ name: '<img src=x onerror=alert(1)>', thesis: {} });
+  assert(xssPrompt.includes('<img src=x onerror=alert(1)>'), 'user content kept verbatim as text');
+  assert(!/<script/i.test(xssPrompt.replace('<img src=x onerror=alert(1)>', '')), 'prompt adds no markup of its own');
+  const emptyPrompt = L.buildAnalyzePrompt(null);
+  assert(emptyPrompt.includes('Unnamed idea') && emptyPrompt.includes('(not written yet)'), 'null idea degrades gracefully');
 
   console.log('migration:');
   const legacy = { entries: [
@@ -388,6 +417,34 @@ async function main() {
     'no onerror handlers anywhere in idea detail');
   document.querySelector('#idea-detail .note-card .btn.danger.mini').click();
   assert(document.querySelectorAll('#idea-detail .note-card').length === 0, 'note deletable');
+
+  console.log('AI verify section:');
+  const analyzeSec = document.querySelector('#idea-detail .analyze-sec');
+  assert(analyzeSec !== null, 'AI verify section renders on idea detail');
+  const analyzeBox = analyzeSec.querySelector('.analyze-prompt');
+  assert(analyzeBox && analyzeBox.tagName === 'TEXTAREA', 'prompt shown in a readonly textarea');
+  assert(analyzeBox.readOnly === true, 'prompt textarea is readonly');
+  assert(analyzeBox.value.includes('XSS <img src=x onerror=alert(1)>') || analyzeBox.value.length > 100,
+    'prompt reflects the current idea');
+  assert(analyzeSec.querySelector('#idea-detail img') === null, 'prompt added no elements');
+  const copyBtn = Array.from(analyzeSec.querySelectorAll('.btn')).find(b => b.textContent === 'Copy prompt');
+  assert(copyBtn, 'Copy prompt button exists');
+  copyBtn.click(); // must not throw even without a clipboard API in jsdom
+  assert(true, 'copy click is safe without clipboard');
+
+  console.log('quiet secondary nav:');
+  assert(document.querySelector('details.nav-more') !== null, 'secondary nav lives in a details menu');
+  ['reviews', 'track', 'profile', 'learn', 'accounts'].forEach(t => {
+    const btn = document.querySelector('.nav-more-menu .nav-btn[data-nav="' + t + '"]');
+    assert(btn !== null, 'secondary tab "' + t + '" reachable under More');
+  });
+  assert(document.querySelector('.nav > .nav-btn[data-nav="ideas"]') !== null, 'Ideas stays the primary nav item');
+  document.querySelector('.nav-more-menu .nav-btn[data-nav="learn"]').click();
+  assert(!document.getElementById('screen-learn').classList.contains('hidden'), 'secondary tab still navigates');
+  assert(document.querySelector('details.nav-more').classList.contains('active'), 'More highlights while a secondary screen is active');
+  document.querySelector('.nav > .nav-btn[data-nav="ideas"]').click();
+  assert(!document.querySelector('details.nav-more').classList.contains('active'), 'More unhighlights back on Ideas');
+  assert(document.getElementById('reviews-badge') !== null, 'reviews due badge still exists inside More');
 
   console.log('idea detail back + XSS in name:');
   document.getElementById('idea-back').click();

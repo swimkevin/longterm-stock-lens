@@ -353,6 +353,75 @@ function convictLabel(score) {
   return 'Early research';
 }
 
+/* ---------------- AI-verify prompt generator ---------------- */
+// Final gate of the core flow: the site can't hold data-provider keys or
+// fetch live fundamentals, so instead of a broken half-feature it builds a
+// structured prompt from everything the user researched. Paste into
+// Muse/Claude for the full workup. DOM-free, plain text by construction
+// (rendered into a textarea via .value — user content can never become HTML).
+// Educational analysis only: the prompt asks for analysis, never "should I buy".
+function buildAnalyzePrompt(idea) {
+  const notYet = '(not written yet)';
+  const name = (idea && idea.name) || 'Unnamed idea';
+  const tickers = (idea && idea.tickers) ? idea.tickers : 'no ticker';
+  const th = (idea && idea.thesis) || {};
+  const belief = th.belief || notYet;
+  const reasons = th.reasons || notYet;
+  const falsify = th.falsify || notYet;
+
+  const assumptions = (idea && Array.isArray(idea.assumptions)) ? idea.assumptions : [];
+  const assumptionsBlock = assumptions.length
+    ? assumptions.map(a => '- ' + (a.text || '(blank)') + ' (' + (a.confidence != null ? a.confidence + '%' : '?') + ' confident)').join('\n')
+    : '- ' + notYet;
+
+  const checklistBlock = CHECKLIST_ITEMS.map(item => {
+    const done = idea && idea.checklist && idea.checklist[item.key] === true;
+    return '- [' + (done ? 'x' : ' ') + '] ' + item.label;
+  }).join('\n');
+
+  const scoreLines = SCORE_DIMS.map(d => {
+    const v = idea && idea.scores ? idea.scores[d] : null;
+    const w = idea && idea.weights ? idea.weights[d] : null;
+    const shortLabel = d.charAt(0).toUpperCase() + d.slice(1);
+    return '- ' + shortLabel + ': ' + (typeof v === 'number' ? v + ' / 5' : 'unscored') +
+      ' (my weight: ' + (typeof w === 'number' ? w + '%' : '?') + ')';
+  }).join('\n');
+  const comp = compositeScore(idea);
+  const conviction = idea ? (CONVICTION_LEVEL_LABELS[idea.convictionLevel] || idea.convictionLevel) : '?';
+  const reviewBy = (idea && idea.reviewAt) || '(none set)';
+
+  return [
+    "I'm researching a long-term (10+ year) investment idea. This is educational analysis only \u2014 never tell me whether to buy or sell.",
+    '',
+    'IDEA: ' + name + ' (' + tickers + ')',
+    '',
+    'MY THESIS:',
+    '- I believe: ' + belief,
+    '- Why (2-3 reasons): ' + reasons,
+    '- What would prove me wrong: ' + falsify,
+    '',
+    'MY ASSUMPTIONS (with my confidence):',
+    assumptionsBlock,
+    '',
+    'MY PRE-DECISION CHECKLIST (I only raise conviction when every item is true):',
+    checklistBlock,
+    '',
+    'MY SCORECARD (1-5 each, weights are mine):',
+    scoreLines,
+    'Composite: ' + (comp === null ? 'unscored' : comp + ' / 100 \u2014 ' + convictLabel(comp)) + ' \u00b7 Conviction level: ' + conviction,
+    'Review by: ' + reviewBy,
+    '',
+    'Please do a full workup:',
+    '1. Metrics check \u2014 for the ticker above, report the key long-term metrics (P/E or forward P/E, 3-5y revenue growth, operating margin, free cash flow, debt-to-equity, dividend yield if any). Cite the source and date of each number.',
+    '2. Bull case \u2014 the 2-3 strongest arguments FOR a decade-long hold, mapped to my thesis where they overlap.',
+    '3. Bear case \u2014 the strongest arguments AGAINST, especially any evidence that would trigger my stated kill criteria.',
+    '4. Red flags \u2014 accounting, governance, or business-model concerns I should investigate before deciding anything.',
+    '5. Similar companies \u2014 3-5 public companies in the same broad category I could research as alternatives or comparisons, with one line each on why they are comparable.',
+    '',
+    'Format: headers with short bullets. Analytical, no hype.',
+  ].join('\n');
+}
+
 function thesesLabel(n) {
   // "(1 thesis)" / "(2 theses)" / "" — DOM-free.
   if (!n) return '';
@@ -682,6 +751,13 @@ function showScreen(name) {
   }
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.nav === name));
+  // The secondary nav lives in a <details>; highlight its summary while a
+  // secondary screen is active, and close the menu after navigating.
+  const SECONDARY = ['reviews', 'track', 'profile', 'learn', 'accounts'];
+  document.querySelectorAll('details.nav-more').forEach(d => {
+    d.classList.toggle('active', SECONDARY.indexOf(name) !== -1);
+    d.removeAttribute('open');
+  });
   window.scrollTo(0, 0);
 }
 
@@ -1038,6 +1114,7 @@ function renderIdeaDetail(idea) {
   renderAssumptionsSection(box, idea);
   renderChecklistSection(box, idea);
   renderScorecardSection(box, idea);
+  renderAnalyzeSection(box, idea);
   renderPriceLogSection(box, idea);
   renderNotesSection(box, idea);
   renderIdeaDanger(box, idea);
@@ -1305,6 +1382,57 @@ function renderScorecardSection(box, idea) {
   hint.textContent = ' weights auto-normalize, so 50/30/20 and 5/3/2 give the same result';
   compLine.appendChild(hint);
   sec.appendChild(compLine);
+  box.appendChild(sec);
+}
+
+/* (e) AI verify — the prompt-generator final gate. The site can't fetch live
+ * fundamentals (no API keys on a public static site), so it packages the
+ * whole research record into a structured prompt for Muse/Claude instead. */
+function renderAnalyzeSection(box, idea) {
+  const sec = sectionShell('AI verify',
+    'The final gate: turn everything above into a verification prompt. Paste it into Muse or Claude for the metric workup, bull/bear cases, red flags, and similar companies. It asks for analysis — never "should I buy".');
+  sec.classList.add('analyze-sec');
+  const ta = document.createElement('textarea');
+  ta.className = 'analyze-prompt';
+  ta.rows = 10;
+  ta.readOnly = true;
+  ta.setAttribute('aria-label', 'Generated analysis prompt for this idea');
+  ta.value = buildAnalyzePrompt(idea);
+  sec.appendChild(ta);
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn primary';
+  copyBtn.textContent = 'Copy prompt';
+  copyBtn.setAttribute('aria-label', 'Copy the analysis prompt to the clipboard');
+  copyBtn.addEventListener('click', () => {
+    const done = () => {
+      copyBtn.textContent = 'Copied';
+      copyBtn.disabled = true;
+      setTimeout(() => { copyBtn.textContent = 'Copy prompt'; copyBtn.disabled = false; }, 1600);
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(done, () => fallbackCopy());
+      } else {
+        fallbackCopy();
+      }
+    } catch (e) { fallbackCopy(); }
+    function fallbackCopy() {
+      try {
+        ta.focus(); ta.select();
+        if (document.execCommand('copy')) { done(); return; }
+      } catch (e) { /* fall through */ }
+      // Last resort: leave the text selected so the user can copy manually.
+      ta.focus(); ta.select();
+    }
+  });
+  row.appendChild(copyBtn);
+  sec.appendChild(row);
+  const fp = document.createElement('p');
+  fp.className = 'fineprint';
+  fp.textContent = 'Tip: paste it here in chat with me and I\u2019ll do the full workup against your thesis.';
+  sec.appendChild(fp);
   box.appendChild(sec);
 }
 
@@ -2034,7 +2162,7 @@ if (typeof globalThis !== 'undefined') {
     CONVICTION_LEVELS, CONVICTION_LEVEL_LABELS, REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     normalizeWeights, compositeScore, convictLabel, checklistComplete, canRaiseConviction,
     ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
-    rescheduleReview, makeIdea, applyReview, trackRecord,
+    rescheduleReview, makeIdea, applyReview, trackRecord, buildAnalyzePrompt,
     journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY };
 }
 

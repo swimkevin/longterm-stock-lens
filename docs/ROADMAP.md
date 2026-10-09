@@ -3,6 +3,20 @@
 Educational only. No personalized advice, no live prices, no buy/sell
 recommendations — see AGENTS.md. The roadmap respects that boundary.
 
+## v1.1 — One core feature + AI verify ✅ (shipped 2026-10-09)
+
+AI-verify prompt generator as the final gate of the research flow
+(`buildAnalyzePrompt`, copy-to-clipboard, educational-only framing);
+quiet secondary nav (Ideas hero, everything else under "More"); inline SVG
+icons (no emoji); senior-dev README; smoke suite at 212 assertions.
+
+## v1.2 — Trends & misses, category allocation, Learn expansion ⬅️ NEXT
+
+Trends & misses log (past misses like BTC $5k become a pattern library);
+category-level allocation guidance from the risk profile (educational;
+categories, never tickers); Learn expansion (market analysis, valuation
+methods, historical case studies as labeled illustrations).
+
 ## v1.0 — Ideas → Research → Review redesign ✅ (shipped 2026-10-09)
 
 Full redesign from a 10-product research report (Stockxy, Journalytic,
@@ -17,7 +31,7 @@ quizzes; accounts → "What's going on here? / Why should I care?" skeleton.
 v0.x journal data migrates automatically into the v2 schema — nothing lost,
 localStorage key unchanged.
 
-## v0.4 — Compound-interest visualizer + DCA explainer ⬅️ NEXT
+## v0.4 — Compound-interest visualizer + DCA explainer (deferred — after v1.2)
 
 Interactive, hand-drawn canvas chart: starting amount, monthly contribution,
 years, assumed growth — with a hover crosshair showing values at each point.

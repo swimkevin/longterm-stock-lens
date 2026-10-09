@@ -5,23 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Long-Term Lens — Research conviction stocks for buy-and-hold</title>
 <meta name="description" content="An educational hub for beginner long-term investors: investor profile, ideas research loop, fundamentals micro-lessons, and account explainers. Educational only — not financial advice.">
-<link rel="stylesheet" href="styles.css?v=1.0.1">
+<link rel="stylesheet" href="styles.css?v=1.1.0">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1117">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="brand-emoji">🔭</span> Long-Term Lens</div>
+  <div class="brand"><svg class="brand-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><circle cx="11" cy="11" r="2.5" fill="currentColor" stroke="none"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke-linecap="round"/></svg> Long-Term Lens</div>
   <nav class="nav" aria-label="Main sections">
     <button class="nav-btn active" data-nav="ideas">Ideas</button>
-    <button class="nav-btn" data-nav="reviews">Reviews <span id="reviews-badge" class="nav-badge hidden" aria-label="reviews due"></span></button>
-    <button class="nav-btn" data-nav="track">Track record</button>
-    <button class="nav-btn" data-nav="profile">Profile</button>
-    <button class="nav-btn" data-nav="learn">Learn</button>
-    <button class="nav-btn" data-nav="accounts">Accounts</button>
+    <details class="nav-more">
+      <summary class="nav-btn nav-more-btn" aria-label="More sections">More <span id="reviews-badge" class="nav-badge hidden" aria-label="reviews due"></span></summary>
+      <div class="nav-more-menu" role="menu">
+        <button class="nav-btn" data-nav="reviews" role="menuitem">Reviews</button>
+        <button class="nav-btn" data-nav="track" role="menuitem">Track record</button>
+        <button class="nav-btn" data-nav="profile" role="menuitem">Profile</button>
+        <button class="nav-btn" data-nav="learn" role="menuitem">Learn</button>
+        <button class="nav-btn" data-nav="accounts" role="menuitem">Accounts</button>
+      </div>
+    </details>
   </nav>
-  <button id="theme-toggle" class="theme-toggle" aria-label="Toggle light and dark theme" title="Toggle theme">🌓</button>
+  <button id="theme-toggle" class="theme-toggle" aria-label="Toggle light and dark theme" title="Toggle theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 13.5A8.5 8.5 0 0 1 10.5 4 8.5 8.5 0 1 0 20 13.5Z" stroke-linejoin="round"/></svg></button>
 </header>
 
 <main>
@@ -214,9 +219,9 @@
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research — start at
     <a href="https://www.sec.gov/edgar" target="_blank" rel="noopener">SEC EDGAR</a>.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v1.0.1</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v1.1.0</span> · Built with vanilla HTML/CSS/JS · Your data never leaves this browser (localStorage only).</p>
 </footer>
 
-<script src="app.js?v=1.0.1"></script>
+<script src="app.js?v=1.1.0"></script>
 </body>
 </html>

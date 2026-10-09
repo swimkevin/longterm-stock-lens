@@ -1,5 +1,28 @@
 # Changelog — Long-Term Lens
 
+## [1.1.0] — 2026-10-09
+
+### Added
+- **AI verify (prompt generator): the final gate of the core flow.** New
+  `buildAnalyzePrompt(idea)` (pure, tested) packages ticker, 3-field thesis,
+  assumptions with confidence, checklist state, scorecard dims/weights/
+  composite, conviction level, and review-by date into a structured
+  verification prompt. The idea detail page gets an "AI verify" section with
+  a readonly prompt preview and a Copy button (clipboard API with manual
+  fallback). The prompt asks for metrics with cited sources/dates, bull/bear
+  cases, red flags, and similar companies — analysis, never "should I buy".
+
+### Changed
+- **Quiet secondary nav:** Ideas is now the single hero tab; Reviews, Track
+  record, Profile, Learn, and Accounts moved under a "More" menu. The
+  reviews-due badge still surfaces inside More, and More highlights while a
+  secondary screen is active.
+- **SVG icons:** inline SVG lens brand mark and theme-toggle glyph replace
+  the emoji; no emoji icons remain in the UI.
+- **README + tests:** README rewritten to a concise senior-dev standard;
+  smoke suite reorganized with a dedicated Analyze section — 212 assertions
+  passing (was 165).
+
 ## [1.0.1] — 2026-10-09
 
 ### Fixed
