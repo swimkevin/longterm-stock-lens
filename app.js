@@ -1,23 +1,13 @@
-/* Long-Term Lens — app logic.
- * Vanilla JS, no dependencies. User data lives in localStorage only.
- * Pure functions and data are DOM-free and exposed on globalThis.LongTermLens
- * for the Node smoke test via the guarded block at the bottom.
- */
+
 (function () {
 'use strict';
 
-/* App version — mirrored in version.txt, package.json, and the footer.
- * The "Check for updates" footer button compares this against version.txt. */
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.4.0';
 
 function updateReloadURL(pathname, v, hash) {
-  // Navigating (not reloading in place): a plain reload can keep serving the
-  // cached index.html, while a changed ?v= URL bypasses the HTTP cache.
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
 }
 
-/* ---------------- data: investor profile quiz ---------------- */
-// Each option carries a 0-3 score; higher = more capacity/tolerance for risk.
 const QUIZ = [
   {
     q: 'How old are you?',
@@ -75,9 +65,6 @@ const QUIZ = [
   },
 ];
 
-// Bands: total 0-18. Higher score -> larger conviction-stock slice.
-// Every band keeps broad index funds as the majority: conviction stocks are
-// the satellite, never the core.
 const BANDS = [
   { min: 14, index: 80, conv: 20, label: 'Growth-leaning',
     why: 'Long timeline, stable income, and comfort with volatility. You can afford a meaningful conviction slice — but the index core still does most of the work.' },
@@ -90,7 +77,6 @@ const BANDS = [
 ];
 
 function scoreRisk(answers) {
-  // answers: array of option indexes, one per QUIZ question
   let total = 0;
   answers.forEach((optIdx, qi) => {
     const opt = QUIZ[qi] && QUIZ[qi].options[optIdx];
@@ -100,9 +86,6 @@ function scoreRisk(answers) {
   return { total, max: QUIZ.length * 3, band };
 }
 
-/* ---------------- data: glossary micro-lessons ---------------- */
-// "healthy" describes typical patterns, never rules. Each term carries a
-// 3-question check (Zogo-style micro-lesson: read the explainer, take the quiz).
 const GLOSSARY = [
   { abbr: 'P/E', name: 'Price-to-Earnings ratio',
     what: 'Share price divided by earnings per share. Roughly: how many dollars investors pay for each dollar of yearly profit.',
@@ -256,9 +239,6 @@ const GLOSSARY = [
     ] },
 ];
 
-/* ---------------- glossary search ---------------- */
-// DOM-free: case-insensitive match against abbreviation, name, and body text.
-// Empty/null query matches everything.
 function filterGlossaryTerms(query) {
   const q = (query || '').trim().toLowerCase();
   if (!q) return GLOSSARY.slice();
@@ -267,9 +247,6 @@ function filterGlossaryTerms(query) {
       .toLowerCase().includes(q));
 }
 
-/* ---------------- pre-decision checklist ---------------- */
-// Journalytic-style debias gate: every item must be checked before conviction
-// can rise above "watching". Wording is beginner-friendly, no jargon.
 const CHECKLIST_ITEMS = [
   { key: 'moat', label: 'Does it have a durable edge?',
     help: 'Something competitors can\'t easily copy — network effects, switching costs, brand, scale, or patents.' },
@@ -288,8 +265,6 @@ function checklistComplete(idea) {
   return CHECKLIST_ITEMS.every(item => idea.checklist[item.key] === true);
 }
 
-/* Conviction levels. Raising above "watching" requires the full checklist —
- * the gate keeps debiasing in the flow instead of optional. DOM-free. */
 const CONVICTION_LEVELS = ['watching', 'leaning', 'strong'];
 const CONVICTION_LEVEL_LABELS = { watching: 'Watching', leaning: 'Leaning in', strong: 'Strong conviction' };
 
@@ -302,8 +277,6 @@ function canRaiseConviction(idea, level) {
   return { ok: true };
 }
 
-/* ---------------- scorecard: user-weighted composite 0-100 ---------------- */
-// StockRanks-style: three criteria, user-adjustable weights, one composite.
 const SCORE_DIMS = ['quality', 'value', 'conviction'];
 const SCORE_DIM_LABELS = {
   quality: 'Quality — how good is the business?',
@@ -315,11 +288,9 @@ const SCORE_DIM_HINTS = {
   value: '1 = far too expensive, 5 = comfortable price',
   conviction: '1 = surface-level, 5 = deep understanding',
 };
-const DEFAULT_WEIGHTS = { quality: 1, value: 1, conviction: 1 }; // equal shares; no fiddly sliders in the UI
+const DEFAULT_WEIGHTS = { quality: 1, value: 1, conviction: 1 };
 
 function normalizeWeights(weights) {
-  // Returns {quality, value, conviction} shares summing to 1, or null when the
-  // total is zero. DOM-free; weights are 0-100 numbers.
   let total = 0;
   SCORE_DIMS.forEach(d => {
     const v = Number(weights && weights[d]);
@@ -335,10 +306,6 @@ function normalizeWeights(weights) {
 }
 
 function compositeScore(idea) {
-  // idea.scores: {quality:1-5, value:1-5, conviction:1-5}; idea.weights: 0-100.
-  // Returns 0-100 rounded, or null when nothing is scored. Partial scoring
-  // computes over the scored dimensions only (same policy as the old 5-dim
-  // weightedScore).
   if (!idea) return null;
   const shares = normalizeWeights(idea.weights);
   if (!shares) return null;
@@ -355,7 +322,6 @@ function compositeScore(idea) {
 }
 
 function convictLabel(score) {
-  // Diverging conviction label for the 0-100 composite. DOM-free.
   if (score === null || score === undefined) return 'Unscored';
   if (score >= 75) return 'Strong conviction';
   if (score >= 55) return 'Growing conviction';
@@ -363,13 +329,6 @@ function convictLabel(score) {
   return 'Early research';
 }
 
-/* ---------------- AI-verify prompt generator ---------------- */
-// Final gate of the core flow: the site can't hold data-provider keys or
-// fetch live fundamentals, so instead of a broken half-feature it builds a
-// structured prompt from everything the user researched. Paste into
-// Muse/Claude for the full workup. DOM-free, plain text by construction
-// (rendered into a textarea via .value — user content can never become HTML).
-// Educational analysis only: the prompt asks for analysis, never "should I buy".
 function buildAnalyzePrompt(idea) {
   const notYet = '(not written yet)';
   const name = (idea && idea.name) || 'Unnamed idea';
@@ -389,8 +348,6 @@ function buildAnalyzePrompt(idea) {
     return '- [' + (done ? 'x' : ' ') + '] ' + item.label;
   }).join('\n');
 
-  // Weights are equal for new ideas but legacy ideas may carry custom ones —
-  // report the normalized share so the prompt is honest either way.
   const shares = normalizeWeights(idea && idea.weights) || {};
   const scoreLines = SCORE_DIMS.map(d => {
     const v = idea && idea.scores ? idea.scores[d] : null;
@@ -436,7 +393,6 @@ function buildAnalyzePrompt(idea) {
 }
 
 function thesesLabel(n) {
-  // "(1 thesis)" / "(2 theses)" / "" — DOM-free.
   if (!n) return '';
   return '(' + n + (n === 1 ? ' thesis)' : ' theses)');
 }
@@ -446,12 +402,7 @@ function ideasLabel(n) {
   return '(' + n + (n === 1 ? ' idea)' : ' ideas)');
 }
 
-/* ---------------- review dates ---------------- */
-// All date math is on ISO "YYYY-MM-DD" strings so it is deterministic and testable.
-
 function addMonths(dateStr, n) {
-  // Add n calendar months to an ISO date, clamping to the end of the month
-  // (Jan 31 + 1 month -> Feb 28/29). Returns null for invalid input.
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
   if (!m) return null;
   let y = +m[1], mo = +m[2] - 1 + n, d = +m[3];
@@ -467,9 +418,6 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/* Closing the revisit loop: after re-reading a due idea, schedule the next
- * check N months out. DOM-free; returns a new idea object — the original is
- * left untouched. Only the 1/3/6/12 intervals the UI offers are honored. */
 const REVIEW_INTERVALS = [1, 3, 6, 12];
 
 function rescheduleReview(idea, months, today) {
@@ -479,13 +427,9 @@ function rescheduleReview(idea, months, today) {
   return Object.assign({}, idea, { reviewMonths: n, reviewAt: addMonths(t, n) });
 }
 
-/* Every idea gets an expiry: ~90 days out (3 months), editable. DOM-free. */
 const DEFAULT_REVIEW_MONTHS = 3;
 
 function reviewAtOf(idea) {
-  // Effective review date. Ideas migrated from the old journal keep their old
-  // reviewAt (6-month default era); ideas without one default to createdAt +
-  // 3 months (~90 days).
   if (/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) return idea.reviewAt;
   const fallback = addMonths(idea.createdAt, idea.reviewMonths === 6 ? 6 : DEFAULT_REVIEW_MONTHS);
   return fallback;
@@ -497,15 +441,11 @@ function isReviewDue(idea, today) {
   return !!r && r <= today;
 }
 
-/* First-principles fix (B1): the review loop must never be gated on a date
- * arriving. Setting the review-by date is a pure, DOM-free operation —
- * returns a new idea object, or null when the date is invalid. */
 function setReviewAt(idea, dateStr) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return null;
   return Object.assign({}, idea, { reviewAt: dateStr });
 }
 
-/* ---------------- idea factory + track record ---------------- */
 function makeIdea(name, tickers, today) {
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
   return {
@@ -530,11 +470,6 @@ function makeIdea(name, tickers, today) {
   };
 }
 
-/* ---------------- trends & misses ----------------
- * The "spot a trend" stage of the loop: a trend is logged before any company
- * is known. status: 'watching' (still early) | 'missed' (the wave passed —
- * write the lesson, it becomes the pattern library) | 'chased' (turned into
- * a research idea). All DOM-free. */
 const TREND_STATUSES = ['watching', 'missed', 'chased'];
 const TREND_STATUS_LABELS = { watching: 'Watching', missed: 'Missed', chased: 'Became an idea' };
 
@@ -552,8 +487,6 @@ function makeTrend(name, why, today) {
   };
 }
 
-/* Defensive fill so a hand-edited or older trend object can never crash the
- * renderers. DOM-free. */
 function normalizeTrend(raw) {
   const trend = Object.assign({
     name: '', why: '', status: 'watching', lesson: '', ideaId: null,
@@ -571,7 +504,6 @@ function normalizeTrend(raw) {
   return trend;
 }
 
-/* Mark a trend missed. Returns a new trend; the caller writes the lesson. */
 function markTrendMissed(trend, today) {
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
   return Object.assign({}, trend, { status: 'missed', updatedAt: t });
@@ -584,9 +516,6 @@ function setTrendLesson(trend, lesson) {
   });
 }
 
-/* The bridge from "spotted a trend" to "researching a company": seeds a new
- * idea from the trend (thesis pre-filled with the original observation) and
- * marks the trend chased. DOM-free; returns { idea, trend }. */
 function trendToIdea(trend, today) {
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
   const idea = makeIdea(trend.name || 'Untitled idea', '', t);
@@ -601,11 +530,7 @@ function trendToIdea(trend, today) {
   return { idea, trend: nextTrend };
 }
 
-/* Fatebook-style review entry. outcome: 'intact' | 'changed' | 'resolved'.
- * reasonMatch: 'yes' | 'no' | 'na' — did it move for the stated reason? */
 function applyReview(idea, review, today) {
-  // DOM-free. Returns a new idea: review appended to history, next review
-  // scheduled, status flipped to 'resolved' when the outcome resolves it.
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
   const outcome = ['intact', 'changed', 'resolved'].includes(review.outcome) ? review.outcome : 'intact';
   const reasonMatch = ['yes', 'no', 'na'].includes(review.reasonMatch) ? review.reasonMatch : 'na';
@@ -624,9 +549,6 @@ function applyReview(idea, review, today) {
   return rescheduleReview(next, months, t);
 }
 
-/* Calibration summary: counts of review outcomes + the honest accuracy line —
- * how often the idea moved for the stated reason (right for the right
- * reasons). Excludes 'na' answers from the denominator. DOM-free. */
 function trackRecord(ideas) {
   const out = { intact: 0, changed: 0, resolved: 0, reviews: 0, reasonYes: 0, reasonAnswered: 0 };
   (ideas || []).forEach(idea => {
@@ -643,14 +565,11 @@ function trackRecord(ideas) {
   return out;
 }
 
-/* ---------------- export ---------------- */
 function journalToJSON(ideas) {
   return JSON.stringify(ideas, null, 2);
 }
 
 function journalToMarkdown(ideas, stamp, trends) {
-  // Plain-text export of the research — one section per idea, plus the trends
-  // & misses log when present. DOM-free.
   const lines = [
     '# Long-Term Lens — Research Ideas',
     '',
@@ -704,12 +623,9 @@ function journalToMarkdown(ideas, stamp, trends) {
   return lines.join('\n');
 }
 
-/* ---------------- storage + migration ---------------- */
 const STORE_KEY = 'longterm-stock-lens-v1';
 const SCHEMA_VERSION = 3;
 
-/* v2 -> v3: the trends collection is new and purely additive — ideas, the
- * glossary, and the investor profile carry over untouched. Never loses data. */
 function migrateV2ToV3(parsed) {
   const upgraded = blankStore();
   upgraded.ideas = (parsed.ideas || []).map(normalizeIdea);
@@ -722,19 +638,11 @@ function blankStore() {
   return { schema: SCHEMA_VERSION, ideas: [], trends: [], glossary: {}, quizProfile: null };
 }
 
-/* Migrate legacy stores (v0.x: { entries: [...] } or the v1 two-tap era) into
- * the v2 Ideas schema. Old journal entries become ideas; everything is
- * preserved: name, tickers, tags, thesis text (as the "what I believe"
- * field), falsify, the old 5-dim scores (mapped into the new 3-dim scorecard
- * AND kept verbatim as legacyScores), review dates, and createdAt. DOM-free;
- * never loses user data. */
 function migrateStore(raw) {
   const store = blankStore();
   let entries = [];
   if (raw && Array.isArray(raw.entries)) entries = raw.entries;
   else if (raw && Array.isArray(raw.ideas)) {
-    // Already the ideas shape but missing the schema marker: adopt as-is,
-    // filling any missing fields defensively.
     store.ideas = raw.ideas.map(normalizeIdea);
     store.glossary = raw.glossary || {};
     store.quizProfile = raw.quizProfile || null;
@@ -746,8 +654,7 @@ function migrateStore(raw) {
     const t = /^\d{4}-\d{2}-\d{2}$/.test(e.createdAt || '') ? e.createdAt : todayISO();
     const oldScores = e.scores || {};
     const num = v => (typeof v === 'number' && v >= 1 && v <= 5) ? v : null;
-    // Map old 5-dim scores onto the new 3-dim scorecard; conviction takes the
-    // rounded mean of product/moat/horizon (the belief-side dimensions).
+
     const beliefDims = [num(oldScores.product), num(oldScores.moat), num(oldScores.horizon)]
       .filter(v => v !== null);
     const conviction = beliefDims.length
@@ -776,8 +683,6 @@ function migrateStore(raw) {
       idea.reviewAt = e.reviewAt;
       idea.reviewMonths = [1, 3, 6, 12].includes(e.reviewMonths) ? e.reviewMonths : 6;
     } else {
-      // Legacy entries predate reviewAt entirely: same lazy default the old
-      // app used (createdAt + 6 months).
       idea.reviewAt = addMonths(t, 6);
       idea.reviewMonths = 6;
     }
@@ -787,8 +692,6 @@ function migrateStore(raw) {
   return store;
 }
 
-/* Defensive fill: guarantees every field the renderers touch exists, so a
- * hand-edited or future-older idea object can never crash the UI. DOM-free. */
 function normalizeIdea(rawIdea) {
   const idea = Object.assign({
     tags: [], status: 'open', trendId: null,
@@ -822,22 +725,20 @@ function loadStore() {
       return parsed;
     }
     if (parsed && parsed.schema === 2 && Array.isArray(parsed.ideas)) {
-      // v2 store (predates trends): additive upgrade, persisted once.
       const upgraded = migrateV2ToV3(parsed);
       saveStore(upgraded);
       return upgraded;
     }
-    // Legacy shape: migrate and persist the upgrade so the next load is cheap.
+
     const migrated = migrateStore(parsed);
     saveStore(migrated);
     return migrated;
   } catch (e) { return blankStore(); }
 }
 function saveStore(store) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* storage full/blocked */ }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {  }
 }
 
-/* ---------------- helpers ---------------- */
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -848,21 +749,19 @@ function uid() {
   return 'x' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
 }
 
-/* ---------------- navigation ---------------- */
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
   const el = $('screen-' + name);
   if (el) {
     el.classList.remove('hidden');
-    // Restart the view-enter animation on every navigation (visual only).
+
     el.style.animation = 'none';
-    void el.offsetWidth; // force reflow so the animation restarts
+    void el.offsetWidth;
     el.style.animation = '';
   }
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.nav === name));
-  // The secondary nav lives in a <details>; highlight its summary while a
-  // secondary screen is active, and close the menu after navigating.
+
   const SECONDARY = ['reviews', 'track', 'trends', 'profile', 'learn', 'accounts'];
   document.querySelectorAll('details.nav-more').forEach(d => {
     d.classList.toggle('active', SECONDARY.indexOf(name) !== -1);
@@ -871,7 +770,6 @@ function showScreen(name) {
   window.scrollTo(0, 0);
 }
 
-/* ---------------- ideas store (in-memory) ---------------- */
 let store = loadStore();
 
 function getIdea(id) {
@@ -898,9 +796,6 @@ function dueIdeas(today) {
     .sort((a, b) => (reviewAtOf(a) || '').localeCompare(reviewAtOf(b) || ''));
 }
 
-function ideaComposite(i) { return compositeScore(i); }
-
-/* ---------------- quiz UI (Investor profile) ---------------- */
 const quizAnswers = new Array(QUIZ.length).fill(null);
 
 function renderQuiz() {
@@ -940,7 +835,7 @@ function renderQuiz() {
   btn.addEventListener('click', showQuizResult);
   row.appendChild(btn);
   box.appendChild(row);
-  // Show the saved profile, if the user has completed the quiz before.
+
   if (store.quizProfile) {
     const saved = document.createElement('p');
     saved.className = 'fineprint';
@@ -964,9 +859,7 @@ function showQuizResult() {
   store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO() };
   saveStore(store);
   res.classList.remove('hidden');
-  // The conviction segment is the narrow side of the bar (2-20% wide).
-  // Always use the short label inside the segment; the aria-label carries
-  // the full wording for assistive tech.
+
   const convText = band.conv + '%';
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
@@ -981,14 +874,12 @@ function showQuizResult() {
   res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-/* ---------------- ideas home UI ---------------- */
 function convictionPillClass(score) {
   if (score === null || score === undefined) return 's-mid';
   return score < 40 ? 's-low' : score < 70 ? 's-mid' : 's-high';
 }
 
 function ideaRow(idea, opts) {
-  // A compact list row for the ideas home / due queue. DOM-built, escaped.
   opts = opts || {};
   const today = opts.today || todayISO();
   const score = compositeScore(idea);
@@ -1047,7 +938,7 @@ function ideaRow(idea, opts) {
 
 function renderIdeasHome() {
   const today = todayISO();
-  // Due-for-review queue: oldest review-by date first (Fatebook pattern).
+
   const due = dueIdeas(today);
   const queue = $('due-queue');
   queue.innerHTML = '';
@@ -1059,7 +950,7 @@ function renderIdeasHome() {
   } else {
     due.forEach(i => queue.appendChild(ideaRow(i, { today })));
   }
-  // All ideas: open first sorted by composite (desc, unscored last), resolved at the end.
+
   const open = openIdeas(today).slice().sort((a, b) => {
     const sa = compositeScore(a), sb = compositeScore(b);
     if (sa === null && sb === null) return a.name.localeCompare(b.name);
@@ -1080,10 +971,10 @@ function renderIdeasHome() {
     all.forEach(i => list.appendChild(ideaRow(i, { today })));
   }
   $('ideas-count').textContent = ideasLabel(all.length);
-  // Export buttons enable/disable.
+
   $('export-json').disabled = !all.length;
   $('export-md').disabled = !all.length;
-  // Nav badge for the Reviews tab.
+
   const badge = $('reviews-badge');
   if (due.length) {
     badge.textContent = due.length;
@@ -1122,7 +1013,6 @@ function openIdea(id) {
   showScreen('idea');
 }
 
-/* ---------------- idea detail: one-page research summary ---------------- */
 function sectionShell(title, hint) {
   const sec = document.createElement('section');
   sec.className = 'detail-sec';
@@ -1144,7 +1034,6 @@ function renderIdeaDetail(idea) {
   const today = todayISO();
   const score = compositeScore(idea);
 
-  // Header
   const head = document.createElement('div');
   head.className = 'detail-head';
   const h1 = document.createElement('h1');
@@ -1184,8 +1073,6 @@ function renderIdeaDetail(idea) {
   head.appendChild(pills);
   box.appendChild(head);
 
-  // Review controls — the loop is never gated on a date arriving: the
-  // review-by date is editable here and a review can start any time.
   const revCtl = document.createElement('div');
   revCtl.className = 'review-controls';
   const revLab = document.createElement('label');
@@ -1199,8 +1086,8 @@ function renderIdeaDetail(idea) {
     const next = setReviewAt(idea, revDate.value);
     if (!next) { revDate.value = reviewAtOf(idea) || ''; return; }
     updateIdea(idea.id, () => next);
-    renderIdeasHome(); // refreshes the Reviews-tab badge
-    openIdea(idea.id);  // re-render detail
+    renderIdeasHome();
+    openIdea(idea.id);
   });
   revLab.appendChild(revDate);
   revCtl.appendChild(revLab);
@@ -1220,9 +1107,6 @@ function renderIdeaDetail(idea) {
   revCtl.appendChild(nowBtn);
   box.appendChild(revCtl);
 
-  // Quick survey flow: thesis -> checklist -> score -> AI verify. Assumptions
-  // are optional (collapsed); the manual price log is gone — no hand-looked-up
-  // numbers, the AI verify prompt covers the financial workup.
   renderThesisSection(box, idea);
   renderChecklistSection(box, idea);
   renderScorecardSection(box, idea);
@@ -1232,8 +1116,6 @@ function renderIdeaDetail(idea) {
   renderIdeaDanger(box, idea);
 }
 
-/* (a) Thesis template — Stockxy's opinionated 3 fields: what I believe /
- * why (2-3 reasons) / what would prove me wrong. */
 function renderThesisSection(box, idea) {
   const sec = sectionShell('Thesis', 'Three fields, every time — this is what kills blank-page paralysis and makes your past ideas comparable.');
   const fields = [
@@ -1274,13 +1156,9 @@ function renderThesisSection(box, idea) {
   box.appendChild(sec);
 }
 
-/* (b) Key assumptions — Metaculus Radiant style: "what has to be true for
- * this to work," each with a confidence % (Fatebook quick-set chips). */
 const CONFIDENCE_CHIPS = [10, 25, 50, 75, 90];
 
 function renderAssumptionsSection(box, idea) {
-  // Collapsed by default: assumptions are useful but optional, and the page
-  // should read as a quick survey, not a workbook.
   const sec = document.createElement('details');
   sec.className = 'detail-sec';
   const sum = document.createElement('summary');
@@ -1364,8 +1242,6 @@ function renderAssumptionsSection(box, idea) {
   box.appendChild(sec);
 }
 
-/* (c) Pre-decision checklist — the Journalytic gate. Conviction can't rise
- * above "watching" until every item is checked. */
 function renderChecklistSection(box, idea) {
   const sec = sectionShell('Pre-decision checklist', 'Debiasing works only in the flow, not as an afterthought. Every item must be checked before conviction can rise above "Watching".');
   const list = document.createElement('div');
@@ -1393,7 +1269,7 @@ function renderChecklistSection(box, idea) {
     list.appendChild(lab);
   });
   sec.appendChild(list);
-  // Conviction level selector (gated).
+
   const gate = document.createElement('div');
   gate.className = 'conviction-gate';
   const lab = document.createElement('label');
@@ -1435,8 +1311,6 @@ function renderChecklistSection(box, idea) {
   box.appendChild(sec);
 }
 
-/* (d) Scorecard — StockRanks-style composite 0-100 on user-weighted
- * criteria: Quality / Value / Conviction. */
 function renderScorecardSection(box, idea) {
   const sec = sectionShell('Scorecard', 'Tap 1–5 for each dimension. The composite makes comparing two opportunities mechanical instead of a gut feeling.');
   SCORE_DIMS.forEach(d => {
@@ -1468,8 +1342,7 @@ function renderScorecardSection(box, idea) {
     row.appendChild(group);
     sec.appendChild(row);
   });
-  // No weight sliders — the page is a quick survey, not a spreadsheet.
-  // Dimensions are weighted equally; the composite still auto-normalizes.
+
   const wNote = document.createElement('p');
   wNote.className = 'fineprint';
   wNote.textContent = 'Dimensions weighted equally.';
@@ -1488,9 +1361,6 @@ function renderScorecardSection(box, idea) {
   box.appendChild(sec);
 }
 
-/* (e) AI verify — the prompt-generator final gate. The site can't fetch live
- * fundamentals (no API keys on a public static site), so it packages the
- * whole research record into a structured prompt for Muse/Claude instead. */
 function renderAnalyzeSection(box, idea) {
   const sec = sectionShell('AI verify',
     'The final gate: turn everything above into a verification prompt. Paste it into Muse or Claude for the metric workup, bull/bear cases, red flags, and similar companies. It asks for analysis — never "should I buy".');
@@ -1525,8 +1395,8 @@ function renderAnalyzeSection(box, idea) {
       try {
         ta.focus(); ta.select();
         if (document.execCommand('copy')) { done(); return; }
-      } catch (e) { /* fall through */ }
-      // Last resort: leave the text selected so the user can copy manually.
+      } catch (e) {  }
+
       ta.focus(); ta.select();
     }
   });
@@ -1539,7 +1409,6 @@ function renderAnalyzeSection(box, idea) {
   box.appendChild(sec);
 }
 
-/* (f) Journal entries attached to the idea. */
 function renderNotesSection(box, idea) {
   const sec = sectionShell('Research notes', 'Free-form journal entries attached to this idea — inline $TICKER-style structure without the form-filling.');
   const list = document.createElement('div');
@@ -1611,7 +1480,7 @@ function renderIdeaDanger(box, idea) {
   del.className = 'btn danger';
   del.textContent = 'Delete idea';
   del.setAttribute('aria-label', 'Delete idea: ' + idea.name);
-  // Inline two-tap confirm (no native confirm dialog — testable).
+
   del.addEventListener('click', () => {
     if (del.dataset.armed === '1') {
       store.ideas = store.ideas.filter(i => i.id !== idea.id);
@@ -1636,10 +1505,6 @@ function renderIdeaDanger(box, idea) {
   box.appendChild(sec);
 }
 
-/* ---------------- reviews screen ---------------- */
-// The review loop, Fatebook-style: every idea has an expiry; the app
-// initiates the review. The core prompt is Stockxy's: "did it move for your
-// stated reason?" — auditing the thesis, not just the outcome.
 let activeReviewId = null;
 
 function renderReviews() {
@@ -1727,8 +1592,6 @@ function renderReviews() {
 }
 
 function renderReviewForm(card, idea, onDone) {
-  // Replace the actions area with the inline review form. onDone (optional)
-  // re-renders the hosting view — used by the idea detail page's Review now.
   const old = card.querySelector('.review-form');
   if (old) old.remove();
   const form = document.createElement('div');
@@ -1841,7 +1704,6 @@ function renderReviewForm(card, idea, onDone) {
   card.appendChild(form);
 }
 
-/* ---------------- track record ---------------- */
 function renderTrackRecord() {
   const box = $('track-record');
   box.innerHTML = '';
@@ -1893,7 +1755,6 @@ function renderTrackRecord() {
   cal.appendChild(fine);
   box.appendChild(cal);
 
-  // Review history, newest first.
   const hist = [];
   (store.ideas || []).forEach(idea => {
     (idea.reviewHistory || []).forEach(r => hist.push({ idea, r }));
@@ -1938,7 +1799,6 @@ function renderTrackRecord() {
   }
 }
 
-/* ---------------- trends & misses UI ---------------- */
 function updateTrend(id, fn) {
   store.trends = (store.trends || []).map(t => {
     if (t.id !== id) return t;
@@ -1950,8 +1810,6 @@ function updateTrend(id, fn) {
 }
 
 function trendRow(trend) {
-  // DOM-built, escaped. Watching rows get actions; missed rows get the lesson
-  // editor (the pattern library); chased rows link back to the idea.
   const row = document.createElement('div');
   row.className = 'note-card';
   const head = document.createElement('div');
@@ -2085,10 +1943,8 @@ function quickAddTrend() {
   renderTrends();
 }
 
-/* ---------------- learn: micro-lesson UI ---------------- */
-// {el, term} pairs in render order — the search filter toggles their .hidden.
 let lessonNodes = [];
-let lessonQuizState = {}; // abbr -> array of selected option indexes
+let lessonQuizState = {};
 
 function lessonProgress(abbr) {
   const g = (store.glossary || {})[abbr];
@@ -2128,7 +1984,6 @@ function renderGlossary() {
     p3.appendChild(s3); p3.appendChild(document.createTextNode(g.flag));
     body.appendChild(p1); body.appendChild(p2); body.appendChild(p3);
 
-    // Micro-quiz: 3 questions, instant feedback.
     const qHead = document.createElement('h4');
     qHead.textContent = 'Check your understanding';
     body.appendChild(qHead);
@@ -2183,15 +2038,12 @@ function updateLessonScore(term, quizBox, picked, silent) {
     const prev = lessonProgress(term.abbr);
     store.glossary[term.abbr] = { best: Math.max(prev === null ? 0 : prev, correct), attempts: ((store.glossary[term.abbr] || {}).attempts || 0) + 1 };
     saveStore(store);
-    if (correct === 3) renderGlossary(); // re-render to show the ✓ badge
+    if (correct === 3) renderGlossary();
     else if (line) line.textContent = 'Answered: ' + correct + ' of 3 correct — best saved. Re-open to try again.';
   }
 }
 
 function applyGlossaryFilter() {
-  // Instant text filter: non-matching terms hide; the count line announces
-  // results (role="status"). The query is only ever matched and set via
-  // textContent — never rendered as HTML.
   const q = ($('glossary-search').value || '').trim();
   const visible = new Set(filterGlossaryTerms(q));
   let shown = 0;
@@ -2212,7 +2064,6 @@ function applyGlossaryFilter() {
   empty.classList.toggle('hidden', shown !== 0);
 }
 
-/* ---------------- export ---------------- */
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2240,26 +2091,23 @@ function exportMarkdown() {
   );
 }
 
-/* ---------------- init ---------------- */
 function init() {
-  // Theme toggle (visual only): persisted light/dark choice, dark default.
   const THEME_KEY = 'ltl_theme';
   let theme = 'dark';
-  try { theme = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { /* storage blocked */ }
+  try { theme = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) {  }
   if (theme !== 'light' && theme !== 'dark') theme = 'dark';
   document.documentElement.dataset.theme = theme;
   $('theme-toggle').addEventListener('click', () => {
     theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* storage blocked */ }
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {  }
   });
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.addEventListener('click', () => showScreen(b.dataset.nav)));
-  // Brand goes home — tapping the top-left logo returns to Ideas.
+
   const brandHome = $('brand-home');
   if (brandHome) brandHome.addEventListener('click', () => { renderIdeasHome(); showScreen('ideas'); });
-  // Update check (poker-sparring pattern): version.txt is cache-busted, so a
-  // stale phone always learns the truth. Auto-detects on load; one tap reloads.
+
   const cu = $('btn-check-update');
   function refreshUpdateButton(latest) {
     if (!cu) return;
@@ -2296,7 +2144,7 @@ function init() {
   }
   if (cu) {
     cu.addEventListener('click', () => checkForUpdates(true));
-    // Silent auto-detect shortly after load — no dialog unless the user taps.
+
     setTimeout(() => checkForUpdates(false), 2500);
   }
   document.querySelectorAll('[data-goto]').forEach(b =>
@@ -2319,7 +2167,7 @@ function init() {
   });
   $('export-json').addEventListener('click', exportJSON);
   $('export-md').addEventListener('click', exportMarkdown);
-  // Re-render dynamic screens when navigating to them (reviews/data may change).
+
   document.querySelector('.nav-btn[data-nav="reviews"]').addEventListener('click', renderReviews);
   document.querySelector('.nav-btn[data-nav="track"]').addEventListener('click', renderTrackRecord);
   document.querySelector('.nav-btn[data-nav="trends"]').addEventListener('click', renderTrends);
@@ -2327,7 +2175,6 @@ function init() {
 }
 
 function reloadJournal() {
-  // Re-read data from localStorage and re-render. Exposed for tests.
   store = loadStore();
   lessonQuizState = {};
   renderIdeasHome();
@@ -2343,7 +2190,6 @@ if (document.readyState === 'loading') {
   init();
 }
 
-// Expose pure logic for the Node smoke test (browsers ignore this).
 if (typeof globalThis !== 'undefined') {
   globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms,
     CHECKLIST_ITEMS, SCORE_DIMS, SCORE_DIM_LABELS, DEFAULT_WEIGHTS,
@@ -2357,5 +2203,4 @@ if (typeof globalThis !== 'undefined') {
     journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
     APP_VERSION, updateReloadURL };
 }
-
 })();

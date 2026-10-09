@@ -1,4 +1,4 @@
-/* Long-Term Lens — calm research theme */
+
 :root {
   --bg: #0d1117;
   --panel: #161c26;
@@ -12,7 +12,7 @@
   --text: #e6edf3;
   --muted: #8b949e;
 }
-/* Light (paper) theme — every surface re-tokened; toggle persisted in localStorage. */
+
 [data-theme="light"] {
   --bg: #f6f4ec;
   --panel: #fffdf7;
@@ -34,7 +34,6 @@
 [data-theme="light"] .btn.primary:hover { background: #186230; }
 [data-theme="light"] .btn.danger.armed { background: #f3d7d7; color: #a12323; }
 [data-theme="light"] .due-badge { background: #f5e9cf; }
-[data-theme="light"] .entry-score { background: #f0ece0; border-color: var(--line); color: var(--muted); }
 [data-theme="light"] .alloc-index { color: #fff; }
 * { box-sizing: border-box; }
 body {
@@ -53,14 +52,12 @@ h3 { font-size: 1.05rem; margin: 0 0 0.8em; }
 a { color: var(--blue); }
 .hidden { display: none !important; }
 
-/* disclaimer */
 .disclaimer-banner {
   background: #2a1f0d; border: 1px solid var(--amber); border-radius: 10px;
   padding: 0.8rem 1rem; font-size: 0.9rem; margin-bottom: 1.5rem; color: #f0d9a8;
 }
 .disclaimer-banner strong { color: var(--amber); }
 
-/* top bar */
 .topbar {
   display: flex; align-items: center; gap: 1rem;
   padding: 0.6rem 1.2rem; background: var(--panel);
@@ -68,15 +65,14 @@ a { color: var(--blue); }
   flex-wrap: wrap;
 }
 .brand { font-weight: 800; font-size: 1.1rem; letter-spacing: 0.3px; white-space: nowrap; }
-/* The brand is a real button: tapping it goes home. */
+
 button.brand { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem; }
 button.brand:hover { color: var(--green); }
 button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
-/* Quiet text-button for the footer update check. */
+
 .linklike { background: none; border: none; padding: 0; font: inherit; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .linklike:hover { color: var(--text); }
 .linklike.update-available { color: var(--green); font-weight: 700; text-decoration: none; }
-.brand-emoji { margin-right: 0.3rem; }
 .nav { display: flex; gap: 0.3rem; flex-wrap: wrap; }
 .theme-toggle {
   margin-left: auto; background: transparent; border: 1px solid var(--line);
@@ -98,19 +94,6 @@ button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px
 .screen { padding: 1.2rem 1rem 3rem; }
 .wrap { max-width: 860px; margin: 0 auto; }
 
-/* how-it-works cards */
-.how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin-top: 1rem; }
-.how-card {
-  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-  padding: 1.1rem; color: var(--text); text-align: left;
-}
-.how-card p { color: var(--muted); font-size: 0.92rem; margin: 0.5rem 0 0; }
-.how-emoji { font-size: 1.7rem; }
-.how-name { font-weight: 700; margin-top: 0.4rem; }
-.link-card { cursor: pointer; font: inherit; }
-.link-card:hover { border-color: var(--green-dim); }
-
-/* quiz */
 .quiz .q { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
 .quiz .q-title { font-weight: 700; margin-bottom: 0.7rem; }
 .opt-grid { display: grid; gap: 0.5rem; }
@@ -130,7 +113,6 @@ button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px
 .alloc-conv { background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #06130a; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
 .btn-row { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
 
-/* buttons */
 .btn {
   background: var(--panel2); border: 1px solid var(--line); color: var(--text);
   padding: 0.55rem 1.1rem; border-radius: 8px; cursor: pointer; font: inherit; font-size: 0.95rem;
@@ -146,7 +128,6 @@ button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px
   font: inherit; text-decoration: underline;
 }
 
-/* glossary */
 .gloss { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 0.6rem; }
 .gloss summary { padding: 0.8rem 1rem; cursor: pointer; font-weight: 700; list-style: none; display: flex; gap: 0.6rem; align-items: baseline; }
 .gloss summary::-webkit-details-marker { display: none; }
@@ -162,7 +143,6 @@ button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px
 .checklist li { margin-bottom: 0.6rem; }
 .checklist strong, ol.checklist strong { color: var(--text); }
 
-/* journal */
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; font-weight: 600; font-size: 0.92rem; }
 .field input, .field textarea, .field select {
@@ -171,7 +151,7 @@ button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px
   width: 100%; resize: vertical;
 }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--blue); outline: none; }
-/* Keyboard users get the same blue ring as buttons (mouse :focus keeps the subtle border change). */
+
 .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible {
   outline: 2px solid var(--blue); outline-offset: 2px;
 }
@@ -181,22 +161,18 @@ button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px
 .score-row { display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .score-btns { display: flex; gap: 0.3rem; }
 .score-btn {
-  /* 44px minimum touch target (WCAG 2.5.8); 5 fit in a row at 390px widths. */
+
   width: 2.75rem; height: 2.75rem; border-radius: 8px; border: 1px solid var(--line);
   background: var(--panel2); color: var(--text); cursor: pointer; font: inherit; font-weight: 700;
 }
 .score-btn:hover { border-color: var(--blue); }
 .score-btn.selected { background: var(--green-dim); border-color: var(--green); }
-.weighted-line { margin: 0.8rem 0; }
-.weighted-line strong { font-variant-numeric: tabular-nums; }
 
-/* Journal KPI strip: theses tracked / reviews due / avg conviction. */
 .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
 .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.8rem 1rem; text-align: center; }
 .kpi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
 .kpi-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
 
-/* Press physics + view transitions (visual only). */
 button { transition: transform 0.08s ease; }
 button:active { transform: scale(0.96); }
 @keyframes view-in { from { opacity: 0; transform: translateY(10px); } }
@@ -206,26 +182,11 @@ button:active { transform: scale(0.96); }
 .entry-head { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
 .entry-name { font-weight: 800; font-size: 1.05rem; }
 .entry-tickers { color: var(--blue); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.5px; }
-.entry-score { margin-left: auto; background: #0f1f14; border: 1px solid var(--green-dim); color: var(--green); font-weight: 800; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
-/* Diverging conviction scale: 0-5 score mapped to 0-100 (score * 20). */
-.entry-score.s-low { background: #2b1515; border-color: var(--red); color: #f2a8a8; }
-.entry-score.s-mid { background: #2a1f0d; border-color: var(--amber); color: #eec27a; }
-.entry-score.s-high { background: #0f1f14; border-color: var(--green); color: var(--green); }
-[data-theme="light"] .entry-score.s-low { background: #fae8e8; border-color: #dfa3a3; color: #a12323; }
-[data-theme="light"] .entry-score.s-mid { background: #f6ead0; border-color: #d9b45f; color: #8a5f00; }
-[data-theme="light"] .entry-score.s-high { background: #e3f2e7; border-color: #7fbf90; color: #1f7a38; }
-.entry-tags { margin: 0.4rem 0; display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .tag { background: var(--panel2); border: 1px solid var(--line); border-radius: 20px; padding: 0.1rem 0.6rem; font-size: 0.78rem; color: var(--muted); }
 .entry-thesis { color: var(--muted); font-size: 0.93rem; margin: 0.5rem 0; white-space: pre-wrap; }
 .entry-falsify { font-size: 0.85rem; color: var(--muted); border-left: 3px solid var(--amber); padding-left: 0.7rem; margin: 0.5rem 0; }
 .entry-falsify strong { color: var(--amber); }
 .entry-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; flex-wrap: wrap; align-items: center; }
-/* "Remind me again" interval select next to Mark reviewed (due entries only). */
-.review-again {
-  background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
-  color: var(--text); padding: 0.45rem 0.6rem; font: inherit; font-size: 0.9rem;
-}
-.review-again:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 1.5rem; text-align: center; }
 .due-badge {
   background: #2a1f0d; border: 1px solid var(--amber); color: var(--amber);
@@ -238,20 +199,10 @@ button:active { transform: scale(0.96); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn:disabled:hover { border-color: var(--line); }
 
-/* accounts */
-.table-wrap { overflow-x: auto; }
-.acct-table { width: 100%; border-collapse: collapse; font-size: 0.93rem; min-width: 560px; }
-.acct-table th, .acct-table td { border: 1px solid var(--line); padding: 0.7rem; text-align: left; vertical-align: top; }
-.acct-table thead th { background: var(--panel2); color: var(--green); }
-.acct-table tbody th { background: var(--panel); color: var(--text); width: 9rem; }
-.acct-table td { color: var(--muted); }
-
-/* learn */
 .link-list { padding-left: 1.2rem; }
 .link-list li { margin-bottom: 0.8rem; color: var(--muted); font-size: 0.95rem; }
 .link-list strong, .link-list em { color: var(--text); }
 
-/* footer */
 .footer {
   border-top: 1px solid var(--line); padding: 1.5rem 1.2rem 2.5rem;
   color: var(--muted); font-size: 0.9rem; max-width: 860px; margin: 0 auto;
@@ -268,7 +219,6 @@ button:active { transform: scale(0.96); }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* Mobile: horizontal scroll nav instead of wrapping */
 @media (max-width: 640px) {
   .topbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .nav { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -276,16 +226,12 @@ button:active { transform: scale(0.96); }
   .nav-btn { white-space: nowrap; flex-shrink: 0; }
   .brand { flex-shrink: 0; }
   .theme-toggle { flex-shrink: 0; }
-  /* Better mobile spacing (Muse-like breathing room) */
+
   .wrap { padding: 0 1rem; }
-  .how-grid { grid-template-columns: 1fr; gap: 0.75rem; }
   h1 { line-height: 1.25; }
   .disclaimer-banner { font-size: 0.85rem; padding: 0.7rem 0.9rem; }
 }
 
-/* ============ v1.0 redesign: Ideas / Reviews / Track record ============ */
-
-/* Reviews nav badge (due-count). */
 .nav-badge {
   display: inline-block; min-width: 1.4em; text-align: center;
   background: var(--amber); color: #0d1117; font-weight: 800; font-size: 0.78rem;
@@ -293,7 +239,6 @@ button:active { transform: scale(0.96); }
   font-variant-numeric: tabular-nums;
 }
 
-/* Idea rows (home list + due queue + upcoming). */
 .idea-row { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 0.7rem; }
 .idea-row.due { border-color: var(--amber); }
 .idea-row.resolved { opacity: 0.75; }
@@ -318,26 +263,22 @@ button:active { transform: scale(0.96); }
 [data-theme="light"] .idea-score.s-high { background: #e3f2e7; border-color: #7fbf90; color: #1f7a38; }
 .idea-meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 
-/* Idea detail page. */
 .back-btn { margin-bottom: 1rem; }
 .detail-head h1 { margin-bottom: 0.2rem; }
 .detail-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.6rem 0 1.4rem; }
 .detail-sec { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; }
 .detail-sec h3 { margin-top: 0; }
-/* Collapsible optional sections read as survey headers, not workbook chapters. */
+
 .detail-sec-summary { font-size: 1.05rem; font-weight: 700; cursor: pointer; list-style: none; margin: 0; }
 .detail-sec-summary::-webkit-details-marker { display: none; }
 .detail-sec-summary::after { content: "▾"; font-size: 0.8em; color: var(--muted); margin-left: 0.35rem; }
 details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
 .empty.mini { padding: 0.8rem; font-size: 0.9rem; margin-bottom: 0.8rem; }
 
-/* Review controls on the idea detail page: the loop is never gated on a
- * date arriving — the review-by date is editable and reviews start anytime. */
 .review-controls { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: end; margin: 0 0 1.2rem; }
 .review-controls .field { margin-bottom: 0; }
 .detail-review-wrap { margin-bottom: 1.2rem; }
 
-/* Assumptions + chips (Fatebook-style confidence chips). */
 .assump-list { margin-bottom: 1rem; }
 .assump-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .assump-text { flex: 1; min-width: 12rem; }
@@ -352,7 +293,6 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
 .chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .btn.mini { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
 
-/* Pre-decision checklist (Journalytic gate). */
 .check-list { margin-bottom: 1rem; }
 .check-item {
   display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.6rem 0;
@@ -366,25 +306,21 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
 
 .composite-line { margin: 0.8rem 0 0; font-size: 1.05rem; }
 .composite-line strong { font-variant-numeric: tabular-nums; }
-/* The helper sits on its own line so it can never collide with the score. */
+
 .composite-line .hint { display: block; margin-top: 0.25rem; }
 
-/* Notes. */
 .notes-list { margin-bottom: 1rem; }
 .note-card { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.6rem; }
 .note-text { margin: 0.4rem 0 0.6rem; white-space: pre-wrap; font-size: 0.95rem; }
 
-/* Review form. */
 .review-form { margin-top: 1rem; }
 .review-form > p:first-child { margin-top: 0; }
 
-/* Learn: micro-lesson quiz. */
 .lesson .lesson-done { margin-left: auto; color: var(--green); font-weight: 800; }
 .lesson-quiz .q { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem; margin-bottom: 0.7rem; }
 .lesson-quiz h4, .gloss .body h4 { margin: 1.1rem 0 0.6rem; }
 .lesson-score { margin-top: 0.5rem; }
 
-/* Accounts: "What's going on here? / Why should I care?" cards (Finimize skeleton). */
 .acct-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.9rem; margin-top: 1rem; }
 .acct-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem; }
 .acct-card h3 { margin-top: 0; color: var(--green); }
@@ -397,16 +333,11 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
   .price-form { grid-template-columns: 1fr; }
 }
 
-/* ============ v1.1: one core feature, quiet secondary nav, AI verify ============ */
-
-/* Brand icon (inline SVG replaces the emoji). */
 .brand { display: inline-flex; align-items: center; gap: 0.45rem; }
 .brand-icon { color: var(--green); flex-shrink: 0; }
 .theme-toggle { display: inline-flex; align-items: center; justify-content: center; }
 .theme-toggle svg { display: block; }
 
-/* "More" menu: the quiet secondary nav. Ideas is the hero; everything else
- * lives one tap away instead of competing for attention. */
 .nav-more { position: relative; }
 .nav-more > summary { list-style: none; }
 .nav-more > summary::-webkit-details-marker { display: none; }
@@ -419,9 +350,9 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
   padding: 0.35rem; min-width: 11rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
+.nav-btn svg { vertical-align: -2px; margin-right: 0.35rem; }
 .nav-more-menu .nav-btn { text-align: left; width: 100%; }
 
-/* AI verify section: the final gate of the core flow. */
 .analyze-sec .analyze-prompt {
   width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.82rem; line-height: 1.55; color: var(--text);
@@ -431,9 +362,7 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
 .analyze-sec .btn-row { margin-top: 0.2rem; }
 
 @media (max-width: 640px) {
-  /* The dropdown must clear the sticky header with an explicit position —
-   * `top: auto` on fixed elements renders at a broken static position in
-   * mobile Safari (empty white strip under the header). */
+
   .nav-more-menu {
     position: fixed;
     top: 3.6rem;

@@ -509,7 +509,7 @@ async function main() {
   assert(typeof L.updateReloadURL === 'function', 'updateReloadURL exposed for tests');
   assert(L.updateReloadURL('/longterm-stock-lens/', '1.3.1', '') === '/longterm-stock-lens/?v=1.3.1',
     'update URL carries the new version (cache-busting navigation)');
-  assert(L.APP_VERSION === '1.3.1', 'APP_VERSION matches release');
+  assert(L.APP_VERSION === '1.4.0', 'APP_VERSION matches release');
 
   console.log('idea detail back + XSS in name:');
   document.getElementById('idea-back').click();

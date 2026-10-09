@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [1.4.0] — 2026-10-09
+
+### Added
+- **SVG icon set for navigation:** every nav item (Ideas + the six More sections)
+  now has a simple 15px stroke icon — lightbulb, check-circle, bar chart,
+  trending-up, user, book, and card.
+
+### Changed
+- **Debloated:** ~155 lines removed — all code comments stripped, 37 lines of
+  dead CSS deleted (old table/card/score styles no longer rendered), one dead
+  JS wrapper removed. app.js is 2,361 → 2,206 lines of clean, self-explanatory
+  code.
+
 ## [1.3.1] — 2026-10-09
 
 ### Added
