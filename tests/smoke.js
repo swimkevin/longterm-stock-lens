@@ -139,6 +139,12 @@ async function main() {
   assert(L.isReviewDue({ reviewAt: '2026-10-04' }, '2026-10-04') === true, 'review date == today is due');
   assert(L.isReviewDue({ reviewAt: '2026-10-05' }, '2026-10-04') === false, 'future review date is not due');
 
+  console.log('setReviewAt:');
+  const s1 = L.setReviewAt({ id: 'e1', reviewAt: '2027-01-01' }, '2026-12-15');
+  assert(s1 && s1.reviewAt === '2026-12-15', 'valid date sets reviewAt');
+  assert(L.setReviewAt({ id: 'e1' }, 'not-a-date') === null, 'invalid date -> null');
+  assert(L.setReviewAt({ id: 'e1' }, '') === null, 'empty date -> null');
+
   console.log('rescheduleReview:');
   const base = { id: 'e1', name: 'Base', createdAt: '2026-10-04', reviewMonths: 3, reviewAt: '2020-01-01' };
   const r3 = L.rescheduleReview(base, '3', '2026-10-08');
@@ -392,6 +398,60 @@ async function main() {
   assert(document.querySelector('#idea-detail img') === null, 'name probe created no img element');
   document.getElementById('idea-back').click();
 
+  // ---- review-by editing + Review now on the idea detail page (B1) ----
+  // The loop must never be gated on a date arriving: the review-by date is
+  // editable on the detail page and a review can start any time.
+  console.log('review controls on idea detail:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Review Co';
+  document.getElementById('qa-add').click();
+  assert(!document.getElementById('screen-idea').classList.contains('hidden'), 'quick-add opens detail for the review test');
+  const revInput = document.querySelector('#idea-detail .review-controls input[type="date"]');
+  st = readStore();
+  const reviewCo = st.ideas.find(i => i.name === 'Review Co');
+  assert(revInput && revInput.value === L.reviewAtOf(reviewCo), 'review-by date input shows the current date');
+  const nowBtn = Array.from(document.querySelectorAll('#idea-detail .review-controls .btn.primary'))
+    .find(b => b.textContent === 'Review now');
+  assert(nowBtn, 'detail page offers Review now');
+  // Invalid date is rejected and the input resets to the stored date.
+  revInput.value = 'not-a-date';
+  revInput.dispatchEvent(new window.Event('change', { bubbles: true }));
+  st = readStore();
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(st.ideas.find(i => i.name === 'Review Co').reviewAt), 'invalid review-by rejected');
+  // Set review-by to today -> due immediately (B3: due-today surfaces in Reviews).
+  const todayStr = L.todayISO();
+  const revInput2 = document.querySelector('#idea-detail .review-controls input[type="date"]');
+  revInput2.value = todayStr;
+  revInput2.dispatchEvent(new window.Event('change', { bubbles: true }));
+  st = readStore();
+  assert(st.ideas.find(i => i.name === 'Review Co').reviewAt === todayStr, 'review-by date saved to the store');
+  assert(!document.getElementById('reviews-badge').classList.contains('hidden') &&
+    document.getElementById('reviews-badge').textContent === '1', 'Reviews badge appears when due today');
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  assert(document.querySelectorAll('#reviews-list .entry.due').length === 1, 'due-today idea surfaces in Reviews');
+  // Review now from the detail page, without waiting for the date.
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(document.querySelectorAll('#ideas-list .idea-row .idea-main'))
+    .find(b => b.getAttribute('aria-label') === 'Open research for Review Co').click();
+  const nowBtn2 = Array.from(document.querySelectorAll('#idea-detail .review-controls .btn.primary'))
+    .find(b => b.textContent === 'Review now');
+  nowBtn2.click();
+  assert(document.querySelector('#idea-detail .detail-review-wrap .review-form'),
+    'review form opens inline on the detail page');
+  assert(document.querySelector('#idea-detail .detail-review-wrap .review-form').textContent.includes('Did it move for your stated reason?'),
+    'detail review asks the thesis-audit question');
+  Array.from(document.querySelectorAll('#idea-detail .detail-review-wrap .review-form .chip'))
+    .find(b => b.textContent === 'Thesis intact').click();
+  document.querySelector('#idea-detail .detail-review-wrap .review-form textarea').value = 'Detail-page review.';
+  Array.from(document.querySelectorAll('#idea-detail .detail-review-wrap .review-form .btn.primary'))
+    .find(b => b.textContent === 'Save review').click();
+  st = readStore();
+  const reviewed2 = st.ideas.find(i => i.name === 'Review Co');
+  assert(reviewed2.reviewHistory.length === 1 && reviewed2.reviewHistory[0].note === 'Detail-page review.',
+    'review saved from the detail page');
+  assert(document.querySelector('#idea-detail h1').textContent === 'Review Co', 'detail re-renders after saving the review');
+  assert(document.getElementById('reviews-badge').classList.contains('hidden'), 'badge clears after the review re-schedules');
+
   // ---- review flow ----
   console.log('review flow:');
   st = readStore();
@@ -455,7 +515,7 @@ async function main() {
   console.log('track record:');
   document.querySelector('.nav-btn[data-nav="track"]').click();
   const kpiVals = Array.from(document.querySelectorAll('#track-record .kpi-value')).map(el => el.textContent);
-  assert(kpiVals.join(',') === '1,0,0,1', 'KPI strip: 1 review, 0 intact, 0 changed, 1 resolved (got ' + kpiVals.join(',') + ')');
+  assert(kpiVals.join(',') === '2,1,0,1', 'KPI strip: 2 reviews, 1 intact, 0 changed, 1 resolved (got ' + kpiVals.join(',') + ')');
   assert(document.querySelector('#track-record .panel').textContent.includes('100%'),
     'calibration shows 100% moved-for-stated-reasons');
   assert(document.querySelector('#track-record').textContent.includes('Thesis played out.'),
@@ -520,7 +580,7 @@ async function main() {
   assert(mdText.includes('## Test Co (TST)') && mdText.includes('## Second Co'), 'exported markdown contains ideas');
   assert(mdText.includes('/ 100'), 'exported markdown includes composite scores');
   const jsonText = await createdURLs[0].text();
-  assert(JSON.parse(jsonText).length === 4, 'exported JSON contains all ideas');
+  assert(JSON.parse(jsonText).length === 5, 'exported JSON contains all ideas');
 
   // ---- disclaimers ----
   document.querySelector('.nav-btn[data-nav="ideas"]').click();

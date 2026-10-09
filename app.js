@@ -415,6 +415,14 @@ function isReviewDue(idea, today) {
   return !!r && r <= today;
 }
 
+/* First-principles fix (B1): the review loop must never be gated on a date
+ * arriving. Setting the review-by date is a pure, DOM-free operation —
+ * returns a new idea object, or null when the date is invalid. */
+function setReviewAt(idea, dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return null;
+  return Object.assign({}, idea, { reviewAt: dateStr });
+}
+
 /* ---------------- idea factory + track record ---------------- */
 function makeIdea(name, tickers, today) {
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
@@ -965,7 +973,7 @@ function renderIdeaDetail(idea) {
     meta.appendChild(tk);
     meta.appendChild(document.createTextNode(' · '));
   }
-  meta.appendChild(document.createTextNode('opened ' + idea.createdAt + ' · review by ' + (reviewAtOf(idea) || '—')));
+  meta.appendChild(document.createTextNode('opened ' + idea.createdAt));
   head.appendChild(meta);
   const pills = document.createElement('div');
   pills.className = 'detail-pills';
@@ -989,6 +997,42 @@ function renderIdeaDetail(idea) {
   }
   head.appendChild(pills);
   box.appendChild(head);
+
+  // Review controls — the loop is never gated on a date arriving: the
+  // review-by date is editable here and a review can start any time.
+  const revCtl = document.createElement('div');
+  revCtl.className = 'review-controls';
+  const revLab = document.createElement('label');
+  revLab.className = 'field inline-field';
+  revLab.appendChild(document.createTextNode('Review by'));
+  const revDate = document.createElement('input');
+  revDate.type = 'date';
+  revDate.value = reviewAtOf(idea) || '';
+  revDate.setAttribute('aria-label', 'Review-by date for this idea');
+  revDate.addEventListener('change', () => {
+    const next = setReviewAt(idea, revDate.value);
+    if (!next) { revDate.value = reviewAtOf(idea) || ''; return; }
+    updateIdea(idea.id, () => next);
+    renderIdeasHome(); // refreshes the Reviews-tab badge
+    openIdea(idea.id);  // re-render detail
+  });
+  revLab.appendChild(revDate);
+  revCtl.appendChild(revLab);
+  const nowBtn = document.createElement('button');
+  nowBtn.className = 'btn primary';
+  nowBtn.textContent = 'Review now';
+  nowBtn.setAttribute('aria-label', 'Start a review of this idea now');
+  nowBtn.addEventListener('click', () => {
+    const existing = box.querySelector('.detail-review-wrap');
+    if (existing) { existing.remove(); return; }
+    const wrap = document.createElement('div');
+    wrap.className = 'detail-review-wrap';
+    box.appendChild(wrap);
+    renderReviewForm(wrap, getIdea(idea.id) || idea, () => openIdea(idea.id));
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  revCtl.appendChild(nowBtn);
+  box.appendChild(revCtl);
 
   renderThesisSection(box, idea);
   renderAssumptionsSection(box, idea);
@@ -1564,8 +1608,9 @@ function renderReviews() {
   }
 }
 
-function renderReviewForm(card, idea) {
-  // Replace the actions area with the inline review form.
+function renderReviewForm(card, idea, onDone) {
+  // Replace the actions area with the inline review form. onDone (optional)
+  // re-renders the hosting view — used by the idea detail page's Review now.
   const old = card.querySelector('.review-form');
   if (old) old.remove();
   const form = document.createElement('div');
@@ -1666,12 +1711,13 @@ function renderReviewForm(card, idea) {
     activeReviewId = null;
     renderIdeasHome();
     renderReviews();
+    if (onDone) onDone();
   });
   row.appendChild(save);
   const cancel = document.createElement('button');
   cancel.className = 'btn';
   cancel.textContent = 'Cancel';
-  cancel.addEventListener('click', () => { activeReviewId = null; renderReviews(); });
+  cancel.addEventListener('click', () => { activeReviewId = null; if (onDone) { onDone(); } else { renderReviews(); } });
   row.appendChild(cancel);
   form.appendChild(row);
   card.appendChild(form);
@@ -1987,7 +2033,7 @@ if (typeof globalThis !== 'undefined') {
     CHECKLIST_ITEMS, SCORE_DIMS, SCORE_DIM_LABELS, DEFAULT_WEIGHTS,
     CONVICTION_LEVELS, CONVICTION_LEVEL_LABELS, REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     normalizeWeights, compositeScore, convictLabel, checklistComplete, canRaiseConviction,
-    ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue,
+    ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
     rescheduleReview, makeIdea, applyReview, trackRecord,
     journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY };
 }

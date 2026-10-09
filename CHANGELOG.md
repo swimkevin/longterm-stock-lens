@@ -1,5 +1,13 @@
 # Changelog — Long-Term Lens
 
+## [1.0.1] — 2026-10-09
+
+### Fixed
+- **Review loop is now always reachable (was: gated ~90 days).** The
+  review-by date is editable directly on the idea detail page, and a
+  "Review now" button opens the review flow inline any time — no more
+  waiting for the date to arrive. Found by the v1.0.0 live QA pass.
+
 ## [1.0.0] — 2026-10-09
 
 Full redesign around an **Ideas → Research → Review** loop, built from a
