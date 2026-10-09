@@ -1881,7 +1881,10 @@ function trendRow(trend) {
     save.textContent = 'Save lesson';
     save.addEventListener('click', () => {
       updateTrend(trend.id, t => setTrendLesson(t, ta.value));
-      renderTrends();
+      const orig = save.textContent;
+      save.textContent = 'Saved ✓';
+      save.disabled = true;
+      setTimeout(() => { save.textContent = orig; save.disabled = false; }, 1200);
     });
     actions.appendChild(save);
     const back = document.createElement('button');

@@ -1,5 +1,14 @@
 # Changelog — Long-Term Lens
 
+## [1.4.2] — 2026-10-09
+
+### Fixed
+- The "Save lesson" button on missed-wave trend cards looked dead: it saved
+  correctly but re-rendered the section identically, so nothing appeared to
+  happen. It now shows a transient "Saved ✓" confirmation (and briefly
+  disables) instead of re-rendering — which also keeps your cursor in the
+  textarea and preserves scroll position.
+
 ## [1.4.1] — 2026-10-09
 
 ### Fixed
