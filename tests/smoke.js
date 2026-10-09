@@ -220,7 +220,18 @@ async function main() {
   document.querySelector('#quiz .btn.primary').click();
   const res = document.getElementById('quiz-result');
   assert(!res.classList.contains('hidden'), 'result appears after answering all questions');
-  assert(res.textContent.includes('80% index') && res.textContent.includes('20% conviction'), 'result shows 80/20 allocation');
+  assert(res.textContent.includes('80% index'), 'result shows 80% index allocation');
+  assert(res.querySelector('.alloc-conv').textContent === '20%', 'conv segment always uses short label (got "' +
+    res.querySelector('.alloc-conv').textContent + '")');
+  assert(res.getAttribute('role') === 'status', 'quiz result announced via role=status');
+  // 13% band: "13% conviction" used to clip in the narrow bar segment
+  document.querySelectorAll('#quiz .q').forEach((q, i) => // 5x s=2 + 1x s=1 -> 11/18
+    q.querySelectorAll('.opt-btn')[i < 5 ? 1 : 2].click());
+  document.querySelector('#quiz .btn.primary').click();
+  assert(res.querySelector('.alloc-conv').textContent === '13%', '13% conv segment uses short label (got "' +
+    res.querySelector('.alloc-conv').textContent + '")');
+  assert(res.querySelector('.alloc-bar').getAttribute('aria-label').includes('13 percent conviction stocks'),
+    'aria-label still carries the full 13% wording');
   // narrow conviction slice: short label avoids clipping in the allocation bar
   document.querySelectorAll('#quiz .q').forEach(q => q.querySelectorAll('.opt-btn')[3].click()); // all s=0 -> 0/18
   document.querySelector('#quiz .btn.primary').click();

@@ -1,5 +1,28 @@
 # Changelog — Long-Term Lens
 
+## [0.4.2] — 2026-10-09
+
+Risk-profiler result polish: no label clipping + screen-reader announcement.
+
+### Fixed
+- **Allocation bar labels never clip:** the conviction segment is the narrow
+  side of the bar (2–20% wide), so even "20% conviction" could clip inside the
+  `overflow:hidden` segment on phones. All conviction segments now render the
+  short label ("20%", "13%") — the bar's `aria-label` still carries the full
+  wording ("20 percent conviction stocks") for assistive tech, completing the
+  short-label pattern introduced for narrow segments in v0.4.0.
+
+### Added
+- **Quiz results are announced:** `#quiz-result` now has `role="status"`, so
+  screen-reader users hear their allocation band (and the "answer every
+  question" prompt) when it renders — the same pattern the glossary count
+  line and the watchlist-due summary already use.
+
+### Tests
+- `tests/smoke.js`: conviction segment asserts short labels for the 20%,
+  13%, and 2% bands; `role="status"` asserted on `#quiz-result`; aria-label
+  coverage extended to the 13% band's full wording.
+
 ## [0.4.1] — 2026-10-08
 
 Closes the thesis-revisit loop + a screen-reader announcement fix.

@@ -353,10 +353,11 @@ function showQuizResult() {
   }
   const { total, max, band } = scoreRisk(quizAnswers);
   res.classList.remove('hidden');
-  // Narrow conviction segments (2%, 7%) can't fit the full word without
-  // clipping inside the overflow:hidden bar — use the short label there.
-  // The aria-label above always carries the full wording for AT.
-  const convText = band.conv < 10 ? band.conv + '%' : band.conv + '% conviction';
+  // The conviction segment is the narrow side of the bar (2-20% wide), so even
+  // "20% conviction" can clip inside the overflow:hidden bar. Always use the
+  // short label ("20%") inside the bar segment itself; the bar's aria-label
+  // carries the full wording for assistive tech.
+  const convText = band.conv + '%';
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
     '<p class="fineprint">Score ' + total + ' / ' + max + ' — educational starting point, not advice.</p>' +
