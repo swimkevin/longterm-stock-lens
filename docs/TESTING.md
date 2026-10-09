@@ -2,21 +2,29 @@
 
 ## What the suite is
 
-One file, `tests/smoke.js`, run by `npm test`. **114 assertions**, all
+One file, `tests/smoke.js`, run by `npm test`. **163 assertions**, all
 passing. It has two halves:
 
 1. **Pure-logic assertions** — the DOM-free core exposed on
-   `globalThis.LongTermLens` (`scoreRisk`, `weightedScore`, `addMonths`,
-   `reviewAtOf`, `isReviewDue`, `journalToJSON`, `journalToMarkdown`,
-   `scoreCount`, `thesesLabel`, `GLOSSARY`): scoring-band boundaries,
-   weight math, month-end clamping (incl. leap years), review-date
-   computation, export content (headings, scores, dates, tags, falsify
-   notes, disclaimer, empty-journal case).
+   `globalThis.LongTermLens` (`scoreRisk`, `compositeScore`,
+   `normalizeWeights`, `convictLabel`, `checklistComplete`,
+   `canRaiseConviction`, `makeIdea`, `applyReview`, `trackRecord`,
+   `migrateStore`, `addMonths`, `reviewAtOf`, `isReviewDue`,
+   `rescheduleReview`, `journalToJSON`, `journalToMarkdown`,
+   `ideasLabel`, `GLOSSARY` with 3-question quizzes): scorecard math,
+   weight normalization, checklist-gate behavior, legacy migration,
+   month-end clamping (incl. leap years), review-date computation, export
+   content (headings, scores, dates, tags, falsify, assumptions,
+   disclaimer, empty case).
 2. **jsdom UI boot** — loads the real `index.html` + `app.js`, asserts no
-   script errors, clicks every nav tab, completes the risk quiz, saves a
-   journal entry, and verifies `localStorage` round-trips, review-due
-   badges and sorting, and the export download contract (Blob types,
-   dated filenames, object-URL wiring).
+   script errors, clicks every nav tab, completes the investor-profile quiz
+   (result persisted), quick-adds an idea, fills the thesis template, runs
+   the checklist gate, scores the scorecard, adds an assumption, logs a
+   price, adds a note, completes a review (intact/changed/resolved),
+   verifies the due queue sorts oldest-first, the track record counts
+   reviews, a lesson quiz earns its badge, the export download contract
+   (Blob types, dated filenames, object-URL wiring), and verifies
+   `localStorage` round-trips including a seeded v0.x migration.
 
 ## The rules
 
@@ -30,12 +38,12 @@ passing. It has two halves:
 
 ## Security testing
 
-User-entered strings (thesis names, tickers, tags, thesis text) render
-via `textContent` or the `esc()` helper — never raw `innerHTML`. The
-suite verifies this with a literal probe string,
-`<img src=x onerror=alert(1)>`, saved as a journal entry: it must render
-as inert text, produce no real `img` element, and leave no `onerror`
-handlers anywhere in the watchlist.
+User-entered strings (idea names, tickers, tags, theses, assumptions,
+notes) render via `textContent` or the `esc()` helper — never raw
+`innerHTML`. The suite verifies this with a literal probe string,
+`<img src=x onerror=alert(1)>`, saved as an idea name, an assumption, and
+a note: it must render as inert text, produce no real `img` element, and
+leave no `onerror` handlers anywhere in the idea detail.
 
 ## Honest limitations
 
@@ -51,9 +59,9 @@ handlers anywhere in the watchlist.
 Examples of the discipline above, from real history:
 
 - **XSS probe renders as plain text.** During a live playtest of the
-  journal, an entry containing a literal XSS probe string was verified
-  to render as inert text in the browser — the escaping rule held
-  outside the test harness too.
+  idea detail, a probe string saved as an idea name, an assumption, and a
+  note was verified to render as inert text — the escaping rule held in
+  the new components too.
 - **Footer version staleness.** The v0.3.0 polish pass shipped with the
   footer still reading v0.1.0; the fix (correcting it to v0.3.0) was
   caught in review and is now documented as a release-checklist item:

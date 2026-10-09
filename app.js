@@ -1,12 +1,12 @@
 /* Long-Term Lens — app logic.
  * Vanilla JS, no dependencies. User data lives in localStorage only.
- * Pure functions (scoreRisk, weightedScore, GLOSSARY, QUIZ) are DOM-free and
- * exported for the Node smoke test via the guarded block at the bottom.
+ * Pure functions and data are DOM-free and exposed on globalThis.LongTermLens
+ * for the Node smoke test via the guarded block at the bottom.
  */
 (function () {
 'use strict';
 
-/* ---------------- data: risk quiz ---------------- */
+/* ---------------- data: investor profile quiz ---------------- */
 // Each option carries a 0-3 score; higher = more capacity/tolerance for risk.
 const QUIZ = [
   {
@@ -90,49 +90,160 @@ function scoreRisk(answers) {
   return { total, max: QUIZ.length * 3, band };
 }
 
-/* ---------------- data: glossary ---------------- */
-// "healthy" describes typical patterns, never rules.
+/* ---------------- data: glossary micro-lessons ---------------- */
+// "healthy" describes typical patterns, never rules. Each term carries a
+// 3-question check (Zogo-style micro-lesson: read the explainer, take the quiz).
 const GLOSSARY = [
   { abbr: 'P/E', name: 'Price-to-Earnings ratio',
     what: 'Share price divided by earnings per share. Roughly: how many dollars investors pay for each dollar of yearly profit.',
     healthy: 'Varies wildly by industry and growth — fast growers often carry higher P/E. Compare against the company\'s own history and close competitors, not an absolute number.',
-    flag: 'Extremely high P/E with slowing growth, or a "cheap" P/E that keeps getting cheaper as earnings fall (a value trap).' },
+    flag: 'Extremely high P/E with slowing growth, or a "cheap" P/E that keeps getting cheaper as earnings fall (a value trap).',
+    quiz: [
+      { q: 'A stock has a P/E of 25. What does that mean?',
+        options: ['Investors pay about $25 for each $1 of yearly earnings', 'The company earns $25 per share of cash', 'The price will rise 25% this year', 'The company pays $25 in dividends'],
+        a: 0, why: 'P/E is price per share divided by earnings per share — dollars paid per dollar of profit.' },
+      { q: 'Why might a fast-growing company have a higher P/E than a slow-growing one?',
+        options: ['Higher P/E is always a red flag', 'Investors expect future earnings to grow faster', 'Fast growers always have more debt', 'The math is different for growing companies'],
+        a: 1, why: 'Investors pay up for growth they believe will arrive — the question is whether the growth actually shows up.' },
+      { q: 'Which is the classic P/E red flag?',
+        options: ['P/E in line with competitors', 'Extremely high P/E while growth is slowing', 'P/E that rises with earnings', 'A P/E below the industry average'],
+        a: 1, why: 'Paying a growth multiple for shrinking growth is how investors get stuck in value traps or hype cycles.' },
+    ] },
   { abbr: 'PEG', name: 'Price/Earnings-to-Growth ratio',
     what: 'P/E divided by expected earnings growth rate. It asks whether you\'re paying a fair price for the growth you get.',
     healthy: 'Often cited around 1 as "fair value for growth", but estimates are guesses — treat it as a sanity check, not a verdict.',
-    flag: 'PEG far above peers with no credible reason the growth will accelerate.' },
+    flag: 'PEG far above peers with no credible reason the growth will accelerate.',
+    quiz: [
+      { q: 'The PEG ratio divides P/E by…',
+        options: ['expected earnings growth rate', 'the dividend yield', 'total debt', 'last year\'s revenue'],
+        a: 0, why: 'PEG normalizes the P/E multiple against how fast earnings are expected to grow.' },
+      { q: 'A PEG far above 1 with no special growth story suggests…',
+        options: ['a bargain', 'the price is expensive for the growth offered', 'the company is about to split its stock', 'analysts love the company'],
+        a: 1, why: 'Around 1 is often cited as "fair value for growth" — far above that, you\'d better have a reason.' },
+      { q: 'What is the biggest weakness of the PEG ratio?',
+        options: ['It ignores the share price', 'The growth estimate is a guess', 'It only works for banks', 'It changes every day'],
+        a: 1, why: 'PEG divides by *expected* growth — if the forecast is wrong, the ratio is wrong. Sanity check, not verdict.' },
+    ] },
   { abbr: 'P/S', name: 'Price-to-Sales ratio',
     what: 'Market value divided by revenue. Useful for young companies that aren\'t profitable yet — there are no earnings to measure.',
     healthy: 'Lower generally means cheaper per dollar of sales, but unprofitable companies deserve extra skepticism about when profits arrive.',
-    flag: 'High P/S combined with shrinking or flat revenue — paying growth prices for no growth.' },
+    flag: 'High P/S combined with shrinking or flat revenue — paying growth prices for no growth.',
+    quiz: [
+      { q: 'P/S is most useful for which kind of company?',
+        options: ['Young companies that aren\'t profitable yet', 'Banks', 'Companies about to be acquired', 'Only dividend payers'],
+        a: 0, why: 'With no earnings to measure, revenue is the best yardstick — price divided by sales.' },
+      { q: 'High P/S plus flat revenue means…',
+        options: ['a safe value play', 'paying growth prices for no growth', 'the company will definitely grow', 'analysts made an error'],
+        a: 1, why: 'A high multiple only makes sense if the sales are actually expanding.' },
+      { q: 'Why shouldn\'t you always prefer the lowest P/S?',
+        options: ['Low P/S stocks never go up', 'The company may never become profitable', 'P/S ignores revenue entirely', 'It\'s too simple a metric'],
+        a: 1, why: 'Cheap sales are only a bargain if profits eventually arrive — unprofitable companies deserve extra skepticism.' },
+    ] },
   { abbr: 'FCF', name: 'Free Cash Flow',
     what: 'Cash left over after a company pays for operations and equipment. The money it could use to pay down debt, buy back shares, or pay dividends.',
     healthy: 'Consistently positive and growing FCF is one of the strongest signs of a healthy business.',
-    flag: 'Years of negative FCF funded by constantly issuing new shares or piling on debt.' },
+    flag: 'Years of negative FCF funded by constantly issuing new shares or piling on debt.',
+    quiz: [
+      { q: 'Free cash flow is…',
+        options: ['total revenue', 'cash left after operations and equipment spending', 'the dividend payment', 'money borrowed from banks'],
+        a: 1, why: 'It\'s the cash a company could actually hand to owners — after keeping the business running.' },
+      { q: 'Why is consistently growing FCF one of the strongest health signs?',
+        options: ['It guarantees the stock rises', 'It\'s real money available for dividends, buybacks, or debt payoff', 'Accountants can\'t touch it', 'It replaces the need for revenue'],
+        a: 1, why: 'Unlike accounting profit, FCF is cash you can verify — and spend.' },
+      { q: 'Which FCF pattern is a red flag?',
+        options: ['FCF growing steadily', 'Years of negative FCF funded by issuing new shares', 'FCF dipping one quarter', 'FCF larger than revenue'],
+        a: 1, why: 'Constantly selling new shares to cover negative cash flow dilutes existing owners.' },
+    ] },
   { abbr: 'Rev growth', name: 'Revenue growth',
     what: 'How fast sales are increasing year over year. The top line — everything else starts here.',
     healthy: 'Steady growth over 3–5 years beats one spectacular year. For mature companies, even single-digit consistent growth compounds beautifully.',
-    flag: 'Growth driven by acquisitions that never quite pay off, or a sudden cliff with no explanation in the filings.' },
+    flag: 'Growth driven by acquisitions that never quite pay off, or a sudden cliff with no explanation in the filings.',
+    quiz: [
+      { q: 'Which revenue pattern is generally healthier?',
+        options: ['One spectacular year then flat', 'Steady growth over 3–5 years', 'Growth that spikes every other quarter', 'Declining revenue with cost cuts'],
+        a: 1, why: 'Compounding rewards consistency — a single spike often doesn\'t repeat.' },
+      { q: 'Why is one spectacular growth year less convincing?',
+        options: ['Investors dislike excitement', 'It may be a one-off that never repeats', 'Growth only counts in dollars', 'Spectacular years are always fraud'],
+        a: 1, why: 'Durability is what matters for a decade-long hold — one year proves little.' },
+      { q: 'Which revenue-growth story deserves skepticism?',
+        options: ['Growth from selling more of the core product', 'Growth driven by acquisitions that never pay off', 'Growth in a growing industry', 'Slow but steady growth'],
+        a: 1, why: 'Acquisition-fueled growth can mask a shrinking core business — check the filings for what\'s organic.' },
+    ] },
   { abbr: 'Gross margin', name: 'Gross margin',
     what: 'Revenue minus cost of goods sold, as a percentage. Measures pricing power before overhead.',
     healthy: 'Stable or rising margins suggest customers value the product. Software-like margins (70%+) and retail margins (20–30%) are both fine — in their own industries.',
-    flag: 'Margins compressing year after year while competitors hold steady.' },
+    flag: 'Margins compressing year after year while competitors hold steady.',
+    quiz: [
+      { q: 'Gross margin measures…',
+        options: ['total company profit', 'pricing power after the cost of goods sold', 'how much debt a company has', 'employee satisfaction'],
+        a: 1, why: 'Revenue minus what it cost to make the stuff — before overhead, interest, and taxes.' },
+      { q: 'Why compare margins within an industry?',
+        options: ['Margins are identical everywhere', 'Normal margins differ by industry — software and retail play different games', 'Regulators require it', 'It makes the numbers bigger'],
+        a: 1, why: 'A 25% margin is excellent for a grocer and terrible for software. Context is everything.' },
+      { q: 'Which margin trend is a red flag?',
+        options: ['Margins stable for years', 'Margins compressing while competitors hold steady', 'Margins rising slowly', 'Margins matching the industry'],
+        a: 1, why: 'If rivals keep their pricing power and you can\'t, your edge may be fading.' },
+    ] },
   { abbr: 'Op margin', name: 'Operating margin',
     what: 'Profit after operating expenses (but before interest and taxes), as a percentage of revenue. Shows whether the business model itself works.',
     healthy: 'Positive and ideally expanding as the company scales — costs should grow slower than revenue.',
-    flag: 'Revenue growing but operating margin stuck near zero: the company may be buying growth at any cost.' },
+    flag: 'Revenue growing but operating margin stuck near zero: the company may be buying growth at any cost.',
+    quiz: [
+      { q: 'Operating margin tells you…',
+        options: ['how much tax the company pays', 'whether the business model itself works, after operating expenses', 'the CEO\'s salary', 'how many shares exist'],
+        a: 1, why: 'It\'s profit from the actual business operations, before financing and taxes muddy the picture.' },
+      { q: 'Revenue is growing but operating margin stays near zero. What might that mean?',
+        options: ['The company is buying growth at any cost', 'The company is definitely profitable', 'Margins don\'t matter', 'Revenue is fake'],
+        a: 0, why: 'Selling more while keeping none of it suggests the growth isn\'t sustainable — or isn\'t real leverage.' },
+      { q: 'What\'s a healthy operating-margin pattern?',
+        options: ['Always above 50%', 'Positive and expanding as the company scales', 'Exactly equal to revenue growth', 'Negative but improving slightly'],
+        a: 1, why: 'As a company scales, costs should grow slower than revenue — margins widening is the signature of leverage.' },
+    ] },
   { abbr: 'ROE', name: 'Return on Equity',
     what: 'Net income divided by shareholder equity. How efficiently the company turns its owners\' money into profit.',
     healthy: 'Consistently double-digit ROE often signals a strong business — but check it isn\'t juiced by heavy debt (which shrinks equity).',
-    flag: 'High ROE paired with high debt-to-equity: the "efficiency" is borrowed, not earned.' },
+    flag: 'High ROE paired with high debt-to-equity: the "efficiency" is borrowed, not earned.',
+    quiz: [
+      { q: 'ROE is net income divided by…',
+        options: ['total revenue', 'shareholder equity', 'number of employees', 'market cap'],
+        a: 1, why: 'How much profit per dollar of the owners\' money invested in the business.' },
+      { q: 'Why be careful with a very high ROE?',
+        options: ['High ROE is always fraud', 'Heavy debt shrinks equity and inflates ROE', 'ROE can\'t exceed 10%', 'Equity is irrelevant'],
+        a: 1, why: 'Borrowing heavily shrinks the denominator — the "efficiency" is borrowed, not earned.' },
+      { q: 'Consistently double-digit ROE (with low debt) often signals…',
+        options: ['an accounting error', 'a strong business earning good returns on capital', 'a coming dividend cut', 'management overpay'],
+        a: 1, why: 'Sustained high returns on equity are one of the classic markers of a quality company.' },
+    ] },
   { abbr: 'D/E', name: 'Debt-to-Equity ratio',
     what: 'Total debt divided by shareholder equity. How much of the company is funded by borrowing.',
     healthy: 'Low relative to industry peers gives a company room to survive recessions. Some industries (utilities) naturally carry more.',
-    flag: 'Rising debt while cash flow falls, or interest payments eating a large share of operating income.' },
+    flag: 'Rising debt while cash flow falls, or interest payments eating a large share of operating income.',
+    quiz: [
+      { q: 'Debt-to-equity measures…',
+        options: ['how much is funded by borrowing versus owners\' money', 'the interest rate on loans', 'total company value', 'dividend safety'],
+        a: 0, why: 'Total debt divided by shareholder equity — the balance between borrowed and owned funding.' },
+      { q: 'Low D/E relative to industry peers means…',
+        options: ['the company can\'t borrow', 'room to survive downturns', 'the stock is cheap', 'management is lazy'],
+        a: 1, why: 'Less debt means fewer mandatory payments when revenue drops — survival room.' },
+      { q: 'Which debt pattern is a red flag?',
+        options: ['Debt falling as cash flow rises', 'Rising debt while cash flow falls', 'No debt at all', 'Debt stable for a decade'],
+        a: 1, why: 'Borrowing more while generating less cash is how balance sheets break — check interest coverage too.' },
+    ] },
   { abbr: 'Moat', name: 'Economic moat',
     what: 'Warren Buffett\'s term for a durable competitive advantage: network effects, high switching costs, brand, cost advantages, patents, or regulation.',
     healthy: 'A real moat shows up as sustained high margins and returns over many years, not just in marketing slides.',
-    flag: 'Management claims a moat, but margins and market share have been eroding for years.' },
+    flag: 'Management claims a moat, but margins and market share have been eroding for years.',
+    quiz: [
+      { q: 'An economic moat is…',
+        options: ['a type of debt', 'a durable competitive advantage — network effects, switching costs, brand, scale, patents', 'a cash reserve', 'a government subsidy'],
+        a: 1, why: 'Buffett\'s term for what keeps competitors from copying a good business.' },
+      { q: 'How does a real moat show up in the numbers?',
+        options: ['Sustained high margins and returns over many years', 'One great quarter', 'A high stock price', 'Lots of press coverage'],
+        a: 0, why: 'Pricing power that lasts shows up as durable profitability — not in marketing slides.' },
+      { q: 'Management claims a moat, but margins and market share have eroded for years. That means…',
+        options: ['the moat is getting stronger', 'the claimed moat may not be real — trust the numbers', 'margins don\'t matter', 'it\'s a buying opportunity'],
+        a: 1, why: 'A moat is a claim about durability; eroding economics is evidence against it.' },
+    ] },
 ];
 
 /* ---------------- glossary search ---------------- */
@@ -146,29 +257,100 @@ function filterGlossaryTerms(query) {
       .toLowerCase().includes(q));
 }
 
-/* ---------------- journal scoring ---------------- */
-const SCORE_DIMS = ['product', 'fundamentals', 'moat', 'valuation', 'horizon'];
-const SCORE_WEIGHTS = { product: 0.20, fundamentals: 0.25, moat: 0.20, valuation: 0.15, horizon: 0.20 };
+/* ---------------- pre-decision checklist ---------------- */
+// Journalytic-style debias gate: every item must be checked before conviction
+// can rise above "watching". Wording is beginner-friendly, no jargon.
+const CHECKLIST_ITEMS = [
+  { key: 'moat', label: 'Does it have a durable edge?',
+    help: 'Something competitors can\'t easily copy — network effects, switching costs, brand, scale, or patents.' },
+  { key: 'earnings', label: 'Is it actually profitable — or credibly on the way?',
+    help: 'Check operating margin and free cash flow over several years, not just headlines.' },
+  { key: 'debt', label: 'Is debt at a safe level?',
+    help: 'Debt-to-equity that\'s low for its industry means survival room in downturns.' },
+  { key: 'valuation', label: 'Is the price sane compared to its worth?',
+    help: 'A great company at an extreme valuation can still be a poor decade-long hold.' },
+  { key: 'circle', label: 'Is this inside my circle of competence?',
+    help: 'Do I genuinely understand how this business makes money? If not, I can\'t judge the risks.' },
+];
 
-function weightedScore(scores) {
-  // scores: {product:1-5, ...}. Returns 0-5 weighted total, or null if incomplete.
-  let total = 0, weight = 0;
-  SCORE_DIMS.forEach(d => {
-    const v = scores[d];
-    if (typeof v === 'number' && v >= 1 && v <= 5) { total += v * SCORE_WEIGHTS[d]; weight += SCORE_WEIGHTS[d]; }
-  });
-  if (weight === 0) return null;
-  return Math.round((total / weight) * 10) / 10;
+function checklistComplete(idea) {
+  if (!idea || !idea.checklist) return false;
+  return CHECKLIST_ITEMS.every(item => idea.checklist[item.key] === true);
 }
 
-function scoreCount(scores) {
-  // How many of the five dimensions have a valid 1-5 score. DOM-free.
-  let n = 0;
+/* Conviction levels. Raising above "watching" requires the full checklist —
+ * the gate keeps debiasing in the flow instead of optional. DOM-free. */
+const CONVICTION_LEVELS = ['watching', 'leaning', 'strong'];
+const CONVICTION_LEVEL_LABELS = { watching: 'Watching', leaning: 'Leaning in', strong: 'Strong conviction' };
+
+function canRaiseConviction(idea, level) {
+  if (!CONVICTION_LEVELS.includes(level)) return { ok: false, reason: 'Unknown conviction level.' };
+  if (CONVICTION_LEVELS.indexOf(level) <= 0) return { ok: true };
+  if (!checklistComplete(idea)) {
+    return { ok: false, reason: 'Finish the 5-item pre-decision checklist first — conviction stays at "Watching" until every item is checked.' };
+  }
+  return { ok: true };
+}
+
+/* ---------------- scorecard: user-weighted composite 0-100 ---------------- */
+// StockRanks-style: three criteria, user-adjustable weights, one composite.
+const SCORE_DIMS = ['quality', 'value', 'conviction'];
+const SCORE_DIM_LABELS = {
+  quality: 'Quality — how good is the business?',
+  value: 'Value — is the price sane for what you get?',
+  conviction: 'Conviction — how well do I understand it?',
+};
+const SCORE_DIM_HINTS = {
+  quality: '1 = shaky, 5 = excellent business',
+  value: '1 = far too expensive, 5 = comfortable price',
+  conviction: '1 = surface-level, 5 = deep understanding',
+};
+const DEFAULT_WEIGHTS = { quality: 40, value: 30, conviction: 30 };
+
+function normalizeWeights(weights) {
+  // Returns {quality, value, conviction} shares summing to 1, or null when the
+  // total is zero. DOM-free; weights are 0-100 numbers.
+  let total = 0;
   SCORE_DIMS.forEach(d => {
-    const v = scores[d];
-    if (typeof v === 'number' && v >= 1 && v <= 5) n++;
+    const v = Number(weights && weights[d]);
+    total += (isFinite(v) && v > 0) ? v : 0;
   });
-  return n;
+  if (total <= 0) return null;
+  const out = {};
+  SCORE_DIMS.forEach(d => {
+    const v = Number(weights && weights[d]);
+    out[d] = ((isFinite(v) && v > 0) ? v : 0) / total;
+  });
+  return out;
+}
+
+function compositeScore(idea) {
+  // idea.scores: {quality:1-5, value:1-5, conviction:1-5}; idea.weights: 0-100.
+  // Returns 0-100 rounded, or null when nothing is scored. Partial scoring
+  // computes over the scored dimensions only (same policy as the old 5-dim
+  // weightedScore).
+  if (!idea) return null;
+  const shares = normalizeWeights(idea.weights);
+  if (!shares) return null;
+  let total = 0, wSum = 0;
+  SCORE_DIMS.forEach(d => {
+    const v = idea.scores && idea.scores[d];
+    if (typeof v === 'number' && v >= 1 && v <= 5) {
+      total += (v / 5) * shares[d];
+      wSum += shares[d];
+    }
+  });
+  if (wSum === 0) return null;
+  return Math.round((total / wSum) * 100);
+}
+
+function convictLabel(score) {
+  // Diverging conviction label for the 0-100 composite. DOM-free.
+  if (score === null || score === undefined) return 'Unscored';
+  if (score >= 75) return 'Strong conviction';
+  if (score >= 55) return 'Growing conviction';
+  if (score >= 40) return 'Watching';
+  return 'Early research';
 }
 
 function thesesLabel(n) {
@@ -177,7 +359,12 @@ function thesesLabel(n) {
   return '(' + n + (n === 1 ? ' thesis)' : ' theses)');
 }
 
-/* ---------------- thesis revisit reminders ---------------- */
+function ideasLabel(n) {
+  if (!n) return '';
+  return '(' + n + (n === 1 ? ' idea)' : ' ideas)');
+}
+
+/* ---------------- review dates ---------------- */
 // All date math is on ISO "YYYY-MM-DD" strings so it is deterministic and testable.
 
 function addMonths(dateStr, n) {
@@ -198,63 +385,148 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function reviewAtOf(entry) {
-  // Effective review date for an entry. Entries saved before v0.2 have no
-  // reviewAt — they gracefully default to createdAt + 6 months (lazy
-  // migration; no localStorage key bump or data wipe needed).
-  if (/^\d{4}-\d{2}-\d{2}$/.test(entry.reviewAt || '')) return entry.reviewAt;
-  return addMonths(entry.createdAt, 6);
-}
-
-function isReviewDue(entry, today) {
-  today = today || todayISO();
-  const r = reviewAtOf(entry);
-  return !!r && r <= today;
-}
-
-/* Closing the revisit loop: after re-reading a due thesis, schedule the next
- * check N months out. DOM-free; returns a new entry object — the original is
+/* Closing the revisit loop: after re-reading a due idea, schedule the next
+ * check N months out. DOM-free; returns a new idea object — the original is
  * left untouched. Only the 1/3/6/12 intervals the UI offers are honored. */
 const REVIEW_INTERVALS = [1, 3, 6, 12];
 
-function rescheduleReview(entry, months, today) {
+function rescheduleReview(idea, months, today) {
   const m = parseInt(months, 10);
-  const n = REVIEW_INTERVALS.includes(m) ? m : 6;
+  const n = REVIEW_INTERVALS.includes(m) ? m : 3;
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
-  return Object.assign({}, entry, { reviewMonths: n, reviewAt: addMonths(t, n) });
+  return Object.assign({}, idea, { reviewMonths: n, reviewAt: addMonths(t, n) });
 }
 
-function journalToJSON(entries) {
-  return JSON.stringify(entries, null, 2);
+/* Every idea gets an expiry: ~90 days out (3 months), editable. DOM-free. */
+const DEFAULT_REVIEW_MONTHS = 3;
+
+function reviewAtOf(idea) {
+  // Effective review date. Ideas migrated from the old journal keep their old
+  // reviewAt (6-month default era); ideas without one default to createdAt +
+  // 3 months (~90 days).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) return idea.reviewAt;
+  const fallback = addMonths(idea.createdAt, idea.reviewMonths === 6 ? 6 : DEFAULT_REVIEW_MONTHS);
+  return fallback;
 }
 
-function journalToMarkdown(entries, stamp) {
-  // Plain-text export of the journal — one section per thesis. DOM-free.
+function isReviewDue(idea, today) {
+  today = today || todayISO();
+  const r = reviewAtOf(idea);
+  return !!r && r <= today;
+}
+
+/* ---------------- idea factory + track record ---------------- */
+function makeIdea(name, tickers, today) {
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
+  return {
+    id: 'e' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+    name: name || '',
+    tickers: (tickers || '').toUpperCase(),
+    tags: [],
+    status: 'open',
+    createdAt: t,
+    updatedAt: t,
+    thesis: { belief: '', reasons: '', falsify: '' },
+    assumptions: [],
+    checklist: { moat: false, earnings: false, debt: false, valuation: false, circle: false },
+    scores: { quality: null, value: null, conviction: null },
+    weights: Object.assign({}, DEFAULT_WEIGHTS),
+    convictionLevel: 'watching',
+    reviewMonths: DEFAULT_REVIEW_MONTHS,
+    reviewAt: addMonths(t, DEFAULT_REVIEW_MONTHS),
+    reviewHistory: [],
+    priceLog: [],
+    notes: [],
+  };
+}
+
+/* Fatebook-style review entry. outcome: 'intact' | 'changed' | 'resolved'.
+ * reasonMatch: 'yes' | 'no' | 'na' — did it move for the stated reason? */
+function applyReview(idea, review, today) {
+  // DOM-free. Returns a new idea: review appended to history, next review
+  // scheduled, status flipped to 'resolved' when the outcome resolves it.
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
+  const outcome = ['intact', 'changed', 'resolved'].includes(review.outcome) ? review.outcome : 'intact';
+  const reasonMatch = ['yes', 'no', 'na'].includes(review.reasonMatch) ? review.reasonMatch : 'na';
+  const entry = {
+    date: t,
+    outcome,
+    reasonMatch,
+    note: (review.note || '').slice(0, 1000),
+  };
+  const next = Object.assign({}, idea, {
+    reviewHistory: (idea.reviewHistory || []).concat([entry]),
+    updatedAt: t,
+  });
+  if (outcome === 'resolved') next.status = 'resolved';
+  const months = parseInt(review.nextMonths, 10);
+  return rescheduleReview(next, months, t);
+}
+
+/* Calibration summary: counts of review outcomes + the honest accuracy line —
+ * how often the idea moved for the stated reason (right for the right
+ * reasons). Excludes 'na' answers from the denominator. DOM-free. */
+function trackRecord(ideas) {
+  const out = { intact: 0, changed: 0, resolved: 0, reviews: 0, reasonYes: 0, reasonAnswered: 0 };
+  (ideas || []).forEach(idea => {
+    (idea.reviewHistory || []).forEach(r => {
+      out.reviews++;
+      if (out[r.outcome] !== undefined) out[r.outcome]++;
+      if (r.reasonMatch === 'yes' || r.reasonMatch === 'no') {
+        out.reasonAnswered++;
+        if (r.reasonMatch === 'yes') out.reasonYes++;
+      }
+    });
+  });
+  out.reasonAccuracy = out.reasonAnswered ? Math.round((out.reasonYes / out.reasonAnswered) * 100) : null;
+  return out;
+}
+
+/* ---------------- export ---------------- */
+function journalToJSON(ideas) {
+  return JSON.stringify(ideas, null, 2);
+}
+
+function journalToMarkdown(ideas, stamp) {
+  // Plain-text export of the research — one section per idea. DOM-free.
   const lines = [
-    '# Long-Term Lens — Conviction Journal',
+    '# Long-Term Lens — Research Ideas',
     '',
     'Exported ' + stamp + '. Personal research notes — educational only, not financial advice.',
     ''
   ];
-  if (!entries.length) {
-    lines.push('_No theses yet._');
+  if (!ideas.length) {
+    lines.push('_No ideas yet._');
     return lines.join('\n');
   }
-  entries.forEach(e => {
-    const scoredN = (typeof e.scored === 'number') ? e.scored : scoreCount(e.scores || {});
-    const scoreLine = (e.weighted === null || e.weighted === undefined)
-      ? 'unscored'
-      : e.weighted.toFixed(1) + ' / 5 (' + scoredN + ' of 5 dimensions scored)';
+  ideas.forEach(e => {
+    const score = compositeScore(e);
     lines.push('## ' + e.name + (e.tickers ? ' (' + e.tickers + ')' : ''));
     lines.push('');
-    lines.push('- Score: ' + scoreLine);
-    lines.push('- Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
+    lines.push('- Composite score: ' + (score === null ? 'unscored' : score + ' / 100 (' + convictLabel(score) + ')'));
+    lines.push('- Conviction level: ' + (CONVICTION_LEVEL_LABELS[e.convictionLevel] || e.convictionLevel));
+    lines.push('- Status: ' + (e.status || 'open') + ' · Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
     if (e.tags && e.tags.length) lines.push('- Tags: ' + e.tags.join(', '));
     lines.push('');
-    lines.push('Thesis: ' + (e.thesis || ''));
-    lines.push('');
-    if (e.falsify) {
-      lines.push('Would prove me wrong: ' + e.falsify);
+    if (e.thesis && (e.thesis.belief || e.thesis.reasons || e.thesis.falsify)) {
+      lines.push('What I believe: ' + (e.thesis.belief || ''));
+      lines.push('');
+      if (e.thesis.reasons) { lines.push('Why: ' + e.thesis.reasons); lines.push(''); }
+      if (e.thesis.falsify) { lines.push('Would prove me wrong: ' + e.thesis.falsify); lines.push(''); }
+    }
+    if (e.assumptions && e.assumptions.length) {
+      lines.push('Key assumptions:');
+      e.assumptions.forEach(a => lines.push('  - ' + a.text + ' (' + a.confidence + '% confident)'));
+      lines.push('');
+    }
+    if (e.priceLog && e.priceLog.length) {
+      lines.push('Price log (manually entered):');
+      e.priceLog.forEach(p => lines.push('  - ' + p.date + ': ' + p.price + (p.note ? ' — ' + p.note : '')));
+      lines.push('');
+    }
+    if (e.notes && e.notes.length) {
+      lines.push('Notes:');
+      e.notes.forEach(n => lines.push('  - ' + n.date + ': ' + n.text));
       lines.push('');
     }
     lines.push('---', '');
@@ -262,15 +534,117 @@ function journalToMarkdown(entries, stamp) {
   return lines.join('\n');
 }
 
-/* ---------------- storage ---------------- */
+/* ---------------- storage + migration ---------------- */
 const STORE_KEY = 'longterm-stock-lens-v1';
+const SCHEMA_VERSION = 2;
+
+function blankStore() {
+  return { schema: SCHEMA_VERSION, ideas: [], glossary: {}, quizProfile: null };
+}
+
+/* Migrate legacy stores (v0.x: { entries: [...] } or the v1 two-tap era) into
+ * the v2 Ideas schema. Old journal entries become ideas; everything is
+ * preserved: name, tickers, tags, thesis text (as the "what I believe"
+ * field), falsify, the old 5-dim scores (mapped into the new 3-dim scorecard
+ * AND kept verbatim as legacyScores), review dates, and createdAt. DOM-free;
+ * never loses user data. */
+function migrateStore(raw) {
+  const store = blankStore();
+  let entries = [];
+  if (raw && Array.isArray(raw.entries)) entries = raw.entries;
+  else if (raw && Array.isArray(raw.ideas)) {
+    // Already the ideas shape but missing the schema marker: adopt as-is,
+    // filling any missing fields defensively.
+    store.ideas = raw.ideas.map(normalizeIdea);
+    store.glossary = raw.glossary || {};
+    store.quizProfile = raw.quizProfile || null;
+    return store;
+  } else {
+    return store;
+  }
+  store.ideas = entries.map(e => {
+    const t = /^\d{4}-\d{2}-\d{2}$/.test(e.createdAt || '') ? e.createdAt : todayISO();
+    const oldScores = e.scores || {};
+    const num = v => (typeof v === 'number' && v >= 1 && v <= 5) ? v : null;
+    // Map old 5-dim scores onto the new 3-dim scorecard; conviction takes the
+    // rounded mean of product/moat/horizon (the belief-side dimensions).
+    const beliefDims = [num(oldScores.product), num(oldScores.moat), num(oldScores.horizon)]
+      .filter(v => v !== null);
+    const conviction = beliefDims.length
+      ? Math.round(beliefDims.reduce((s, v) => s + v, 0) / beliefDims.length)
+      : null;
+    const idea = makeIdea(e.name || 'Untitled idea', e.tickers || '', t);
+    idea.tags = Array.isArray(e.tags) ? e.tags : [];
+    idea.thesis = {
+      belief: e.thesis || '',
+      reasons: '',
+      falsify: e.falsify || '',
+    };
+    idea.scores = {
+      quality: num(oldScores.fundamentals),
+      value: num(oldScores.valuation),
+      conviction,
+    };
+    idea.legacyScores = {
+      product: num(oldScores.product),
+      fundamentals: num(oldScores.fundamentals),
+      moat: num(oldScores.moat),
+      valuation: num(oldScores.valuation),
+      horizon: num(oldScores.horizon),
+    };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(e.reviewAt || '')) {
+      idea.reviewAt = e.reviewAt;
+      idea.reviewMonths = [1, 3, 6, 12].includes(e.reviewMonths) ? e.reviewMonths : 6;
+    } else {
+      // Legacy entries predate reviewAt entirely: same lazy default the old
+      // app used (createdAt + 6 months).
+      idea.reviewAt = addMonths(t, 6);
+      idea.reviewMonths = 6;
+    }
+    idea.status = 'open';
+    return idea;
+  });
+  return store;
+}
+
+/* Defensive fill: guarantees every field the renderers touch exists, so a
+ * hand-edited or future-older idea object can never crash the UI. DOM-free. */
+function normalizeIdea(rawIdea) {
+  const idea = Object.assign({
+    tags: [], status: 'open',
+    thesis: {}, assumptions: [], checklist: {}, scores: {},
+    weights: {}, convictionLevel: 'watching',
+    reviewMonths: DEFAULT_REVIEW_MONTHS,
+    reviewHistory: [], priceLog: [], notes: [],
+  }, rawIdea || {});
+  idea.thesis = Object.assign({ belief: '', reasons: '', falsify: '' }, idea.thesis);
+  idea.checklist = Object.assign({ moat: false, earnings: false, debt: false, valuation: false, circle: false }, idea.checklist);
+  idea.scores = Object.assign({ quality: null, value: null, conviction: null }, idea.scores);
+  idea.weights = Object.assign({}, DEFAULT_WEIGHTS, idea.weights);
+  if (!CONVICTION_LEVELS.includes(idea.convictionLevel)) idea.convictionLevel = 'watching';
+  if (!Array.isArray(idea.tags)) idea.tags = [];
+  ['assumptions', 'reviewHistory', 'priceLog', 'notes'].forEach(k => { if (!Array.isArray(idea[k])) idea[k] = []; });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.createdAt || '')) idea.createdAt = todayISO();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) idea.reviewAt = reviewAtOf(idea);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.updatedAt || '')) idea.updatedAt = idea.createdAt;
+  return idea;
+}
+
 function loadStore() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return { entries: [] };
+    if (!raw) return blankStore();
     const parsed = JSON.parse(raw);
-    return { entries: Array.isArray(parsed.entries) ? parsed.entries : [] };
-  } catch (e) { return { entries: [] }; }
+    if (parsed && parsed.schema === SCHEMA_VERSION && Array.isArray(parsed.ideas)) {
+      parsed.ideas = parsed.ideas.map(normalizeIdea);
+      parsed.glossary = parsed.glossary || {};
+      return parsed;
+    }
+    // Legacy shape: migrate and persist the upgrade so the next load is cheap.
+    const migrated = migrateStore(parsed);
+    saveStore(migrated);
+    return migrated;
+  } catch (e) { return blankStore(); }
 }
 function saveStore(store) {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* storage full/blocked */ }
@@ -283,6 +657,9 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function $(id) { return document.getElementById(id); }
+function uid() {
+  return 'x' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+}
 
 /* ---------------- navigation ---------------- */
 function showScreen(name) {
@@ -300,7 +677,36 @@ function showScreen(name) {
   window.scrollTo(0, 0);
 }
 
-/* ---------------- quiz UI ---------------- */
+/* ---------------- ideas store (in-memory) ---------------- */
+let store = loadStore();
+
+function getIdea(id) {
+  return (store.ideas || []).find(i => i.id === id) || null;
+}
+
+function updateIdea(id, fn) {
+  store.ideas = (store.ideas || []).map(i => {
+    if (i.id !== id) return i;
+    const next = fn(i) || i;
+    next.updatedAt = todayISO();
+    return next;
+  });
+  saveStore(store);
+}
+
+function openIdeas(today) {
+  return (store.ideas || []).filter(i => i.status !== 'resolved');
+}
+
+function dueIdeas(today) {
+  today = today || todayISO();
+  return openIdeas(today).filter(i => isReviewDue(i, today))
+    .sort((a, b) => (reviewAtOf(a) || '').localeCompare(reviewAtOf(b) || ''));
+}
+
+function ideaComposite(i) { return compositeScore(i); }
+
+/* ---------------- quiz UI (Investor profile) ---------------- */
 const quizAnswers = new Array(QUIZ.length).fill(null);
 
 function renderQuiz() {
@@ -340,6 +746,15 @@ function renderQuiz() {
   btn.addEventListener('click', showQuizResult);
   row.appendChild(btn);
   box.appendChild(row);
+  // Show the saved profile, if the user has completed the quiz before.
+  if (store.quizProfile) {
+    const saved = document.createElement('p');
+    saved.className = 'fineprint';
+    saved.textContent = 'Last result (' + store.quizProfile.date + '): ' +
+      store.quizProfile.bandLabel + ' — score ' + store.quizProfile.total +
+      ' / ' + store.quizProfile.max + '. Re-take anytime; the latest result is what\'s saved.';
+    box.appendChild(saved);
+  }
 }
 
 function showQuizResult() {
@@ -352,11 +767,12 @@ function showQuizResult() {
     return;
   }
   const { total, max, band } = scoreRisk(quizAnswers);
+  store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO() };
+  saveStore(store);
   res.classList.remove('hidden');
-  // The conviction segment is the narrow side of the bar (2-20% wide), so even
-  // "20% conviction" can clip inside the overflow:hidden bar. Always use the
-  // short label ("20%") inside the bar segment itself; the bar's aria-label
-  // carries the full wording for assistive tech.
+  // The conviction segment is the narrow side of the bar (2-20% wide).
+  // Always use the short label inside the segment; the aria-label carries
+  // the full wording for assistive tech.
   const convText = band.conv + '%';
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
@@ -371,35 +787,1094 @@ function showQuizResult() {
   res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-/* ---------------- glossary UI ---------------- */
+/* ---------------- ideas home UI ---------------- */
+function convictionPillClass(score) {
+  if (score === null || score === undefined) return 's-mid';
+  return score < 40 ? 's-low' : score < 70 ? 's-mid' : 's-high';
+}
+
+function ideaRow(idea, opts) {
+  // A compact list row for the ideas home / due queue. DOM-built, escaped.
+  opts = opts || {};
+  const today = opts.today || todayISO();
+  const score = compositeScore(idea);
+  const row = document.createElement('div');
+  row.className = 'idea-row' + (isReviewDue(idea, today) && idea.status !== 'resolved' ? ' due' : '') +
+    (idea.status === 'resolved' ? ' resolved' : '');
+  const main = document.createElement('button');
+  main.className = 'idea-main';
+  main.setAttribute('aria-label', 'Open research for ' + idea.name);
+  main.addEventListener('click', () => openIdea(idea.id));
+  const top = document.createElement('div');
+  top.className = 'idea-top';
+  const nm = document.createElement('span');
+  nm.className = 'idea-name';
+  nm.textContent = idea.name;
+  top.appendChild(nm);
+  if (idea.tickers) {
+    const tk = document.createElement('span');
+    tk.className = 'idea-ticker';
+    tk.textContent = idea.tickers;
+    top.appendChild(tk);
+  }
+  const sc = document.createElement('span');
+  sc.className = 'idea-score ' + convictionPillClass(score);
+  sc.textContent = score === null ? 'unscored' : score + ' / 100';
+  top.appendChild(sc);
+  main.appendChild(top);
+  const meta = document.createElement('div');
+  meta.className = 'idea-meta';
+  const lvl = document.createElement('span');
+  lvl.textContent = convictLabel(score);
+  meta.appendChild(lvl);
+  meta.appendChild(document.createTextNode(' · '));
+  const cl = document.createElement('span');
+  cl.textContent = 'Conviction: ' + (CONVICTION_LEVEL_LABELS[idea.convictionLevel] || idea.convictionLevel);
+  meta.appendChild(cl);
+  meta.appendChild(document.createTextNode(' · review by ' + (reviewAtOf(idea) || '—')));
+  if (isReviewDue(idea, today) && idea.status !== 'resolved') {
+    const badge = document.createElement('span');
+    badge.className = 'due-badge';
+    badge.textContent = 'Review due';
+    meta.appendChild(document.createTextNode(' '));
+    meta.appendChild(badge);
+  }
+  if (idea.status === 'resolved') {
+    const badge = document.createElement('span');
+    badge.className = 'tag';
+    badge.textContent = 'Resolved';
+    meta.appendChild(document.createTextNode(' '));
+    meta.appendChild(badge);
+  }
+  main.appendChild(meta);
+  row.appendChild(main);
+  return row;
+}
+
+function renderIdeasHome() {
+  const today = todayISO();
+  // Due-for-review queue: oldest review-by date first (Fatebook pattern).
+  const due = dueIdeas(today);
+  const queue = $('due-queue');
+  queue.innerHTML = '';
+  if (!due.length) {
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = 'Nothing due. Every idea gets a review-by date — open an idea to set or change it.';
+    queue.appendChild(d);
+  } else {
+    due.forEach(i => queue.appendChild(ideaRow(i, { today })));
+  }
+  // All ideas: open first sorted by composite (desc, unscored last), resolved at the end.
+  const open = openIdeas(today).slice().sort((a, b) => {
+    const sa = compositeScore(a), sb = compositeScore(b);
+    if (sa === null && sb === null) return a.name.localeCompare(b.name);
+    if (sa === null) return 1;
+    if (sb === null) return -1;
+    return sb - sa;
+  });
+  const resolved = (store.ideas || []).filter(i => i.status === 'resolved');
+  const list = $('ideas-list');
+  list.innerHTML = '';
+  const all = open.concat(resolved);
+  if (!all.length) {
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = 'No ideas yet. Quick-add one above — start with a product you already love.';
+    list.appendChild(d);
+  } else {
+    all.forEach(i => list.appendChild(ideaRow(i, { today })));
+  }
+  $('ideas-count').textContent = ideasLabel(all.length);
+  // Export buttons enable/disable.
+  $('export-json').disabled = !all.length;
+  $('export-md').disabled = !all.length;
+  // Nav badge for the Reviews tab.
+  const badge = $('reviews-badge');
+  if (due.length) {
+    badge.textContent = due.length;
+    badge.classList.remove('hidden');
+    badge.setAttribute('aria-label', due.length + (due.length === 1 ? ' review due' : ' reviews due'));
+  } else {
+    badge.textContent = '';
+    badge.classList.add('hidden');
+  }
+}
+
+function quickAddIdea() {
+  const err = $('qa-error');
+  err.textContent = '';
+  err.classList.add('hidden');
+  const name = $('qa-name').value.trim();
+  const tickers = $('qa-tickers').value.trim().toUpperCase();
+  if (!name) {
+    err.textContent = 'Give your idea a company or idea name first.';
+    err.classList.remove('hidden');
+    $('qa-name').focus();
+    return;
+  }
+  const idea = makeIdea(name, tickers);
+  store.ideas.push(idea);
+  saveStore(store);
+  $('qa-name').value = '';
+  $('qa-tickers').value = '';
+  openIdea(idea.id);
+}
+
+function openIdea(id) {
+  const idea = getIdea(id);
+  if (!idea) { showScreen('ideas'); return; }
+  renderIdeaDetail(idea);
+  showScreen('idea');
+}
+
+/* ---------------- idea detail: one-page research summary ---------------- */
+function sectionShell(title, hint) {
+  const sec = document.createElement('section');
+  sec.className = 'detail-sec';
+  const h = document.createElement('h3');
+  h.textContent = title;
+  sec.appendChild(h);
+  if (hint) {
+    const p = document.createElement('p');
+    p.className = 'fineprint';
+    p.textContent = hint;
+    sec.appendChild(p);
+  }
+  return sec;
+}
+
+function renderIdeaDetail(idea) {
+  const box = $('idea-detail');
+  box.innerHTML = '';
+  const today = todayISO();
+  const score = compositeScore(idea);
+
+  // Header
+  const head = document.createElement('div');
+  head.className = 'detail-head';
+  const h1 = document.createElement('h1');
+  h1.textContent = idea.name;
+  head.appendChild(h1);
+  const meta = document.createElement('p');
+  meta.className = 'fineprint';
+  if (idea.tickers) {
+    const tk = document.createElement('span');
+    tk.className = 'idea-ticker';
+    tk.textContent = idea.tickers;
+    meta.appendChild(tk);
+    meta.appendChild(document.createTextNode(' · '));
+  }
+  meta.appendChild(document.createTextNode('opened ' + idea.createdAt + ' · review by ' + (reviewAtOf(idea) || '—')));
+  head.appendChild(meta);
+  const pills = document.createElement('div');
+  pills.className = 'detail-pills';
+  const sp = document.createElement('span');
+  sp.className = 'idea-score ' + convictionPillClass(score);
+  sp.textContent = score === null ? 'unscored' : score + ' / 100';
+  pills.appendChild(sp);
+  const lp = document.createElement('span');
+  lp.className = 'tag';
+  lp.textContent = convictLabel(score);
+  pills.appendChild(lp);
+  const cp = document.createElement('span');
+  cp.className = 'tag';
+  cp.textContent = 'Conviction: ' + (CONVICTION_LEVEL_LABELS[idea.convictionLevel] || idea.convictionLevel);
+  pills.appendChild(cp);
+  if (idea.status === 'resolved') {
+    const rp = document.createElement('span');
+    rp.className = 'tag';
+    rp.textContent = 'Resolved';
+    pills.appendChild(rp);
+  }
+  head.appendChild(pills);
+  box.appendChild(head);
+
+  renderThesisSection(box, idea);
+  renderAssumptionsSection(box, idea);
+  renderChecklistSection(box, idea);
+  renderScorecardSection(box, idea);
+  renderPriceLogSection(box, idea);
+  renderNotesSection(box, idea);
+  renderIdeaDanger(box, idea);
+}
+
+/* (a) Thesis template — Stockxy's opinionated 3 fields: what I believe /
+ * why (2-3 reasons) / what would prove me wrong. */
+function renderThesisSection(box, idea) {
+  const sec = sectionShell('Thesis', 'Three fields, every time — this is what kills blank-page paralysis and makes your past ideas comparable.');
+  const fields = [
+    ['t-belief', 'What I believe', idea.thesis.belief, 2, 'One sentence: the core claim.'],
+    ['t-reasons', 'Why I believe it (2–3 reasons)', idea.thesis.reasons, 3, 'Concrete reasons, not vibes.'],
+    ['t-falsify', 'What would prove me wrong', idea.thesis.falsify, 2, 'The kill criteria. Write it now, while you\'re honest.'],
+  ];
+  fields.forEach(f => {
+    const lab = document.createElement('label');
+    lab.className = 'field';
+    lab.appendChild(document.createTextNode(f[1]));
+    const ta = document.createElement('textarea');
+    ta.id = f[0];
+    ta.rows = f[3];
+    ta.maxLength = 2000;
+    ta.placeholder = f[4];
+    ta.value = f[2] || '';
+    lab.appendChild(ta);
+    sec.appendChild(lab);
+  });
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const save = document.createElement('button');
+  save.className = 'btn primary';
+  save.textContent = 'Save thesis';
+  save.addEventListener('click', () => {
+    updateIdea(idea.id, i => {
+      i.thesis = {
+        belief: $('t-belief').value.trim(),
+        reasons: $('t-reasons').value.trim(),
+        falsify: $('t-falsify').value.trim(),
+      };
+    });
+    renderIdeaDetail(getIdea(idea.id));
+  });
+  row.appendChild(save);
+  sec.appendChild(row);
+  box.appendChild(sec);
+}
+
+/* (b) Key assumptions — Metaculus Radiant style: "what has to be true for
+ * this to work," each with a confidence % (Fatebook quick-set chips). */
+const CONFIDENCE_CHIPS = [10, 25, 50, 75, 90];
+
+function renderAssumptionsSection(box, idea) {
+  const sec = sectionShell('Key assumptions', 'Break the thesis into what has to be true — each with your confidence. Vague conviction becomes testable parts.');
+  const list = document.createElement('div');
+  list.className = 'assump-list';
+  (idea.assumptions || []).forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'assump-row';
+    const txt = document.createElement('span');
+    txt.className = 'assump-text';
+    txt.textContent = a.text;
+    row.appendChild(txt);
+    const chips = document.createElement('div');
+    chips.className = 'chips';
+    CONFIDENCE_CHIPS.forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'chip' + (a.confidence === c ? ' selected' : '');
+      b.textContent = c + '%';
+      b.setAttribute('aria-pressed', a.confidence === c ? 'true' : 'false');
+      b.setAttribute('aria-label', 'Set confidence to ' + c + ' percent');
+      b.addEventListener('click', () => {
+        updateIdea(idea.id, i => {
+          const x = i.assumptions.find(y => y.id === a.id);
+          if (x) x.confidence = c;
+        });
+        renderIdeaDetail(getIdea(idea.id));
+      });
+      chips.appendChild(b);
+    });
+    row.appendChild(chips);
+    const del = document.createElement('button');
+    del.className = 'btn danger mini';
+    del.textContent = '×';
+    del.setAttribute('aria-label', 'Delete assumption: ' + a.text);
+    del.addEventListener('click', () => {
+      updateIdea(idea.id, i => { i.assumptions = i.assumptions.filter(y => y.id !== a.id); });
+      renderIdeaDetail(getIdea(idea.id));
+    });
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+  if (!(idea.assumptions || []).length) {
+    const d = document.createElement('div');
+    d.className = 'empty mini';
+    d.textContent = 'No assumptions yet. Example: "Revenue grows 15%+ a year for 5 years."';
+    list.appendChild(d);
+  }
+  sec.appendChild(list);
+  const lab = document.createElement('label');
+  lab.className = 'field';
+  lab.appendChild(document.createTextNode('New assumption'));
+  const input = document.createElement('input');
+  input.id = 'new-assump';
+  input.type = 'text';
+  input.maxLength = 300;
+  input.placeholder = 'What has to be true for this thesis to work?';
+  lab.appendChild(input);
+  sec.appendChild(lab);
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const add = document.createElement('button');
+  add.className = 'btn';
+  add.textContent = 'Add assumption';
+  add.addEventListener('click', () => {
+    const text = $('new-assump').value.trim();
+    if (!text) { $('new-assump').focus(); return; }
+    updateIdea(idea.id, i => {
+      i.assumptions.push({ id: uid(), text, confidence: 50 });
+    });
+    renderIdeaDetail(getIdea(idea.id));
+  });
+  row.appendChild(add);
+  sec.appendChild(row);
+  box.appendChild(sec);
+}
+
+/* (c) Pre-decision checklist — the Journalytic gate. Conviction can't rise
+ * above "watching" until every item is checked. */
+function renderChecklistSection(box, idea) {
+  const sec = sectionShell('Pre-decision checklist', 'Debiasing works only in the flow, not as an afterthought. Every item must be checked before conviction can rise above "Watching".');
+  const list = document.createElement('div');
+  list.className = 'check-list';
+  CHECKLIST_ITEMS.forEach(item => {
+    const lab = document.createElement('label');
+    lab.className = 'check-item';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!(idea.checklist && idea.checklist[item.key]);
+    cb.addEventListener('change', () => {
+      updateIdea(idea.id, i => { i.checklist[item.key] = cb.checked; });
+      renderIdeaDetail(getIdea(idea.id));
+    });
+    lab.appendChild(cb);
+    const wrap = document.createElement('span');
+    const strong = document.createElement('strong');
+    strong.textContent = item.label;
+    wrap.appendChild(strong);
+    const help = document.createElement('span');
+    help.className = 'check-help';
+    help.textContent = ' ' + item.help;
+    wrap.appendChild(help);
+    lab.appendChild(wrap);
+    list.appendChild(lab);
+  });
+  sec.appendChild(list);
+  // Conviction level selector (gated).
+  const gate = document.createElement('div');
+  gate.className = 'conviction-gate';
+  const lab = document.createElement('label');
+  lab.className = 'field inline-field';
+  lab.appendChild(document.createTextNode('My conviction level'));
+  const sel = document.createElement('select');
+  sel.id = 'conviction-level';
+  CONVICTION_LEVELS.forEach(lv => {
+    const o = document.createElement('option');
+    o.value = lv;
+    o.textContent = CONVICTION_LEVEL_LABELS[lv];
+    if (idea.convictionLevel === lv) o.selected = true;
+    sel.appendChild(o);
+  });
+  lab.appendChild(sel);
+  gate.appendChild(lab);
+  const gateMsg = document.createElement('p');
+  gateMsg.className = 'fineprint';
+  gateMsg.id = 'conviction-gate-msg';
+  const done = checklistComplete(idea);
+  gateMsg.textContent = done
+    ? 'Checklist complete — you can set conviction to any level.'
+    : 'Checklist incomplete (' + CHECKLIST_ITEMS.filter(x => !(idea.checklist && idea.checklist[x.key])).length +
+      ' of 5 to go) — conviction stays at "Watching" until every item is checked.';
+  gate.appendChild(gateMsg);
+  sel.addEventListener('change', () => {
+    const check = canRaiseConviction(getIdea(idea.id), sel.value);
+    if (!check.ok) {
+      gateMsg.textContent = check.reason;
+      gateMsg.classList.add('gate-blocked');
+      sel.value = 'watching';
+      return;
+    }
+    gateMsg.classList.remove('gate-blocked');
+    updateIdea(idea.id, i => { i.convictionLevel = sel.value; });
+    renderIdeaDetail(getIdea(idea.id));
+  });
+  sec.appendChild(gate);
+  box.appendChild(sec);
+}
+
+/* (d) Scorecard — StockRanks-style composite 0-100 on user-weighted
+ * criteria: Quality / Value / Conviction. */
+function renderScorecardSection(box, idea) {
+  const sec = sectionShell('Scorecard', 'Score each dimension 1–5, then set what matters most to you. The composite makes comparing two opportunities mechanical instead of a gut feeling.');
+  SCORE_DIMS.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'score-row';
+    const lab = document.createElement('span');
+    const strong = document.createElement('strong');
+    strong.textContent = SCORE_DIM_LABELS[d];
+    lab.appendChild(strong);
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = ' ' + SCORE_DIM_HINTS[d];
+    lab.appendChild(hint);
+    row.appendChild(lab);
+    const group = document.createElement('div');
+    group.className = 'score-btns';
+    for (let v = 1; v <= 5; v++) {
+      const b = document.createElement('button');
+      b.className = 'score-btn' + (idea.scores[d] === v ? ' selected' : '');
+      b.textContent = v;
+      b.setAttribute('aria-pressed', idea.scores[d] === v ? 'true' : 'false');
+      b.setAttribute('aria-label', SCORE_DIM_LABELS[d] + ' score ' + v + ' of 5');
+      b.addEventListener('click', () => {
+        updateIdea(idea.id, i => { i.scores[d] = (i.scores[d] === v) ? null : v; });
+        renderIdeaDetail(getIdea(idea.id));
+      });
+      group.appendChild(b);
+    }
+    row.appendChild(group);
+    sec.appendChild(row);
+  });
+  const wRow = document.createElement('div');
+  wRow.className = 'weights-row';
+  const wLab = document.createElement('span');
+  wLab.textContent = 'My weights (%):';
+  wRow.appendChild(wLab);
+  SCORE_DIMS.forEach(d => {
+    const lab = document.createElement('label');
+    lab.className = 'weight-field';
+    lab.appendChild(document.createTextNode(d[0].toUpperCase() + d.slice(1)));
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.max = '100';
+    input.value = idea.weights[d];
+    input.setAttribute('aria-label', SCORE_DIM_LABELS[d] + ' weight percent');
+    input.addEventListener('change', () => {
+      let v = Math.round(Number(input.value));
+      if (!isFinite(v) || v < 0) v = 0;
+      if (v > 100) v = 100;
+      updateIdea(idea.id, i => { i.weights[d] = v; });
+      renderIdeaDetail(getIdea(idea.id));
+    });
+    lab.appendChild(input);
+    wRow.appendChild(lab);
+  });
+  sec.appendChild(wRow);
+  const comp = compositeScore(idea);
+  const compLine = document.createElement('p');
+  compLine.className = 'composite-line';
+  const strong = document.createElement('strong');
+  strong.textContent = comp === null ? 'Unscored' : comp + ' / 100 — ' + convictLabel(comp);
+  compLine.appendChild(strong);
+  const hint = document.createElement('span');
+  hint.className = 'hint';
+  hint.textContent = ' weights auto-normalize, so 50/30/20 and 5/3/2 give the same result';
+  compLine.appendChild(hint);
+  sec.appendChild(compLine);
+  box.appendChild(sec);
+}
+
+/* (e) Manual price log — Stockxy's thesis-flags idea without a data feed:
+ * prices you type yourself, rendered as a dated timeline. */
+function renderPriceLogSection(box, idea) {
+  const sec = sectionShell('Price log', 'Type the price yourself when you check in — the timeline connects your logic to reality. No fetching, ever.');
+  const entries = (idea.priceLog || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const list = document.createElement('div');
+  list.className = 'price-timeline';
+  if (!entries.length) {
+    const d = document.createElement('div');
+    d.className = 'empty mini';
+    d.textContent = 'No prices logged yet. Add the price from any public quote when you review the idea.';
+    list.appendChild(d);
+  } else {
+    const prices = entries.map(p => Number(p.price)).filter(isFinite);
+    const lo = Math.min.apply(null, prices), hi = Math.max.apply(null, prices);
+    entries.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'price-row';
+      const dt = document.createElement('span');
+      dt.className = 'price-date';
+      dt.textContent = p.date;
+      row.appendChild(dt);
+      const bar = document.createElement('span');
+      bar.className = 'price-bar';
+      const val = Number(p.price);
+      const pct = (hi === lo) ? 50 : Math.round(((val - lo) / (hi - lo)) * 100);
+      const fill = document.createElement('span');
+      fill.className = 'price-fill';
+      fill.style.width = pct + '%';
+      bar.appendChild(fill);
+      row.appendChild(bar);
+      const pr = document.createElement('span');
+      pr.className = 'price-val';
+      pr.textContent = p.price;
+      row.appendChild(pr);
+      if (p.note) {
+        const note = document.createElement('span');
+        note.className = 'price-note';
+        note.textContent = p.note;
+        row.appendChild(note);
+      }
+      const del = document.createElement('button');
+      del.className = 'btn danger mini';
+      del.textContent = '×';
+      del.setAttribute('aria-label', 'Delete price entry for ' + p.date);
+      del.addEventListener('click', () => {
+        updateIdea(idea.id, i => { i.priceLog = i.priceLog.filter(x => x.id !== p.id); });
+        renderIdeaDetail(getIdea(idea.id));
+      });
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+  sec.appendChild(list);
+  const form = document.createElement('div');
+  form.className = 'price-form';
+  const dLab = document.createElement('label');
+  dLab.className = 'field';
+  dLab.appendChild(document.createTextNode('Date'));
+  const dIn = document.createElement('input');
+  dIn.id = 'price-date';
+  dIn.type = 'date';
+  dIn.value = todayISO();
+  dIn.max = todayISO();
+  dLab.appendChild(dIn);
+  form.appendChild(dLab);
+  const pLab = document.createElement('label');
+  pLab.className = 'field';
+  pLab.appendChild(document.createTextNode('Price'));
+  const pIn = document.createElement('input');
+  pIn.id = 'price-val';
+  pIn.type = 'text';
+  pIn.inputMode = 'decimal';
+  pIn.maxLength = 20;
+  pIn.placeholder = 'e.g. 142.50';
+  pLab.appendChild(pIn);
+  form.appendChild(pLab);
+  const nLab = document.createElement('label');
+  nLab.className = 'field';
+  nLab.appendChild(document.createTextNode('Note (optional)'));
+  const nIn = document.createElement('input');
+  nIn.id = 'price-note';
+  nIn.type = 'text';
+  nIn.maxLength = 140;
+  nIn.placeholder = 'why are you logging this price?';
+  nLab.appendChild(nIn);
+  form.appendChild(nLab);
+  const err = document.createElement('p');
+  err.className = 'form-error hidden';
+  err.id = 'price-error';
+  err.setAttribute('role', 'alert');
+  form.appendChild(err);
+  const add = document.createElement('button');
+  add.className = 'btn';
+  add.textContent = 'Log price';
+  add.addEventListener('click', () => {
+    const e2 = $('price-error');
+    e2.textContent = '';
+    e2.classList.add('hidden');
+    const date = $('price-date').value;
+    const price = $('price-val').value.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { e2.textContent = 'Pick a date for this price.'; e2.classList.remove('hidden'); return; }
+    if (!/^\d+(\.\d{1,4})?$/.test(price)) { e2.textContent = 'Enter a plain number for the price (no $ or commas).'; e2.classList.remove('hidden'); return; }
+    updateIdea(idea.id, i => {
+      i.priceLog.push({ id: uid(), date, price, note: $('price-note').value.trim() });
+    });
+    renderIdeaDetail(getIdea(idea.id));
+  });
+  form.appendChild(add);
+  sec.appendChild(form);
+  box.appendChild(sec);
+}
+
+/* (f) Journal entries attached to the idea. */
+function renderNotesSection(box, idea) {
+  const sec = sectionShell('Research notes', 'Free-form journal entries attached to this idea — inline $TICKER-style structure without the form-filling.');
+  const list = document.createElement('div');
+  list.className = 'notes-list';
+  const notes = (idea.notes || []).slice().sort((a, b) => b.date.localeCompare(a.date) || (a.id < b.id ? 1 : -1));
+  if (!notes.length) {
+    const d = document.createElement('div');
+    d.className = 'empty mini';
+    d.textContent = 'No notes yet.';
+    list.appendChild(d);
+  } else {
+    notes.forEach(n => {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      const dt = document.createElement('div');
+      dt.className = 'fineprint';
+      dt.textContent = n.date;
+      card.appendChild(dt);
+      const p = document.createElement('p');
+      p.className = 'note-text';
+      p.textContent = n.text;
+      card.appendChild(p);
+      const del = document.createElement('button');
+      del.className = 'btn danger mini';
+      del.textContent = '×';
+      del.setAttribute('aria-label', 'Delete note from ' + n.date);
+      del.addEventListener('click', () => {
+        updateIdea(idea.id, i => { i.notes = i.notes.filter(x => x.id !== n.id); });
+        renderIdeaDetail(getIdea(idea.id));
+      });
+      card.appendChild(del);
+      list.appendChild(card);
+    });
+  }
+  sec.appendChild(list);
+  const lab = document.createElement('label');
+  lab.className = 'field';
+  lab.appendChild(document.createTextNode('New note'));
+  const ta = document.createElement('textarea');
+  ta.id = 'new-note';
+  ta.rows = 3;
+  ta.maxLength = 2000;
+  ta.placeholder = 'What did you learn? Earnings call takeaways, a red flag, a change of mind…';
+  lab.appendChild(ta);
+  sec.appendChild(lab);
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const add = document.createElement('button');
+  add.className = 'btn';
+  add.textContent = 'Add note';
+  add.addEventListener('click', () => {
+    const text = $('new-note').value.trim();
+    if (!text) { $('new-note').focus(); return; }
+    updateIdea(idea.id, i => {
+      i.notes.push({ id: uid(), date: todayISO(), text });
+    });
+    renderIdeaDetail(getIdea(idea.id));
+  });
+  row.appendChild(add);
+  sec.appendChild(row);
+  box.appendChild(sec);
+}
+
+function renderIdeaDanger(box, idea) {
+  const sec = sectionShell('Danger zone', null);
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const del = document.createElement('button');
+  del.className = 'btn danger';
+  del.textContent = 'Delete idea';
+  del.setAttribute('aria-label', 'Delete idea: ' + idea.name);
+  // Inline two-tap confirm (no native confirm dialog — testable).
+  del.addEventListener('click', () => {
+    if (del.dataset.armed === '1') {
+      store.ideas = store.ideas.filter(i => i.id !== idea.id);
+      saveStore(store);
+      renderIdeasHome();
+      showScreen('ideas');
+      return;
+    }
+    del.dataset.armed = '1';
+    del.textContent = 'Tap again to confirm delete';
+    del.classList.add('armed');
+    setTimeout(() => {
+      if (del.isConnected) {
+        del.dataset.armed = '';
+        del.textContent = 'Delete idea';
+        del.classList.remove('armed');
+      }
+    }, 3000);
+  });
+  row.appendChild(del);
+  sec.appendChild(row);
+  box.appendChild(sec);
+}
+
+/* ---------------- reviews screen ---------------- */
+// The review loop, Fatebook-style: every idea has an expiry; the app
+// initiates the review. The core prompt is Stockxy's: "did it move for your
+// stated reason?" — auditing the thesis, not just the outcome.
+let activeReviewId = null;
+
+function renderReviews() {
+  const today = todayISO();
+  const due = dueIdeas(today);
+  const box = $('reviews-list');
+  box.innerHTML = '';
+  const upcoming = openIdeas(today).filter(i => !isReviewDue(i, today))
+    .sort((a, b) => (reviewAtOf(a) || '').localeCompare(reviewAtOf(b) || ''));
+
+  if (!due.length) {
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = 'Nothing due for review. The loop is quiet — check back after your ideas\' review-by dates pass.';
+    box.appendChild(d);
+  }
+  due.forEach(idea => {
+    const card = document.createElement('div');
+    card.className = 'entry due';
+    const head = document.createElement('div');
+    head.className = 'entry-head';
+    const nm = document.createElement('span');
+    nm.className = 'entry-name';
+    nm.textContent = idea.name;
+    head.appendChild(nm);
+    if (idea.tickers) {
+      const tk = document.createElement('span');
+      tk.className = 'entry-tickers';
+      tk.textContent = idea.tickers;
+      head.appendChild(tk);
+    }
+    const badge = document.createElement('span');
+    badge.className = 'due-badge';
+    badge.textContent = 'Review due';
+    head.appendChild(badge);
+    card.appendChild(head);
+
+    const thesis = document.createElement('p');
+    thesis.className = 'entry-thesis';
+    thesis.textContent = idea.thesis.belief || '(no thesis written yet)';
+    card.appendChild(thesis);
+    if (idea.thesis.falsify) {
+      const f = document.createElement('p');
+      f.className = 'entry-falsify';
+      const strong = document.createElement('strong');
+      strong.textContent = 'Would prove me wrong: ';
+      f.appendChild(strong);
+      f.appendChild(document.createTextNode(idea.thesis.falsify));
+      card.appendChild(f);
+    }
+    const meta = document.createElement('p');
+    meta.className = 'fineprint';
+    meta.textContent = 'Review by ' + (reviewAtOf(idea) || '—') +
+      ' · ' + (idea.reviewHistory || []).length + ' past reviews';
+    card.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'entry-actions';
+    const open = document.createElement('button');
+    open.className = 'btn';
+    open.textContent = 'Open research';
+    open.addEventListener('click', () => openIdea(idea.id));
+    actions.appendChild(open);
+    const start = document.createElement('button');
+    start.className = 'btn primary';
+    start.textContent = 'Start review';
+    start.setAttribute('aria-label', 'Start review of ' + idea.name);
+    start.addEventListener('click', () => {
+      activeReviewId = idea.id;
+      renderReviewForm(card, idea);
+    });
+    actions.appendChild(start);
+    card.appendChild(actions);
+    box.appendChild(card);
+  });
+
+  if (upcoming.length) {
+    const h = document.createElement('h2');
+    h.textContent = 'Upcoming';
+    box.appendChild(h);
+    const list = document.createElement('div');
+    upcoming.forEach(i => list.appendChild(ideaRow(i, { today })));
+    box.appendChild(list);
+  }
+}
+
+function renderReviewForm(card, idea) {
+  // Replace the actions area with the inline review form.
+  const old = card.querySelector('.review-form');
+  if (old) old.remove();
+  const form = document.createElement('div');
+  form.className = 'review-form panel';
+
+  const q1 = document.createElement('p');
+  q1.innerHTML = '';
+  const q1t = document.createElement('strong');
+  q1t.textContent = 'Did it move for your stated reason?';
+  q1.appendChild(q1t);
+  const q1h = document.createElement('span');
+  q1h.className = 'hint';
+  q1h.textContent = ' Compare what happened to the reasons you wrote — this separates luck from skill.';
+  q1.appendChild(q1h);
+  form.appendChild(q1);
+  const reasonChips = document.createElement('div');
+  reasonChips.className = 'chips';
+  const reasonOpts = [['yes', 'Yes, for my reasons'], ['no', 'No — or for other reasons'], ['na', 'Too early to tell']];
+  let reasonMatch = 'na';
+  reasonOpts.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (reasonMatch === opt[0] ? ' selected' : '');
+    b.textContent = opt[1];
+    b.setAttribute('aria-pressed', reasonMatch === opt[0] ? 'true' : 'false');
+    b.addEventListener('click', () => {
+      reasonMatch = opt[0];
+      reasonChips.querySelectorAll('.chip').forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-pressed', 'false'); });
+      b.classList.add('selected');
+      b.setAttribute('aria-pressed', 'true');
+    });
+    reasonChips.appendChild(b);
+  });
+  form.appendChild(reasonChips);
+
+  const q2 = document.createElement('p');
+  const q2t = document.createElement('strong');
+  q2t.textContent = 'Outcome';
+  q2.appendChild(q2t);
+  form.appendChild(q2);
+  const outcomeChips = document.createElement('div');
+  outcomeChips.className = 'chips';
+  const outcomeOpts = [
+    ['intact', 'Thesis intact', 'The story still holds — keep watching.'],
+    ['changed', 'Thesis changed', 'New evidence moved the story — update the research.'],
+    ['resolved', 'Resolved', 'The question is answered — this feeds your track record.'],
+  ];
+  let outcome = 'intact';
+  outcomeOpts.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (outcome === opt[0] ? ' selected' : '');
+    b.textContent = opt[1];
+    b.title = opt[2];
+    b.setAttribute('aria-pressed', outcome === opt[0] ? 'true' : 'false');
+    b.addEventListener('click', () => {
+      outcome = opt[0];
+      outcomeChips.querySelectorAll('.chip').forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-pressed', 'false'); });
+      b.classList.add('selected');
+      b.setAttribute('aria-pressed', 'true');
+    });
+    outcomeChips.appendChild(b);
+  });
+  form.appendChild(outcomeChips);
+
+  const lab = document.createElement('label');
+  lab.className = 'field';
+  lab.appendChild(document.createTextNode('Review note (optional)'));
+  const ta = document.createElement('textarea');
+  ta.rows = 2;
+  ta.maxLength = 1000;
+  ta.placeholder = 'What changed? What did you learn?';
+  lab.appendChild(ta);
+  form.appendChild(lab);
+
+  const nextLab = document.createElement('label');
+  nextLab.className = 'field inline-field';
+  nextLab.appendChild(document.createTextNode('Review again in'));
+  const sel = document.createElement('select');
+  REVIEW_INTERVALS.forEach(n => {
+    const o = document.createElement('option');
+    o.value = String(n);
+    o.textContent = n + (n === 1 ? ' month' : ' months');
+    if (n === (idea.reviewMonths || DEFAULT_REVIEW_MONTHS)) o.selected = true;
+    sel.appendChild(o);
+  });
+  nextLab.appendChild(sel);
+  form.appendChild(nextLab);
+
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const save = document.createElement('button');
+  save.className = 'btn primary';
+  save.textContent = 'Save review';
+  save.addEventListener('click', () => {
+    const updated = applyReview(getIdea(idea.id), {
+      outcome, reasonMatch, note: ta.value.trim(), nextMonths: sel.value,
+    }, todayISO());
+    updateIdea(idea.id, () => updated);
+    activeReviewId = null;
+    renderIdeasHome();
+    renderReviews();
+  });
+  row.appendChild(save);
+  const cancel = document.createElement('button');
+  cancel.className = 'btn';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => { activeReviewId = null; renderReviews(); });
+  row.appendChild(cancel);
+  form.appendChild(row);
+  card.appendChild(form);
+}
+
+/* ---------------- track record ---------------- */
+function renderTrackRecord() {
+  const box = $('track-record');
+  box.innerHTML = '';
+  const tr = trackRecord(store.ideas || []);
+  const kpis = document.createElement('div');
+  kpis.className = 'kpi-strip';
+  [
+    ['Reviews logged', String(tr.reviews)],
+    ['Thesis intact', String(tr.intact)],
+    ['Thesis changed', String(tr.changed)],
+    ['Resolved', String(tr.resolved)],
+  ].forEach(pair => {
+    const card = document.createElement('div');
+    card.className = 'kpi-card';
+    const lab = document.createElement('div');
+    lab.className = 'kpi-label';
+    lab.textContent = pair[0];
+    const val = document.createElement('div');
+    val.className = 'kpi-value';
+    val.textContent = pair[1];
+    card.appendChild(lab);
+    card.appendChild(val);
+    kpis.appendChild(card);
+  });
+  box.appendChild(kpis);
+
+  const cal = document.createElement('div');
+  cal.className = 'panel';
+  const h = document.createElement('h3');
+  h.textContent = 'Calibration';
+  cal.appendChild(h);
+  const p = document.createElement('p');
+  if (tr.reasonAccuracy === null) {
+    p.textContent = 'No answered "did it move for your stated reason?" reviews yet. ' +
+      'Each review asks the question — over time, this number tells you how often you were right for the right reasons.';
+  } else {
+    p.innerHTML = '';
+    const strong = document.createElement('strong');
+    strong.textContent = tr.reasonAccuracy + '%';
+    p.appendChild(strong);
+    p.appendChild(document.createTextNode(' of your answered reviews moved for your stated reasons (' +
+      tr.reasonYes + ' of ' + tr.reasonAnswered + '). ' +
+      'That is your honesty score — separate from whether prices went up.'));
+  }
+  cal.appendChild(p);
+  const fine = document.createElement('p');
+  fine.className = 'fineprint';
+  fine.textContent = 'Resolved ideas never disappear — they stay in the Ideas list with a Resolved tag so the record can\'t be edited away. Hindsight editing is the enemy.';
+  cal.appendChild(fine);
+  box.appendChild(cal);
+
+  // Review history, newest first.
+  const hist = [];
+  (store.ideas || []).forEach(idea => {
+    (idea.reviewHistory || []).forEach(r => hist.push({ idea, r }));
+  });
+  hist.sort((a, b) => b.r.date.localeCompare(a.r.date));
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Review history';
+  box.appendChild(h2);
+  if (!hist.length) {
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = 'No reviews yet. When an idea\'s review-by date arrives, it appears under Reviews.';
+    box.appendChild(d);
+  } else {
+    hist.forEach(hx => {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      const head = document.createElement('div');
+      head.className = 'entry-head';
+      const nm = document.createElement('span');
+      nm.className = 'entry-name';
+      nm.textContent = hx.idea.name;
+      head.appendChild(nm);
+      const oc = document.createElement('span');
+      oc.className = 'tag';
+      oc.textContent = { intact: 'Thesis intact', changed: 'Thesis changed', resolved: 'Resolved' }[hx.r.outcome] || hx.r.outcome;
+      head.appendChild(oc);
+      card.appendChild(head);
+      const meta = document.createElement('p');
+      meta.className = 'fineprint';
+      const rm = { yes: 'moved for stated reasons', no: 'did not move for stated reasons', na: 'too early to tell' }[hx.r.reasonMatch] || '';
+      meta.textContent = hx.r.date + (rm ? ' · ' + rm : '');
+      card.appendChild(meta);
+      if (hx.r.note) {
+        const np = document.createElement('p');
+        np.className = 'note-text';
+        np.textContent = hx.r.note;
+        card.appendChild(np);
+      }
+      box.appendChild(card);
+    });
+  }
+}
+
+/* ---------------- learn: micro-lesson UI ---------------- */
 // {el, term} pairs in render order — the search filter toggles their .hidden.
-let glossaryNodes = [];
+let lessonNodes = [];
+let lessonQuizState = {}; // abbr -> array of selected option indexes
+
+function lessonProgress(abbr) {
+  const g = (store.glossary || {})[abbr];
+  return (g && typeof g.best === 'number') ? g.best : null;
+}
 
 function renderGlossary() {
   const box = $('glossary');
   box.innerHTML = '';
-  glossaryNodes = [];
+  lessonNodes = [];
   GLOSSARY.forEach(g => {
     const d = document.createElement('details');
-    d.className = 'gloss';
-    glossaryNodes.push({ el: d, term: g });
+    d.className = 'gloss lesson';
+    lessonNodes.push({ el: d, term: g });
     const summary = document.createElement('summary');
     const tag = document.createElement('span');
     tag.className = 'ticker';
     tag.textContent = g.abbr;
     summary.appendChild(tag);
     summary.appendChild(document.createTextNode(g.name));
+    const best = lessonProgress(g.abbr);
+    if (best === 3) {
+      const done = document.createElement('span');
+      done.className = 'lesson-done';
+      done.textContent = '✓';
+      done.title = 'Quiz completed';
+      summary.appendChild(done);
+    }
     const body = document.createElement('div');
     body.className = 'body';
     const p1 = document.createElement('p'); p1.textContent = g.what;
-    const p2 = document.createElement('p'); p2.innerHTML = '<span class="healthy">Generally healthy:</span> ';
-    p2.appendChild(document.createTextNode(g.healthy));
-    const p3 = document.createElement('p'); p3.innerHTML = '<span class="flag">Red flag:</span> ';
-    p3.appendChild(document.createTextNode(g.flag));
+    const p2 = document.createElement('p');
+    const s2 = document.createElement('span'); s2.className = 'healthy'; s2.textContent = 'Generally healthy: ';
+    p2.appendChild(s2); p2.appendChild(document.createTextNode(g.healthy));
+    const p3 = document.createElement('p');
+    const s3 = document.createElement('span'); s3.className = 'flag'; s3.textContent = 'Red flag: ';
+    p3.appendChild(s3); p3.appendChild(document.createTextNode(g.flag));
     body.appendChild(p1); body.appendChild(p2); body.appendChild(p3);
+
+    // Micro-quiz: 3 questions, instant feedback.
+    const qHead = document.createElement('h4');
+    qHead.textContent = 'Check your understanding';
+    body.appendChild(qHead);
+    const quizBox = document.createElement('div');
+    quizBox.className = 'lesson-quiz';
+    if (!lessonQuizState[g.abbr]) lessonQuizState[g.abbr] = new Array(g.quiz.length).fill(null);
+    const picked = lessonQuizState[g.abbr];
+    g.quiz.forEach((item, qi) => {
+      const qd = document.createElement('div');
+      qd.className = 'q';
+      const qt = document.createElement('div');
+      qt.className = 'q-title';
+      qt.textContent = (qi + 1) + '. ' + item.q;
+      qd.appendChild(qt);
+      const grid = document.createElement('div');
+      grid.className = 'opt-grid';
+      item.options.forEach((opt, oi) => {
+        const b = document.createElement('button');
+        b.className = 'opt-btn' + (picked[qi] === oi ? ' selected' : '');
+        b.textContent = opt;
+        b.setAttribute('aria-pressed', picked[qi] === oi ? 'true' : 'false');
+        b.addEventListener('click', () => {
+          picked[qi] = oi;
+          grid.querySelectorAll('.opt-btn').forEach(x => { x.classList.remove('selected'); x.setAttribute('aria-pressed', 'false'); });
+          b.classList.add('selected');
+          b.setAttribute('aria-pressed', 'true');
+          updateLessonScore(g, quizBox, picked);
+        });
+        grid.appendChild(b);
+      });
+      qd.appendChild(grid);
+      quizBox.appendChild(qd);
+    });
+    const scoreLine = document.createElement('p');
+    scoreLine.className = 'fineprint lesson-score';
+    quizBox.appendChild(scoreLine);
+    body.appendChild(quizBox);
+    updateLessonScore(g, quizBox, picked, true);
     d.appendChild(summary); d.appendChild(body);
     box.appendChild(d);
   });
+}
+
+function updateLessonScore(term, quizBox, picked, silent) {
+  const answered = picked.filter(p => p !== null).length;
+  const correct = picked.filter((p, i) => p === term.quiz[i].a).length;
+  const line = quizBox.querySelector('.lesson-score');
+  if (line) line.textContent = answered + ' of 3 answered · ' + correct + ' correct' +
+    (lessonProgress(term.abbr) !== null ? ' · best: ' + lessonProgress(term.abbr) + ' / 3' : '');
+  if (answered === 3 && !silent) {
+    store.glossary = store.glossary || {};
+    const prev = lessonProgress(term.abbr);
+    store.glossary[term.abbr] = { best: Math.max(prev === null ? 0 : prev, correct), attempts: ((store.glossary[term.abbr] || {}).attempts || 0) + 1 };
+    saveStore(store);
+    if (correct === 3) renderGlossary(); // re-render to show the ✓ badge
+    else if (line) line.textContent = 'Answered: ' + correct + ' of 3 correct — best saved. Re-open to try again.';
+  }
 }
 
 function applyGlossaryFilter() {
@@ -409,7 +1884,7 @@ function applyGlossaryFilter() {
   const q = ($('glossary-search').value || '').trim();
   const visible = new Set(filterGlossaryTerms(q));
   let shown = 0;
-  glossaryNodes.forEach(n => {
+  lessonNodes.forEach(n => {
     const show = visible.has(n.term);
     n.el.classList.toggle('hidden', !show);
     if (show) shown++;
@@ -421,291 +1896,12 @@ function applyGlossaryFilter() {
     empty.classList.add('hidden');
     return;
   }
-  count.textContent = shown + ' of ' + GLOSSARY.length + ' terms match "' + q + '"';
+  count.textContent = shown + ' of ' + GLOSSARY.length + ' lessons match "' + q + '"';
   count.classList.remove('hidden');
   empty.classList.toggle('hidden', shown !== 0);
 }
 
-/* ---------------- journal UI ---------------- */
-let store = loadStore();
-const draftScores = {};
-
-function renderScoreButtons() {
-  document.querySelectorAll('.score-btns').forEach(group => {
-    const dim = group.dataset.score;
-    group.innerHTML = '';
-    for (let v = 1; v <= 5; v++) {
-      const b = document.createElement('button');
-      b.className = 'score-btn' + (draftScores[dim] === v ? ' selected' : '');
-      b.textContent = v;
-      b.setAttribute('aria-label', dim + ' score ' + v + ' of 5' +
-        (draftScores[dim] === v ? ' — selected, click again to clear' : ''));
-      b.setAttribute('aria-pressed', draftScores[dim] === v ? 'true' : 'false');
-      b.addEventListener('click', () => {
-        draftScores[dim] = (draftScores[dim] === v) ? undefined : v; // toggle off on re-click
-        renderScoreButtons();
-        updateWeightedPreview();
-      });
-      group.appendChild(b);
-    }
-  });
-}
-
-function updateWeightedPreview() {
-  const w = weightedScore(draftScores);
-  const n = scoreCount(draftScores);
-  $('j-weighted').textContent = (w === null) ? '—' : w.toFixed(1) + ' / 5 · ' + n + ' of 5 scored';
-}
-
-function showFormError(msg, focusId) {
-  const err = $('j-error');
-  err.textContent = msg;
-  err.classList.remove('hidden');
-  if (focusId) $(focusId).focus();
-}
-
-function clearFormError() {
-  const err = $('j-error');
-  err.textContent = '';
-  err.classList.add('hidden');
-}
-
-function clearJournalForm() {
-  ['j-name', 'j-tickers', 'j-tags', 'j-thesis', 'j-falsify'].forEach(id => { $(id).value = ''; });
-  $('j-review').value = '6';
-  SCORE_DIMS.forEach(d => { delete draftScores[d]; });
-  clearFormError();
-  renderScoreButtons();
-  updateWeightedPreview();
-}
-
-function saveEntry() {
-  clearFormError();
-  const name = $('j-name').value.trim();
-  const thesis = $('j-thesis').value.trim();
-  if (!name) { showFormError('Give your thesis a company or idea name first.', 'j-name'); return; }
-  if (!thesis) { showFormError('Write a sentence or two of thesis — future you will thank present you.', 'j-thesis'); return; }
-  const reviewMonths = parseInt($('j-review').value, 10) || 6;
-  const entry = {
-    id: 'e' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
-    name,
-    tickers: $('j-tickers').value.trim().toUpperCase(),
-    tags: $('j-tags').value.split(',').map(t => t.trim()).filter(Boolean),
-    thesis,
-    falsify: $('j-falsify').value.trim(),
-    scores: Object.assign({}, draftScores),
-    weighted: weightedScore(draftScores),
-    scored: scoreCount(draftScores),
-    createdAt: todayISO(),
-    reviewMonths,
-    reviewAt: addMonths(todayISO(), reviewMonths),
-  };
-  store.entries.push(entry);
-  saveStore(store);
-  clearJournalForm();
-  renderWatchlist();
-}
-
-function deleteEntry(id) {
-  // No native confirm(): the delete button uses an inline two-tap arm/confirm
-  // so deletion stays testable and consistent with the rest of the UI.
-  store.entries = store.entries.filter(e => e.id !== id);
-  saveStore(store);
-  renderWatchlist();
-}
-
-function reloadJournal() {
-  // Re-read entries from localStorage and re-render. Exposed for tests;
-  // also the hook a future cross-tab `storage` listener would use.
-  store = loadStore();
-  renderWatchlist();
-}
-
-function renderWatchlist() {
-  const box = $('watchlist');
-  const today = todayISO();
-  // Theses due for a re-check surface first, then sort by weighted score.
-  const entries = store.entries.slice().sort((a, b) => {
-    const aDue = isReviewDue(a, today) ? 0 : 1;
-    const bDue = isReviewDue(b, today) ? 0 : 1;
-    if (aDue !== bDue) return aDue - bDue;
-    return (b.weighted || 0) - (a.weighted || 0);
-  });
-  $('watchlist-count').textContent = thesesLabel(entries.length);
-  const dueCount = entries.filter(e => isReviewDue(e, today)).length;
-  const dueLine = $('watchlist-due');
-  if (dueCount) {
-    dueLine.textContent = dueCount + (dueCount === 1 ? ' thesis is' : ' theses are') +
-      ' due for a re-check — re-read what you wrote and see what changed.';
-    dueLine.classList.remove('hidden');
-  } else {
-    dueLine.textContent = '';
-    dueLine.classList.add('hidden');
-  }
-  $('export-json').disabled = !entries.length;
-  $('export-md').disabled = !entries.length;
-  // KPI strip: journal-at-a-glance tiles computed from in-memory entries (visual only).
-  const kpis = $('journal-kpis');
-  kpis.innerHTML = '';
-  if (entries.length) {
-    kpis.hidden = false;
-    const scored = entries.filter(e => typeof e.weighted === 'number');
-    const avg = scored.length
-      ? (scored.reduce((s, e) => s + e.weighted, 0) / scored.length).toFixed(1) + ' / 5'
-      : '—';
-    [['Theses tracked', String(entries.length)],
-     ['Reviews due', String(dueCount)],
-     ['Avg conviction', avg]].forEach(pair => {
-      const card = document.createElement('div');
-      card.className = 'kpi-card';
-      const lab = document.createElement('div');
-      lab.className = 'kpi-label';
-      lab.textContent = pair[0];
-      const val = document.createElement('div');
-      val.className = 'kpi-value';
-      val.textContent = pair[1];
-      card.appendChild(lab);
-      card.appendChild(val);
-      kpis.appendChild(card);
-    });
-  } else {
-    kpis.hidden = true;
-  }
-  if (!entries.length) {
-    box.innerHTML = '<div class="empty">No theses yet. Write your first one above — start with a product you already love.</div>';
-    return;
-  }
-  box.innerHTML = '';
-  let armedDel = null, armedTimer = null;
-  function disarm(btn) {
-    if (!btn || !btn.isConnected) return;
-    btn.dataset.armed = '';
-    btn.textContent = 'Delete';
-    btn.classList.remove('armed');
-    btn.setAttribute('aria-label', btn.dataset.label || 'Delete');
-  }
-  entries.forEach(e => {
-    const card = document.createElement('div');
-    card.className = 'entry';
-    const head = document.createElement('div');
-    head.className = 'entry-head';
-    const nm = document.createElement('span');
-    nm.className = 'entry-name';
-    nm.textContent = e.name;
-    head.appendChild(nm);
-    if (e.tickers) {
-      const tk = document.createElement('span');
-      tk.className = 'entry-tickers';
-      tk.textContent = e.tickers;
-      head.appendChild(tk);
-    }
-    const sc = document.createElement('span');
-    sc.className = 'entry-score';
-    sc.textContent = (e.weighted === null || e.weighted === undefined) ? 'unscored' : e.weighted.toFixed(1) + ' / 5';
-    if (typeof e.weighted === 'number') {
-      // Diverging conviction scale: 0-5 score mapped to 0-100 (score * 20).
-      const pct = e.weighted * 20;
-      sc.classList.add(pct < 40 ? 's-low' : pct < 70 ? 's-mid' : 's-high');
-    }
-    head.appendChild(sc);
-    const due = isReviewDue(e, today);
-    if (due) {
-      const badge = document.createElement('span');
-      badge.className = 'due-badge';
-      badge.textContent = 'Review due';
-      head.appendChild(badge);
-      card.classList.add('due');
-    }
-    card.appendChild(head);
-    if (e.tags && e.tags.length) {
-      const tags = document.createElement('div');
-      tags.className = 'entry-tags';
-      e.tags.forEach(t => {
-        const s = document.createElement('span');
-        s.className = 'tag';
-        s.textContent = t;
-        tags.appendChild(s);
-      });
-      card.appendChild(tags);
-    }
-    const th = document.createElement('p');
-    th.className = 'entry-thesis';
-    th.textContent = e.thesis;
-    card.appendChild(th);
-    if (e.falsify) {
-      const f = document.createElement('p');
-      f.className = 'entry-falsify';
-      const strong = document.createElement('strong');
-      strong.textContent = 'Would prove me wrong: ';
-      f.appendChild(strong);
-      f.appendChild(document.createTextNode(e.falsify));
-      card.appendChild(f);
-    }
-    const meta = document.createElement('p');
-    meta.className = 'fineprint';
-    const scoredN = (typeof e.scored === 'number') ? e.scored : scoreCount(e.scores || {});
-    meta.textContent = 'Written ' + e.createdAt + ' · review by ' + reviewAtOf(e) +
-      ' · ' + scoredN + ' of 5 dimensions scored · saved in this browser only';
-    card.appendChild(meta);
-    const actions = document.createElement('div');
-    actions.className = 'entry-actions';
-    const del = document.createElement('button');
-    del.className = 'btn danger';
-    del.textContent = 'Delete';
-    del.dataset.label = 'Delete thesis: ' + e.name;
-    del.setAttribute('aria-label', del.dataset.label);
-    del.addEventListener('click', () => {
-      if (del.dataset.armed === '1') {
-        clearTimeout(armedTimer);
-        armedDel = null;
-        deleteEntry(e.id);
-        return;
-      }
-      disarm(armedDel);
-      clearTimeout(armedTimer);
-      armedDel = del;
-      del.dataset.armed = '1';
-      del.textContent = 'Tap again to confirm delete';
-      del.classList.add('armed');
-      del.setAttribute('aria-label', 'Confirm deletion of thesis: ' + e.name);
-      armedTimer = setTimeout(() => {
-        disarm(del);
-        if (armedDel === del) armedDel = null;
-      }, 3000);
-    });
-    actions.appendChild(del);
-    // Due theses get a "Mark reviewed" loop-closer: re-read the thesis, then
-    // schedule the next check instead of leaving the badge on forever.
-    if (due) {
-      const sel = document.createElement('select');
-      sel.className = 'review-again';
-      sel.setAttribute('aria-label', 'Remind me to re-check again in');
-      REVIEW_INTERVALS.forEach(n => {
-        const o = document.createElement('option');
-        o.value = String(n);
-        o.textContent = n + (n === 1 ? ' month' : ' months');
-        if (n === (e.reviewMonths || 6)) o.selected = true;
-        sel.appendChild(o);
-      });
-      const mark = document.createElement('button');
-      mark.className = 'btn';
-      mark.textContent = 'Mark reviewed';
-      mark.setAttribute('aria-label', 'Mark thesis reviewed and schedule the next re-check');
-      mark.addEventListener('click', () => {
-        const updated = rescheduleReview(e, sel.value, todayISO());
-        store.entries = store.entries.map(x => x.id === e.id ? updated : x);
-        saveStore(store);
-        renderWatchlist();
-      });
-      actions.appendChild(sel);
-      actions.appendChild(mark);
-    }
-    card.appendChild(actions);
-    box.appendChild(card);
-  });
-}
-
-/* ---------------- journal export ---------------- */
+/* ---------------- export ---------------- */
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -720,16 +1916,16 @@ function downloadBlob(blob, filename) {
 function exportJSON() {
   const stamp = todayISO();
   downloadBlob(
-    new Blob([journalToJSON(store.entries)], { type: 'application/json' }),
-    'longterm-lens-journal-' + stamp + '.json'
+    new Blob([journalToJSON(store.ideas || [])], { type: 'application/json' }),
+    'longterm-lens-ideas-' + stamp + '.json'
   );
 }
 
 function exportMarkdown() {
   const stamp = todayISO();
   downloadBlob(
-    new Blob([journalToMarkdown(store.entries, stamp)], { type: 'text/markdown' }),
-    'longterm-lens-journal-' + stamp + '.md'
+    new Blob([journalToMarkdown(store.ideas || [], stamp)], { type: 'text/markdown' }),
+    'longterm-lens-ideas-' + stamp + '.md'
   );
 }
 
@@ -750,16 +1946,33 @@ function init() {
     b.addEventListener('click', () => showScreen(b.dataset.nav)));
   document.querySelectorAll('[data-goto]').forEach(b =>
     b.addEventListener('click', () => showScreen(b.dataset.goto)));
+  $('idea-back').addEventListener('click', () => { renderIdeasHome(); showScreen('ideas'); });
   renderQuiz();
   renderGlossary();
   $('glossary-search').addEventListener('input', applyGlossaryFilter);
-  renderScoreButtons();
-  updateWeightedPreview();
-  renderWatchlist();
-  $('j-save').addEventListener('click', saveEntry);
-  $('j-clear').addEventListener('click', clearJournalForm);
+  renderIdeasHome();
+  renderReviews();
+  renderTrackRecord();
+  $('qa-add').addEventListener('click', quickAddIdea);
+  ['qa-name', 'qa-tickers'].forEach(id => {
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddIdea(); });
+  });
   $('export-json').addEventListener('click', exportJSON);
   $('export-md').addEventListener('click', exportMarkdown);
+  // Re-render dynamic screens when navigating to them (reviews/data may change).
+  document.querySelector('.nav-btn[data-nav="reviews"]').addEventListener('click', renderReviews);
+  document.querySelector('.nav-btn[data-nav="track"]').addEventListener('click', renderTrackRecord);
+  document.querySelector('.nav-btn[data-nav="ideas"]').addEventListener('click', renderIdeasHome);
+}
+
+function reloadJournal() {
+  // Re-read data from localStorage and re-render. Exposed for tests.
+  store = loadStore();
+  lessonQuizState = {};
+  renderIdeasHome();
+  renderReviews();
+  renderTrackRecord();
+  renderGlossary();
 }
 
 if (document.readyState === 'loading') {
@@ -770,8 +1983,13 @@ if (document.readyState === 'loading') {
 
 // Expose pure logic for the Node smoke test (browsers ignore this).
 if (typeof globalThis !== 'undefined') {
-  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms, weightedScore, scoreCount, thesesLabel, SCORE_WEIGHTS, esc,
-    addMonths, todayISO, reviewAtOf, isReviewDue, rescheduleReview, journalToJSON, journalToMarkdown, reloadJournal };
+  globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms,
+    CHECKLIST_ITEMS, SCORE_DIMS, SCORE_DIM_LABELS, DEFAULT_WEIGHTS,
+    CONVICTION_LEVELS, CONVICTION_LEVEL_LABELS, REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
+    normalizeWeights, compositeScore, convictLabel, checklistComplete, canRaiseConviction,
+    ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue,
+    rescheduleReview, makeIdea, applyReview, trackRecord,
+    journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY };
 }
 
 })();

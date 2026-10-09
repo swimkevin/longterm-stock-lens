@@ -1,5 +1,79 @@
 # Changelog — Long-Term Lens
 
+## [1.0.0] — 2026-10-09
+
+Full redesign around an **Ideas → Research → Review** loop, built from a
+10-product research report (`research_notes/long-term-stock-research-apps-20261009-1229/report.md`:
+Stockxy, Journalytic, Simply Wall St, Stockopedia, Stock Rover, Morningstar
+Investor, Fatebook, Metaculus, Zogo, Finimize).
+
+### Added
+- **Ideas home:** quick-add (ticker/name only → draft idea), a "Due for
+  review" queue sorted by review-by date, and an ideas list showing
+  ticker, 0–100 composite score, conviction label, and review-due badge.
+  The Reviews nav tab carries a due-count badge.
+- **One-page research summary per idea** (fixed format, every idea):
+  - Thesis template — Stockxy's opinionated 3 fields: "What I believe" /
+    "Why I believe it (2–3 reasons)" / "What would prove me wrong".
+  - Key assumptions — Metaculus-style "what has to be true", each with a
+    confidence % (Fatebook quick-set chips: 10/25/50/75/90).
+  - Pre-decision checklist — the Journalytic gate: moat, earnings trend,
+    debt level, valuation sanity, circle of competence. Conviction can't
+    be set above "Watching" until every item is checked.
+  - Scorecard — StockRanks-style composite 0–100 on user-weighted Quality /
+    Value / Conviction (weights auto-normalize, e.g. 50/30/20 == 5/3/2).
+  - Manual price log — Stockxy's thesis-flags idea without a data feed:
+    user-typed date + price rendered as a dated timeline. No fetching, ever.
+  - Attached research notes.
+- **Review flow** — every idea has a review-by date (~90 days out, editable).
+  Reviews ask Stockxy's question: *"Did it move for your stated reason?"*
+  with outcomes thesis intact / thesis changed / resolved. Resolved ideas
+  stay listed with a Resolved tag so the record can't be edited away.
+- **Track record** — counts of intact/changed/resolved reviews plus a
+  calibration line: how often ideas moved for the stated reasons
+  (Fatebook-style honesty score, "too early to tell" excluded).
+- **Learn: micro-lessons** — the 10 glossary terms as Zogo-style 2-minute
+  lessons (explainer + typical "healthy" patterns + red flags + 3-question
+  quiz each), with search/filter and completion badges. Progress persists.
+- **Accounts** — Finimize's "What's going on here? / Why should I care?"
+  skeleton for Roth IRA, Traditional IRA/401(k), and taxable brokerage;
+  2026 contribution limits (verify at irs.gov) and the index-funds section
+  are kept.
+- **Investor profile** — the risk quiz is renamed (nav: Profile) and the
+  latest result is now saved to the store.
+- **Migration:** legacy v0.x `{ entries: [...] }` stores migrate into the
+  v2 ideas schema on first load and the upgrade is persisted. Old theses
+  become ideas: thesis/falsify preserved in the template, the old 5-dim
+  scores mapped onto the 3-dim scorecard (Quality←Fundamentals,
+  Value←Valuation, Conviction←rounded mean of Product/Moat/Horizon) and
+  kept verbatim as `legacyScores`, review dates preserved. localStorage
+  key stays `longterm-stock-lens-v1`.
+- **Exports** renamed to `longterm-lens-ideas-<date>.{json,md}` and cover
+  the new structure (composite score, assumptions, price log, notes).
+
+### Notes
+- Patterns from the report deliberately **not** applied: inline `$ticker`
+  tagging (notes are already per-idea — the marginal value is near zero),
+  opportunity-cost tracking of passed-on ideas (no outcome model for ideas
+  never researched), streak/XP mechanics (personal tool, no extrinsic
+  rewards needed), percentile forecasts (overkill for a beginner journal),
+  Portfolio X-Ray allocation bars (no position sizes in the data model).
+- Cache-buster query strings added to `styles.css` and `app.js` (`?v=1.0.0`).
+
+### Tests
+- `tests/smoke.js` rewritten and extended to **163 assertions**: pure-logic
+  coverage for `compositeScore` (weight normalization, partial scoring),
+  `convictLabel`, `checklistComplete`/`canRaiseConviction`,
+  `makeIdea` defaults, `applyReview` (outcomes, sanitization, status flip),
+  `trackRecord` accuracy, and `migrateStore` (field preservation, score
+  mapping, review-date fallback); UI flows for quick-add, thesis save,
+  the checklist gate, scorecard + weight changes, assumptions with
+  confidence chips, the price log (incl. invalid-price rejection), notes,
+  the review flow (due queue, badge, start-review form, resolution),
+  due-queue oldest-first sorting, track-record KPIs, a lesson quiz
+  completion, migration through the real boot path, exports, and XSS
+  probes through the idea name, an assumption, and a note.
+
 ## [0.4.2] — 2026-10-09
 
 Risk-profiler result polish: no label clipping + screen-reader announcement.

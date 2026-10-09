@@ -3,6 +3,20 @@
 Educational only. No personalized advice, no live prices, no buy/sell
 recommendations — see AGENTS.md. The roadmap respects that boundary.
 
+## v1.0 — Ideas → Research → Review redesign ✅ (shipped 2026-10-09)
+
+Full redesign from a 10-product research report (Stockxy, Journalytic,
+Simply Wall St, Stockopedia, Stock Rover, Morningstar, Fatebook, Metaculus,
+Zogo, Finimize). Journal → Ideas home (due-for-review queue, quick-add,
+composite scores); one-page research summaries per idea (3-field thesis
+template, assumptions with confidence %, pre-decision checklist gating
+conviction, user-weighted 0–100 scorecard, manual price timeline, attached
+notes); "did it move for your stated reason?" reviews (intact / changed /
+resolved); track-record calibration; glossary → micro-lessons with 3-question
+quizzes; accounts → "What's going on here? / Why should I care?" skeleton.
+v0.x journal data migrates automatically into the v2 schema — nothing lost,
+localStorage key unchanged.
+
 ## v0.4 — Compound-interest visualizer + DCA explainer ⬅️ NEXT
 
 Interactive, hand-drawn canvas chart: starting amount, monthly contribution,

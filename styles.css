@@ -273,3 +273,124 @@ button:active { transform: scale(0.96); }
   h1 { line-height: 1.25; }
   .disclaimer-banner { font-size: 0.85rem; padding: 0.7rem 0.9rem; }
 }
+
+/* ============ v1.0 redesign: Ideas / Reviews / Track record ============ */
+
+/* Reviews nav badge (due-count). */
+.nav-badge {
+  display: inline-block; min-width: 1.4em; text-align: center;
+  background: var(--amber); color: #0d1117; font-weight: 800; font-size: 0.78rem;
+  border-radius: 10px; padding: 0.05rem 0.35rem; margin-left: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Idea rows (home list + due queue + upcoming). */
+.idea-row { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 0.7rem; }
+.idea-row.due { border-color: var(--amber); }
+.idea-row.resolved { opacity: 0.75; }
+.idea-main {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  color: var(--text); padding: 0.9rem 1rem; cursor: pointer; font: inherit;
+}
+.idea-main:hover .idea-name { color: var(--green); }
+.idea-top { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
+.idea-name { font-weight: 800; font-size: 1.05rem; }
+.idea-ticker { color: var(--blue); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.5px; }
+.idea-score {
+  margin-left: auto; background: #0f1f14; border: 1px solid var(--green-dim); color: var(--green);
+  font-weight: 800; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.9rem;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.idea-score.s-low { background: #2b1515; border-color: var(--red); color: #f2a8a8; }
+.idea-score.s-mid { background: #2a1f0d; border-color: var(--amber); color: #eec27a; }
+.idea-score.s-high { background: #0f1f14; border-color: var(--green); color: var(--green); }
+[data-theme="light"] .idea-score.s-low { background: #fae8e8; border-color: #dfa3a3; color: #a12323; }
+[data-theme="light"] .idea-score.s-mid { background: #f6ead0; border-color: #d9b45f; color: #8a5f00; }
+[data-theme="light"] .idea-score.s-high { background: #e3f2e7; border-color: #7fbf90; color: #1f7a38; }
+.idea-meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+
+/* Idea detail page. */
+.back-btn { margin-bottom: 1rem; }
+.detail-head h1 { margin-bottom: 0.2rem; }
+.detail-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.6rem 0 1.4rem; }
+.detail-sec { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; }
+.detail-sec h3 { margin-top: 0; }
+.empty.mini { padding: 0.8rem; font-size: 0.9rem; margin-bottom: 0.8rem; }
+
+/* Assumptions + chips (Fatebook-style confidence chips). */
+.assump-list { margin-bottom: 1rem; }
+.assump-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.assump-text { flex: 1; min-width: 12rem; }
+.chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.chip {
+  background: var(--panel2); border: 1px solid var(--line); color: var(--muted);
+  border-radius: 20px; padding: 0.4rem 0.8rem; cursor: pointer; font: inherit; font-size: 0.85rem;
+  min-height: 44px;
+}
+.chip:hover { border-color: var(--blue); color: var(--text); }
+.chip.selected { background: var(--green-dim); border-color: var(--green); color: var(--text); font-weight: 700; }
+.chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.btn.mini { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+
+/* Pre-decision checklist (Journalytic gate). */
+.check-list { margin-bottom: 1rem; }
+.check-item {
+  display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line); cursor: pointer;
+}
+.check-item input[type="checkbox"] { width: 1.4rem; height: 1.4rem; margin-top: 0.15rem; flex-shrink: 0; accent-color: var(--green); }
+.check-help { display: block; color: var(--muted); font-size: 0.88rem; font-weight: normal; }
+.conviction-gate { margin-top: 1rem; }
+.inline-field { flex-direction: row; align-items: center; gap: 0.6rem; }
+.gate-blocked { color: var(--red); font-weight: 600; }
+
+/* Scorecard weights. */
+.weights-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; margin: 1rem 0 0.5rem; }
+.weight-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; font-weight: 600; color: var(--muted); }
+.weight-field input {
+  width: 4.2rem; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); padding: 0.55rem 0.5rem; font: inherit; font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+.weight-field input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.composite-line { margin: 0.8rem 0 0; font-size: 1.05rem; }
+.composite-line strong { font-variant-numeric: tabular-nums; }
+
+/* Manual price log timeline. */
+.price-timeline { margin-bottom: 1rem; }
+.price-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.price-date { color: var(--muted); font-size: 0.88rem; min-width: 6.2rem; font-variant-numeric: tabular-nums; }
+.price-bar { flex: 1; min-width: 6rem; height: 0.55rem; background: var(--panel2); border-radius: 4px; overflow: hidden; }
+.price-fill { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
+.price-val { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 4rem; }
+.price-note { color: var(--muted); font-size: 0.85rem; flex-basis: 100%; }
+.price-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; align-items: end; }
+.price-form .form-error { grid-column: 1 / -1; }
+
+/* Notes. */
+.notes-list { margin-bottom: 1rem; }
+.note-card { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.6rem; }
+.note-text { margin: 0.4rem 0 0.6rem; white-space: pre-wrap; font-size: 0.95rem; }
+
+/* Review form. */
+.review-form { margin-top: 1rem; }
+.review-form > p:first-child { margin-top: 0; }
+
+/* Learn: micro-lesson quiz. */
+.lesson .lesson-done { margin-left: auto; color: var(--green); font-weight: 800; }
+.lesson-quiz .q { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem; margin-bottom: 0.7rem; }
+.lesson-quiz h4, .gloss .body h4 { margin: 1.1rem 0 0.6rem; }
+.lesson-score { margin-top: 0.5rem; }
+
+/* Accounts: "What's going on here? / Why should I care?" cards (Finimize skeleton). */
+.acct-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.9rem; margin-top: 1rem; }
+.acct-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem; }
+.acct-card h3 { margin-top: 0; color: var(--green); }
+.acct-card p { color: var(--muted); font-size: 0.93rem; }
+.acct-card p strong, .acct-card p em { color: var(--text); }
+.acct-q { color: var(--text); font-weight: 700; }
+
+@media (max-width: 640px) {
+  .assump-row { align-items: flex-start; }
+  .price-form { grid-template-columns: 1fr; }
+}

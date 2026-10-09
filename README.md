@@ -5,9 +5,9 @@
 🌐 **Live demo:** https://swimkevin.github.io/longterm-stock-lens/
 📦 **Repo:** https://github.com/swimkevin/longterm-stock-lens
 
-A free, offline, no-signup educational hub for beginner long-term investors: take a risk profiler quiz, learn fundamental metrics in plain English, keep a conviction journal with a scoring framework, and understand Roth IRAs and account types.
+A free, offline, no-signup educational hub for beginner long-term investors: capture investment ideas, write structured theses, pressure-test assumptions with a pre-decision checklist, score ideas on your own weighted criteria, review them on a schedule, and build an honest track record. Plus an investor-profile quiz, fundamentals micro-lessons, and Roth IRA / account explainers.
 
-![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-132%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
+![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![no dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-163%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 
 ## Key decisions
 
@@ -18,7 +18,7 @@ A free, offline, no-signup educational hub for beginner long-term investors: tak
 
 ## Verification
 
-**132 assertions**, all passing (`npm test` → `tests/smoke.js`). The strategy is documented in [docs/TESTING.md](docs/TESTING.md): pure-logic coverage of the scoring and review-date math, a jsdom boot of the real page (nav, quiz, journal CRUD, exports, localStorage round-trips), and XSS-escaping checks with a literal probe string. Assertions are added with every logic change; the suite gates every commit. AI-assisted development follows documented guardrails — see [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
+**163 assertions**, all passing (`npm test` → `tests/smoke.js`). The strategy is documented in [docs/TESTING.md](docs/TESTING.md): pure-logic coverage of the scorecard math, checklist gate, migration, and review-date logic, a jsdom boot of the real page (nav, quiz, idea CRUD, review flow, track record, lesson quizzes, exports, localStorage round-trips), and XSS-escaping checks with a literal probe string. Assertions are added with every logic change; the suite gates every commit. AI-assisted development follows documented guardrails — see [docs/AI-WORKFLOW.md](docs/AI-WORKFLOW.md).
 
 ## Automated daily improvements
 
@@ -35,14 +35,17 @@ I'm Kevin Song, a software engineer. I built this in October 2026 as a companion
 
 On the "AI" question, to be precise: there is no machine learning here at all — and that's the point. The scoring frameworks are transparent arithmetic you can check by hand. The site teaches *you* to do the thinking.
 
-## Features (v0.4.0)
+## Features (v1.0)
 
-- **Risk profiler quiz** — 6 questions (age, timeline, volatility tolerance, income stability, experience, drawdown behavior) → a suggested allocation band between broad index funds and conviction stocks, e.g. 80% index / 20% conviction. Educational starting point, not a prescription.
-- **Fundamentals glossary** — P/E, PEG, P/S, free cash flow, revenue growth, gross/operating margin, ROE, debt-to-equity, moat. Plain-English explainers with **search/filter**, typical "healthy" patterns, and red flags. No thresholds presented as rules.
-- **Conviction journal** — write your thesis (\"I use X daily, I believe Y lasts 10 years because…\"), name what would prove you wrong, tag themes, track tickers, and score 1–5 on Product Belief / Fundamentals / Moat / Valuation Comfort / Time Horizon → weighted score out of 5. Set a re-check reminder (1/3/6/12 months) per thesis.
-- **Watchlist** — journal entries sorted by score with "Review due" badges on overdue theses; due entries surface first and can be marked reviewed to schedule the next re-check (1/3/6/12 months). Persisted in `localStorage`. Export your journal as JSON or Markdown. Nothing leaves your browser.
-- **Roth IRA & account explainer** — Roth vs Traditional vs taxable comparison, 2026 contribution limits (labeled \"verify at irs.gov\"), why index funds fit tax-advantaged accounts.
-- **Learn section** — SEC EDGAR, company investor relations, Investopedia, Bogleheads, plus three books (*One Up On Wall Street*, *The Intelligent Investor*, *A Random Walk Down Wall Street*).
+- **Ideas home** — quick-add (name only → draft idea), a "Due for review" queue sorted by review-by date, and all ideas showing ticker, 0–100 composite score, conviction label, and review-due badge. Reviews tab carries a due-count badge.
+- **One-page research summary per idea** — opinionated 3-field thesis template (what I believe / why / what would prove me wrong), key assumptions each with a confidence % (quick-set chips), a 5-item pre-decision checklist (moat, earnings, debt, valuation, circle of competence), a scorecard with user-adjustable Quality/Value/Conviction weights → composite 0–100, a manual price log rendered as a dated timeline, and attached research notes.
+- **Checklist conviction gate** — conviction can't rise above "Watching" until every checklist item is checked; debiasing in the flow, not optional.
+- **Review flow** — every idea has a review-by date (~90 days out, editable). Reviews ask "did it move for your stated reason?" with outcomes thesis intact / thesis changed / resolved; resolved ideas stay listed with a Resolved tag so the record can't be edited away.
+- **Track record** — counts of intact/changed/resolved reviews plus a calibration line: how often your ideas moved for your stated reasons.
+- **Investor profile quiz** — 6 questions → a suggested allocation band between broad index funds and conviction stocks (80/20 down to 98/2); latest result is saved.
+- **Learn: fundamentals micro-lessons** — the 10 glossary terms as 2-minute lessons (explainer + typical "healthy" patterns + red flags + 3-question quiz), with search/filter and completion badges. No thresholds presented as rules.
+- **Accounts** — "What's going on here? / Why should I care?" explainers for Roth IRA, Traditional IRA/401(k), and taxable brokerage; 2026 contribution limits (labeled "verify at irs.gov"); why index funds fit tax-advantaged accounts.
+- **Data** — all in `localStorage` (`longterm-stock-lens-v1`), nothing leaves the browser; v0.x journal entries migrate automatically into the v2 ideas schema (theses, scores, and review dates preserved). Export ideas as JSON or Markdown.
 - **Mobile-friendly** — horizontal-scroll nav, 44px touch targets, readable on phones.
 - **100% offline** — no accounts, no servers, no tracking, no real-time prices. All data entry is manual.
 
@@ -56,9 +59,9 @@ On the "AI" question, to be precise: there is no machine learning here at all �
 
 ```
 longterm-stock-lens/
-├── index.html          # All six screens: home, risk, fundamentals, journal, accounts, learn
-├── styles.css          # Calm dark research theme, responsive, no frameworks
-├── app.js              # Quiz logic, glossary render, journal + watchlist, localStorage
+├── index.html          # All screens: ideas, idea detail, reviews, track record, profile, learn, accounts
+├── styles.css          # Calm dark/light research theme, responsive, no frameworks
+├── app.js              # Quiz logic, ideas CRUD, review flow, micro-lessons, localStorage + migration
 ├── tests/
 │   └── smoke.js        # Node smoke test: pure-logic assertions + jsdom UI boot
 ├── docs/
@@ -89,6 +92,7 @@ Deploy to GitHub Pages from `main` — it's a static site, nothing to build.
 - **v0.2** — ✅ shipped 2026-10-04: thesis revisit reminders ("Review due" badges, due-first watchlist) + journal export as JSON/Markdown
 - **v0.3** — ✅ shipped 2026-10-05: light/dark themes, conviction color scale (red/amber/green), journal KPI strip, serif/tabular typography, press physics
 - **v0.4** — ✅ shipped 2026-10-07: glossary search/filter + mobile/a11y polish (44px score-button touch targets, input focus rings, alloc-bar narrow-label fix); v0.4.1 (2026-10-08): "Mark reviewed" closes the revisit loop + due-summary `role="status"` announcement
+- **v1.0** — ✅ shipped 2026-10-09: full redesign around an Ideas → Research → Review loop, built from a 10-product research report: ideas home with due-for-review queue, one-page research summaries (3-field thesis template, assumptions with confidence %, pre-decision checklist gating conviction, user-weighted 0–100 scorecard, manual price timeline, attached notes), "did it move for your stated reason?" reviews with intact/changed/resolved outcomes, track-record calibration, glossary → micro-lessons with 3-question quizzes, accounts → "What's going on here? / Why should I care?" skeleton. v0.x journal data migrates automatically (nothing lost); localStorage key unchanged.
 - **v0.5** — compound-interest visualizer; dollar-cost averaging explainer ← next
 - **v0.5** — 10-K reading walkthrough (how to find each metric in a real filing)
 - **Later** — PWA for offline phone use; analytics to measure usage before any monetization thoughts

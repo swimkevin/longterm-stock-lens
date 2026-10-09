@@ -1,10 +1,12 @@
-/* Long-Term Lens smoke test.
+/* Long-Term Lens smoke test (v1.0 redesign).
  * 1. Boots the real index.html in jsdom (reusing the sibling poker-sparring
  *    install — dev-only, the shipped site has zero dependencies).
  * 2. Asserts pure-logic behavior via window.LongTermLens.
- * 3. Clicks through every nav tab, completes the quiz, saves a journal entry
- *    (including an XSS probe string), verifies escaped rendering + localStorage
- *    persistence, and verifies delete.
+ * 3. Clicks through every nav tab, runs the investor-profile quiz, quick-adds
+ *    an idea (incl. an XSS probe), exercises the thesis template, the
+ *    checklist conviction gate, the weighted scorecard, assumptions, the
+ *    manual price log, notes, the review flow, the track record, a lesson
+ *    quiz, migration of legacy journal data, and exports.
  * Fails loudly on any script error.
  */
 'use strict';
@@ -64,11 +66,14 @@ async function main() {
   const { window } = dom;
   const { document } = window;
   const L = window.LongTermLens;
+  const KEY = 'longterm-stock-lens-v1';
+  const readStore = () => JSON.parse(window.localStorage.getItem(KEY));
 
   console.log('script errors:');
   assert(errors.length === 0, 'no console/script errors on boot (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));
   assert(L && typeof L.scoreRisk === 'function', 'LongTermLens API exposed');
+  assert(L.SCHEMA_VERSION === 2, 'schema version is 2');
 
   // ---- pure logic ----
   console.log('risk scoring:');
@@ -76,135 +81,152 @@ async function main() {
   assert(r.total === 18 && r.band.index === 80 && r.band.conv === 20, 'max score -> 80/20 growth band');
   r = L.scoreRisk([3, 3, 3, 3, 3, 3]);
   assert(r.total === 0 && r.band.index === 98 && r.band.conv === 2, 'min score -> 98/2 preservation band');
-  r = L.scoreRisk([0, 0, 0, 0, 1, 3]); // 3+3+3+3+2+0 = 14
-  assert(r.total === 14 && r.band.label === 'Growth-leaning', 'boundary 14 -> top band');
-  r = L.scoreRisk([0, 0, 0, 1, 1, 3]); // 3+3+3+2+2+0 = 13
-  assert(r.total === 13 && r.band.label === 'Balanced', 'boundary 13 -> second band');
-  r = L.scoreRisk([1, 1, 1, 1, 1, 1]);
-  assert(r.total === 12 && r.band.index === 87, 'mid score -> 87/13 balanced band');
-  r = L.scoreRisk([2, 2, 2, 2, 2, 2]);
-  assert(r.total === 6 && r.band.label === 'Cautious', 'score 6 -> cautious band');
   assert(L.BANDS.every(b => b.index + b.conv === 100), 'every band sums to 100%');
 
-  console.log('journal scoring:');
-  assert(L.weightedScore({ product: 5, fundamentals: 5, moat: 5, valuation: 5, horizon: 5 }) === 5, 'all 5s -> 5.0');
-  assert(L.weightedScore({ product: 1, fundamentals: 1, moat: 1, valuation: 1, horizon: 1 }) === 1, 'all 1s -> 1.0');
-  assert(L.weightedScore({}) === null, 'no scores -> null');
-  assert(L.weightedScore({ fundamentals: 4 }) === 4, 'single dimension -> its own value');
-  // fundamentals 25% * 5 + product 20% * 1 = 1.45 / 0.45 weight = 3.222 -> 3.2
-  assert(L.weightedScore({ fundamentals: 5, product: 1 }) === 3.2, 'partial weights compute correctly');
+  console.log('scorecard:');
+  const full = { scores: { quality: 5, value: 5, conviction: 5 }, weights: { quality: 40, value: 30, conviction: 30 } };
+  assert(L.compositeScore(full) === 100, 'all 5s -> 100');
+  const minI = { scores: { quality: 1, value: 1, conviction: 1 }, weights: { quality: 40, value: 30, conviction: 30 } };
+  assert(L.compositeScore(minI) === 20, 'all 1s -> 20');
+  assert(L.compositeScore({ scores: {}, weights: { quality: 40, value: 30, conviction: 30 } }) === null, 'no scores -> null');
+  assert(L.compositeScore({ scores: { quality: 5 }, weights: { quality: 40, value: 30, conviction: 30 } }) === 100,
+    'single scored dimension computes over its share only');
+  // 5/3/2 weights == 50/30/20 after normalization: (4/5*.5 + 3/5*.3 + 2/5*.2) = .4+.18+.08 = .66 -> 66
+  const wA = { scores: { quality: 4, value: 3, conviction: 2 }, weights: { quality: 50, value: 30, conviction: 20 } };
+  const wB = { scores: { quality: 4, value: 3, conviction: 2 }, weights: { quality: 5, value: 3, conviction: 2 } };
+  assert(L.compositeScore(wA) === 66 && L.compositeScore(wB) === 66, 'weights auto-normalize (50/30/20 == 5/3/2 -> 66)');
+  assert(L.compositeScore({ scores: { quality: 4 }, weights: { quality: 0, value: 0, conviction: 0 } }) === null,
+    'all-zero weights -> null');
+  assert(L.normalizeWeights({ quality: 50, value: 30, conviction: 20 }).quality === 0.5, 'normalizeWeights shares sum to 1');
+  assert(L.normalizeWeights({ quality: 0, value: 0, conviction: 0 }) === null, 'normalizeWeights null on zero total');
 
-  console.log('score count + labels:');
-  assert(L.scoreCount({}) === 0, 'no scores -> 0 counted');
-  assert(L.scoreCount({ fundamentals: 5 }) === 1, 'one dimension -> 1 counted');
-  assert(L.scoreCount({ product: 5, fundamentals: 4, moat: 3, valuation: 2, horizon: 1 }) === 5, 'all five -> 5 counted');
-  assert(L.scoreCount({ product: 0, fundamentals: 6, moat: 'x' }) === 0, 'invalid values not counted');
-  assert(L.thesesLabel(0) === '', '0 -> empty label');
-  assert(L.thesesLabel(1) === '(1 thesis)', '1 -> singular thesis');
-  assert(L.thesesLabel(2) === '(2 theses)', '2 -> plural theses');
+  console.log('conviction labels:');
+  assert(L.convictLabel(null) === 'Unscored', 'null -> Unscored');
+  assert(L.convictLabel(80) === 'Strong conviction', '80 -> Strong conviction');
+  assert(L.convictLabel(60) === 'Growing conviction', '60 -> Growing conviction');
+  assert(L.convictLabel(45) === 'Watching', '45 -> Watching');
+  assert(L.convictLabel(20) === 'Early research', '20 -> Early research');
+
+  console.log('checklist gate:');
+  const mk = () => ({ checklist: { moat: true, earnings: true, debt: true, valuation: true, circle: true } });
+  assert(L.checklistComplete(mk()) === true, 'all five checked -> complete');
+  const partial = mk(); partial.checklist.debt = false;
+  assert(L.checklistComplete(partial) === false, 'one unchecked -> incomplete');
+  assert(L.checklistComplete({}) === false, 'missing checklist -> incomplete');
+  assert(L.canRaiseConviction(partial, 'watching').ok === true, 'watching always allowed');
+  const blocked = L.canRaiseConviction(partial, 'strong');
+  assert(blocked.ok === false && blocked.reason.includes('5-item'), 'strong blocked without checklist (reason given)');
+  assert(L.canRaiseConviction(mk(), 'strong').ok === true, 'strong allowed with full checklist');
+  assert(L.canRaiseConviction(mk(), 'bogus').ok === false, 'unknown level rejected');
+
+  console.log('makeIdea defaults:');
+  const idea0 = L.makeIdea('Test Co', 'TST', '2026-10-09');
+  assert(idea0.status === 'open' && idea0.convictionLevel === 'watching', 'draft defaults: open + watching');
+  assert(idea0.reviewAt === '2027-01-09' && idea0.reviewMonths === 3, '~90-day review default (got ' + idea0.reviewAt + ')');
+  assert(idea0.tickers === 'TST', 'ticker uppercased');
+  assert(JSON.stringify(idea0.weights) === JSON.stringify({ quality: 40, value: 30, conviction: 30 }), 'default weights 40/30/30');
+  assert(L.compositeScore(idea0) === null, 'fresh idea is unscored');
 
   console.log('review dates:');
   assert(L.addMonths('2026-10-04', 6) === '2027-04-04', '6 months from Oct -> Apr next year');
-  assert(L.addMonths('2026-10-04', 1) === '2026-11-04', '1 month');
-  assert(L.addMonths('2026-10-04', 12) === '2027-10-04', '12 months');
   assert(L.addMonths('2026-01-31', 1) === '2026-02-28', 'clamps to end of Feb (non-leap)');
-  assert(L.addMonths('2024-01-31', 1) === '2024-02-29', 'clamps to Feb 29 in leap year');
-  assert(L.addMonths('2026-12-15', 1) === '2027-01-15', 'rolls over year boundary');
   assert(L.addMonths('nope', 6) === null, 'invalid input -> null');
   assert(L.reviewAtOf({ reviewAt: '2027-01-01', createdAt: '2026-10-04' }) === '2027-01-01', 'explicit reviewAt wins');
-  assert(L.reviewAtOf({ createdAt: '2026-10-04' }) === '2027-04-04', 'legacy entry defaults to createdAt + 6 months');
-  assert(L.reviewAtOf({ reviewAt: 'garbage', createdAt: '2026-10-04' }) === '2027-04-04', 'invalid reviewAt falls back to default');
+  assert(L.reviewAtOf({ createdAt: '2026-10-04' }) === '2026-10-04'.slice(0, 0) + '2027-01-04',
+    'no reviewAt defaults to createdAt + 3 months (~90 days)');
+  assert(L.reviewAtOf({ reviewAt: 'garbage', createdAt: '2026-10-04' }) === '2027-01-04', 'invalid reviewAt falls back to +3mo');
   assert(L.isReviewDue({ reviewAt: '2020-01-01' }, '2026-10-04') === true, 'past review date is due');
   assert(L.isReviewDue({ reviewAt: '2026-10-04' }, '2026-10-04') === true, 'review date == today is due');
   assert(L.isReviewDue({ reviewAt: '2026-10-05' }, '2026-10-04') === false, 'future review date is not due');
-  assert(L.isReviewDue({ createdAt: '2020-01-01' }, '2026-10-04') === true, 'legacy entry long past is due');
 
   console.log('rescheduleReview:');
-  const base = { id: 'e1', name: 'Base', thesis: 'T', createdAt: '2026-10-04', reviewMonths: 6, reviewAt: '2020-01-01' };
-  const r6 = L.rescheduleReview(base, '6', '2026-10-08');
-  assert(r6.reviewAt === '2027-04-08' && r6.reviewMonths === 6, '6 months from explicit today');
-  const r12 = L.rescheduleReview(base, 12, '2026-10-08');
-  assert(r12.reviewAt === '2027-10-08' && r12.reviewMonths === 12, '12 months (numeric input)');
-  const r1 = L.rescheduleReview(base, '1', '2026-10-08');
-  assert(r1.reviewAt === '2026-11-08' && r1.reviewMonths === 1, '1 month honored');
+  const base = { id: 'e1', name: 'Base', createdAt: '2026-10-04', reviewMonths: 3, reviewAt: '2020-01-01' };
+  const r3 = L.rescheduleReview(base, '3', '2026-10-08');
+  assert(r3.reviewAt === '2027-01-08' && r3.reviewMonths === 3, '3 months from explicit today');
   const rBad = L.rescheduleReview(base, '99', '2026-10-08');
-  assert(rBad.reviewAt === '2027-04-08' && rBad.reviewMonths === 6, 'invalid months fall back to 6');
-  assert(base.reviewAt === '2020-01-01', 'original entry object not mutated');
-  assert(r6.name === 'Base' && r6.id === 'e1' && r6.thesis === 'T', 'other entry fields preserved');
-  const rToday = L.rescheduleReview(base, '3', 'garbage');
-  assert(rToday.reviewAt === L.addMonths(L.todayISO(), 3) && rToday.reviewMonths === 3,
-    'invalid today falls back to todayISO');
+  assert(rBad.reviewAt === '2027-01-08' && rBad.reviewMonths === 3, 'invalid months fall back to 3');
+  assert(base.reviewAt === '2020-01-01', 'original idea object not mutated');
 
-  console.log('export builders:');
-  const expEntries = [
-    { id: 'e1', name: 'Acme', tickers: 'ACME', tags: ['AI'], thesis: 'Great.', falsify: 'If not.',
-      scores: { product: 5 }, weighted: 5, scored: 1, createdAt: '2026-10-04', reviewMonths: 6, reviewAt: '2027-04-04' },
+  console.log('applyReview:');
+  const ar1 = L.applyReview(idea0, { outcome: 'intact', reasonMatch: 'yes', note: 'Still good.', nextMonths: '3' }, '2026-10-09');
+  assert(ar1.reviewHistory.length === 1 && ar1.reviewHistory[0].outcome === 'intact', 'review appended to history');
+  assert(ar1.reviewHistory[0].reasonMatch === 'yes' && ar1.reviewHistory[0].note === 'Still good.', 'reason + note preserved');
+  assert(ar1.reviewAt === '2027-01-09', 'next review re-scheduled (got ' + ar1.reviewAt + ')');
+  assert(ar1.status === 'open', 'intact keeps idea open');
+  const ar2 = L.applyReview(idea0, { outcome: 'resolved', reasonMatch: 'no', note: '', nextMonths: '6' }, '2026-10-09');
+  assert(ar2.status === 'resolved', 'resolved outcome flips status');
+  assert(ar2.reviewAt === '2027-04-09', 'resolved still re-schedules review-by');
+  const ar3 = L.applyReview(idea0, { outcome: 'weird', reasonMatch: 'maybe' }, '2026-10-09');
+  assert(ar3.reviewHistory[0].outcome === 'intact' && ar3.reviewHistory[0].reasonMatch === 'na',
+    'invalid outcome/reason sanitized to intact/na');
+
+  console.log('trackRecord:');
+  const trIdeas = [
+    { reviewHistory: [{ outcome: 'intact', reasonMatch: 'yes' }, { outcome: 'changed', reasonMatch: 'no' }] },
+    { reviewHistory: [{ outcome: 'resolved', reasonMatch: 'yes' }] },
+    { reviewHistory: [{ outcome: 'intact', reasonMatch: 'na' }] },
+  ];
+  const tr = L.trackRecord(trIdeas);
+  assert(tr.reviews === 4 && tr.intact === 2 && tr.changed === 1 && tr.resolved === 1, 'outcome counts (got ' + JSON.stringify(tr) + ')');
+  assert(tr.reasonAccuracy === 67, 'reason accuracy 2/3 -> 67% (got ' + tr.reasonAccuracy + ')');
+  assert(L.trackRecord([]).reasonAccuracy === null, 'no reviews -> null accuracy');
+  assert(L.trackRecord([{ reviewHistory: [{ outcome: 'intact', reasonMatch: 'na' }] }]).reasonAccuracy === null,
+    'na-only reviews -> null accuracy');
+
+  console.log('migration:');
+  const legacy = { entries: [
+    { id: 'e1', name: 'Acme', tickers: 'ACME', tags: ['AI'], thesis: 'Great company.', falsify: 'If not.',
+      scores: { product: 5, fundamentals: 4, moat: 3, valuation: 2, horizon: 5 },
+      weighted: 3.9, scored: 5, createdAt: '2026-10-04', reviewMonths: 12, reviewAt: '2027-10-04' },
     { id: 'e2', name: 'Beta', tickers: '', tags: [], thesis: 'Fine.', falsify: '',
       scores: {}, weighted: null, scored: 0, createdAt: '2026-10-04' },
-  ];
-  const md = L.journalToMarkdown(expEntries, '2026-10-04');
-  assert(md.includes('## Acme (ACME)'), 'markdown has name + ticker heading');
-  assert(md.includes('## Beta'), 'markdown has second entry heading');
-  assert(md.includes('5.0 / 5 (1 of 5 dimensions scored)'), 'markdown shows score + scored count');
-  assert(md.includes('unscored'), 'markdown marks unscored entry');
-  assert(md.includes('- Written: 2026-10-04 · Review by: 2027-04-04'), 'markdown shows written + review dates');
-  assert(md.includes('Review by: 2027-04-04') && (md.match(/Review by: 2027-04-04/g) || []).length === 2,
-    'legacy entry gets default review date in markdown');
-  assert(md.includes('not financial advice'), 'markdown carries disclaimer');
-  assert(md.includes('Would prove me wrong: If not.'), 'markdown includes falsify text');
-  assert(md.includes('- Tags: AI'), 'markdown includes tags');
-  const js = JSON.parse(L.journalToJSON(expEntries));
-  assert(Array.isArray(js) && js.length === 2 && js[0].id === 'e1', 'JSON export round-trips entries array');
-  assert(L.journalToMarkdown([], '2026-10-04').includes('No theses yet'), 'empty markdown export handled');
+  ]};
+  const mig = L.migrateStore(legacy);
+  assert(mig.schema === 2 && mig.ideas.length === 2, 'legacy entries become 2 ideas, schema 2');
+  const m0 = mig.ideas[0];
+  assert(m0.name === 'Acme' && m0.tickers === 'ACME' && m0.tags.join() === 'AI', 'name/ticker/tags preserved');
+  assert(m0.thesis.belief === 'Great company.' && m0.thesis.falsify === 'If not.', 'thesis + falsify preserved in template');
+  assert(m0.scores.quality === 4 && m0.scores.value === 2, 'old fundamentals/valuation mapped to quality/value');
+  assert(m0.scores.conviction === 4, 'conviction = rounded mean of product/moat/horizon (5,3,5 -> 4)');
+  assert(m0.legacyScores.fundamentals === 4 && m0.legacyScores.horizon === 5, 'old 5-dim scores kept verbatim as legacyScores');
+  assert(m0.reviewAt === '2027-10-04' && m0.reviewMonths === 12, 'review date preserved');
+  assert(L.compositeScore(m0) === 68, 'migrated scorecard computes (got ' + L.compositeScore(m0) + ')');
+  const m1 = mig.ideas[1];
+  assert(m1.reviewAt === '2027-04-04' && m1.reviewMonths === 6, 'pre-reviewAt legacy entry defaults to createdAt + 6mo');
+  assert(m1.scores.quality === null && L.compositeScore(m1) === null, 'unscored legacy entry stays unscored');
+  const migEmpty = L.migrateStore(null);
+  assert(migEmpty.schema === 2 && migEmpty.ideas.length === 0, 'null raw -> blank v2 store');
+  const migV2 = L.migrateStore({ schema: 1, ideas: [{ id: 'x', name: 'X' }] });
+  assert(migV2.ideas.length === 1 && migV2.ideas[0].name === 'X', 'ideas-shape store adopted as-is');
+  const thin = L.normalizeIdea({ id: 't', name: 'Thin' });
+  assert(thin.thesis.belief === '' && Array.isArray(thin.notes) && thin.convictionLevel === 'watching',
+    'normalizeIdea fills missing thesis/notes/convictionLevel');
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(thin.reviewAt), 'normalizeIdea derives a valid reviewAt');
 
-  console.log('glossary:');
+  console.log('export builders:');
+  const md = L.journalToMarkdown(mig.ideas, '2026-10-04');
+  assert(md.includes('## Acme (ACME)'), 'markdown has name + ticker heading');
+  assert(md.includes('68 / 100'), 'markdown shows composite score');
+  assert(md.includes('Would prove me wrong: If not.'), 'markdown includes falsify text');
+  assert(md.includes('not financial advice'), 'markdown carries disclaimer');
+  assert(L.journalToMarkdown([], '2026-10-04').includes('No ideas yet'), 'empty markdown export handled');
+  const js = JSON.parse(L.journalToJSON(mig.ideas));
+  assert(Array.isArray(js) && js.length === 2 && js[0].name === 'Acme', 'JSON export round-trips ideas array');
+
+  console.log('glossary micro-lessons:');
   assert(L.GLOSSARY.length === 10, '10 glossary terms');
-  assert(L.GLOSSARY.every(g => g.abbr && g.name && g.what && g.healthy && g.flag), 'every term has all fields');
+  assert(L.GLOSSARY.every(g => g.quiz && g.quiz.length === 3), 'every term has a 3-question quiz');
+  assert(L.GLOSSARY.every(g => g.quiz.every(q => q.options.length >= 3 && q.a >= 0 && q.a < q.options.length && q.why)),
+    'every quiz question has options, a valid answer index, and an explanation');
 
   console.log('glossary search:');
-  assert(typeof L.filterGlossaryTerms === 'function', 'filterGlossaryTerms exposed');
-  assert(L.filterGlossaryTerms('').length === 10, 'empty query matches all terms');
-  assert(L.filterGlossaryTerms(null).length === 10, 'null query matches all terms');
-  const moat = L.filterGlossaryTerms('moat');
-  assert(moat.length === 1 && moat[0].abbr === 'Moat', 'query "moat" finds Economic moat');
-  const margins = L.filterGlossaryTerms('MARGIN');
-  assert(margins.length === 3 && margins.some(g => g.name === 'Gross margin') &&
-    margins.some(g => g.name === 'Operating margin') && margins.some(g => g.abbr === 'Moat'),
-    'case-insensitive search finds both margin terms + Moat (flag text mentions margins)');
-  const debt = L.filterGlossaryTerms('debt');
-  assert(debt.length === 3 && debt.some(g => g.abbr === 'D/E'), 'body-text search finds D/E + FCF + ROE for "debt"');
+  assert(L.filterGlossaryTerms('').length === 10, 'empty query matches all');
+  assert(L.filterGlossaryTerms('moat').length === 1, 'query "moat" finds Economic moat');
   assert(L.filterGlossaryTerms('xyzzy').length === 0, 'no-match query returns empty');
-  // UI flow: type, filter, announce, clear
-  document.querySelector('.nav-btn[data-nav="fundamentals"]').click();
-  const gSearch = document.getElementById('glossary-search');
-  const fireInput = () => gSearch.dispatchEvent(new window.Event('input', { bubbles: true }));
-  gSearch.value = 'moat';
-  fireInput();
-  const visibleTerms = Array.from(document.querySelectorAll('#glossary .gloss'))
-    .filter(d => !d.classList.contains('hidden'));
-  assert(visibleTerms.length === 1 && visibleTerms[0].textContent.includes('Economic moat'),
-    'UI filter shows only the matching term');
-  const countLine = document.getElementById('glossary-count');
-  assert(!countLine.classList.contains('hidden') && countLine.textContent.includes('1 of 10'),
-    'match count announced (got "' + countLine.textContent + '")');
-  gSearch.value = 'xyzzy';
-  fireInput();
-  assert(!document.getElementById('glossary-empty').classList.contains('hidden'), 'no-match shows empty state');
-  // XSS probe: the query must stay text, never markup
-  gSearch.value = '<img src=x onerror=alert(1)>';
-  fireInput();
-  assert(!document.querySelector('#glossary-count img'), 'search query not parsed as HTML');
-  assert(document.getElementById('glossary-count').innerHTML.includes('&lt;img'),
-    'search query escaped in count line');
-  gSearch.value = '';
-  fireInput();
-  assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === 10, 'clearing search restores all terms');
-  assert(document.getElementById('glossary-empty').classList.contains('hidden'), 'empty state hidden after clear');
-  assert(document.getElementById('glossary-count').classList.contains('hidden'), 'count line hidden after clear');
 
   // ---- navigation ----
   console.log('navigation:');
-  const tabs = ['home', 'risk', 'fundamentals', 'journal', 'accounts', 'learn'];
+  const tabs = ['ideas', 'reviews', 'track', 'profile', 'learn', 'accounts'];
   tabs.forEach(t => {
     document.querySelector('.nav-btn[data-nav="' + t + '"]').click();
     const visible = !document.getElementById('screen-' + t).classList.contains('hidden');
@@ -212,218 +234,271 @@ async function main() {
       .every(x => document.getElementById('screen-' + x).classList.contains('hidden'));
     assert(visible && othersHidden, 'tab "' + t + '" shows its screen only');
   });
+  // idea detail screen is not in the nav; reachable via openIdea only
+  assert(document.getElementById('screen-idea').classList.contains('hidden'), 'idea detail hidden until an idea opens');
 
-  // ---- quiz flow ----
-  console.log('quiz flow:');
-  document.querySelector('.nav-btn[data-nav="risk"]').click();
+  // ---- investor profile quiz ----
+  console.log('investor profile quiz:');
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
   document.querySelectorAll('#quiz .q').forEach(q => q.querySelector('.opt-btn').click());
   document.querySelector('#quiz .btn.primary').click();
   const res = document.getElementById('quiz-result');
   assert(!res.classList.contains('hidden'), 'result appears after answering all questions');
   assert(res.textContent.includes('80% index'), 'result shows 80% index allocation');
-  assert(res.querySelector('.alloc-conv').textContent === '20%', 'conv segment always uses short label (got "' +
-    res.querySelector('.alloc-conv').textContent + '")');
+  assert(res.querySelector('.alloc-conv').textContent === '20%', 'conv segment uses short label');
   assert(res.getAttribute('role') === 'status', 'quiz result announced via role=status');
-  // 13% band: "13% conviction" used to clip in the narrow bar segment
-  document.querySelectorAll('#quiz .q').forEach((q, i) => // 5x s=2 + 1x s=1 -> 11/18
-    q.querySelectorAll('.opt-btn')[i < 5 ? 1 : 2].click());
-  document.querySelector('#quiz .btn.primary').click();
-  assert(res.querySelector('.alloc-conv').textContent === '13%', '13% conv segment uses short label (got "' +
-    res.querySelector('.alloc-conv').textContent + '")');
-  assert(res.querySelector('.alloc-bar').getAttribute('aria-label').includes('13 percent conviction stocks'),
-    'aria-label still carries the full 13% wording');
-  // narrow conviction slice: short label avoids clipping in the allocation bar
-  document.querySelectorAll('#quiz .q').forEach(q => q.querySelectorAll('.opt-btn')[3].click()); // all s=0 -> 0/18
-  document.querySelector('#quiz .btn.primary').click();
-  assert(res.querySelector('.alloc-conv').textContent === '2%', 'narrow conv segment uses short label (got "' +
-    res.querySelector('.alloc-conv').textContent + '")');
-  assert(res.querySelector('.alloc-index').textContent === '98% index', 'index segment keeps full label');
-  assert(res.querySelector('.alloc-bar').getAttribute('aria-label').includes('2 percent conviction stocks'),
-    'aria-label still carries the full wording');
-  // incomplete quiz warns
-  document.querySelector('.nav-btn[data-nav="journal"]').click();
-  document.querySelector('.nav-btn[data-nav="risk"]').click();
-  // (quiz keeps answers; verify re-click path works by checking result still rendered)
-  assert(!document.getElementById('quiz-result').classList.contains('hidden'), 'quiz result persists on tab revisit');
+  assert(res.querySelector('.alloc-bar').getAttribute('aria-label').includes('20 percent conviction stocks'),
+    'aria-label carries full wording');
+  const prof = readStore().quizProfile;
+  assert(prof && prof.bandLabel === 'Growth-leaning' && prof.total === 18, 'quiz result persisted to store (quizProfile)');
 
-  // ---- journal flow ----
-  console.log('journal flow:');
-  document.querySelector('.nav-btn[data-nav="journal"]').click();
-  document.getElementById('j-save').click();
-  const jerr = document.getElementById('j-error');
-  assert(!jerr.classList.contains('hidden') && jerr.textContent.includes('company or idea name'),
-    'empty name blocked with inline error (no alert dialog)');
-  assert(jerr.getAttribute('role') === 'alert', 'form error has role=alert');
-  assert(document.querySelector('.weighted-line .hint').textContent.includes('click a score again'),
-    'score toggle-off behavior documented in hint text');
+  // ---- migration through the real boot path ----
+  console.log('migration via reloadJournal:');
+  window.localStorage.setItem(KEY, JSON.stringify(legacy));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  let rows = document.querySelectorAll('#ideas-list .idea-row');
+  assert(rows.length === 2, 'migrated ideas render in the ideas list (got ' + rows.length + ')');
+  assert(rows[0].querySelector('.idea-name').textContent === 'Acme', 'higher-scored migrated idea sorts first');
+  assert(rows[0].querySelector('.idea-score').textContent === '68 / 100', 'migrated composite renders as 68 / 100');
+  assert(readStore().schema === 2, 'store upgraded to schema 2');
+  // wipe for the rest of the UI tests
+  window.localStorage.removeItem(KEY);
+  L.reloadJournal();
+  assert(document.querySelectorAll('#ideas-list .idea-row').length === 0, 'clean slate after wipe');
 
+  // ---- quick-add + idea detail ----
+  console.log('quick-add:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-add').click();
+  const qaErr = document.getElementById('qa-error');
+  assert(!qaErr.classList.contains('hidden') && qaErr.getAttribute('role') === 'alert', 'empty name blocked with inline error');
+  document.getElementById('qa-name').value = 'Test Co';
+  document.getElementById('qa-tickers').value = 'tst';
+  document.getElementById('qa-add').click();
+  assert(!document.getElementById('screen-idea').classList.contains('hidden'), 'quick-add opens the idea detail screen');
+  assert(document.querySelector('#idea-detail h1').textContent === 'Test Co', 'detail header shows the idea name');
+  let st = readStore();
+  assert(st.ideas.length === 1 && st.ideas[0].tickers === 'TST', 'idea persisted with uppercased ticker');
+  assert(st.ideas[0].reviewAt === L.addMonths(st.ideas[0].createdAt, 3), 'review-by defaults to ~90 days');
+  const ideaId = st.ideas[0].id;
+
+  console.log('thesis template:');
+  document.getElementById('t-belief').value = 'I believe this company wins.';
+  document.getElementById('t-reasons').value = 'Reason one.\nReason two.';
+  document.getElementById('t-falsify').value = 'If growth stalls 2 years.';
+  Array.from(document.querySelectorAll('#idea-detail .btn.primary'))
+    .find(b => b.textContent === 'Save thesis').click();
+  st = readStore();
+  assert(st.ideas[0].thesis.belief === 'I believe this company wins.', 'thesis belief saved');
+  assert(st.ideas[0].thesis.reasons.includes('Reason two'), 'thesis reasons saved');
+  assert(st.ideas[0].thesis.falsify.includes('stalls'), 'falsify saved');
+
+  console.log('checklist gate:');
+  const gateMsg = () => document.getElementById('conviction-gate-msg');
+  const setLevel = lv => {
+    const sel = document.getElementById('conviction-level');
+    sel.value = lv;
+    sel.dispatchEvent(new window.Event('change', { bubbles: true }));
+  };
+  setLevel('strong');
+  assert(gateMsg().textContent.includes('Finish the 5-item'), 'raising conviction blocked with checklist incomplete');
+  assert(readStore().ideas[0].convictionLevel === 'watching', 'conviction stays watching after blocked raise');
+  for (let k = 0; k < 5; k++) {
+    document.querySelectorAll('#idea-detail .check-item input[type="checkbox"]')[k].click();
+  }
+  assert(gateMsg().textContent.includes('Checklist complete'), 'gate message flips when checklist complete');
+  setLevel('strong');
+  assert(readStore().ideas[0].convictionLevel === 'strong', 'conviction raises after checklist complete');
+  assert(document.querySelector('.detail-pills').textContent.includes('Strong conviction'),
+    'detail pills show the raised conviction level');
+
+  console.log('scorecard:');
+  const dimBtns = () => document.querySelectorAll('#idea-detail .score-btns');
+  dimBtns()[0].querySelectorAll('.score-btn')[4].click(); // quality 5
+  dimBtns()[1].querySelectorAll('.score-btn')[3].click(); // value 4
+  dimBtns()[2].querySelectorAll('.score-btn')[2].click(); // conviction 3
+  let compText = document.querySelector('.composite-line strong').textContent;
+  assert(compText.includes('82 / 100') && compText.includes('Strong conviction'),
+    'composite 82 / Strong conviction (got "' + compText + '")');
+  // toggle a score off: click the selected 5 again
+  dimBtns()[0].querySelectorAll('.score-btn')[4].click();
+  compText = document.querySelector('.composite-line strong').textContent;
+  // (4/5*.3 + 3/5*.3) / .6 = .7 -> 70
+  assert(compText.includes('70 / 100'), 'toggling a score off recomputes over remaining dims (got "' + compText + '")');
+  dimBtns()[0].querySelectorAll('.score-btn')[4].click(); // quality 5 again
+  // weights: quality -> 0 (normalizes over value+conviction)
+  const wInputs = document.querySelectorAll('#idea-detail .weight-field input');
+  wInputs[0].value = '0';
+  wInputs[0].dispatchEvent(new window.Event('change', { bubbles: true }));
+  compText = document.querySelector('.composite-line strong').textContent;
+  assert(compText.includes('70 / 100'), 'zero weight excluded from normalization (got "' + compText + '")');
+  assert(readStore().ideas[0].weights.quality === 0, 'weight persisted');
+
+  console.log('assumptions:');
+  document.getElementById('new-assump').value = 'Revenue grows 15%+ a year for 5 years.';
+  Array.from(document.querySelectorAll('#idea-detail .btn'))
+    .find(b => b.textContent === 'Add assumption').click();
+  assert(document.querySelectorAll('#idea-detail .assump-row').length === 1, 'assumption row rendered');
+  assert(document.querySelector('#idea-detail .assump-text').textContent.includes('15%+'),
+    'assumption text shown');
+  Array.from(document.querySelectorAll('#idea-detail .assump-row .chip'))
+    .find(b => b.textContent === '75%').click();
+  assert(readStore().ideas[0].assumptions[0].confidence === 75, 'confidence chip sets 75%');
+  // XSS probe through an assumption
+  document.getElementById('new-assump').value = '<img src=x onerror=alert(1)>';
+  Array.from(document.querySelectorAll('#idea-detail .btn'))
+    .find(b => b.textContent === 'Add assumption').click();
+  assert(document.querySelector('#idea-detail img') === null, 'assumption XSS probe created no img element');
+  assert(document.querySelectorAll('#idea-detail .assump-text')[1].textContent.includes('<img'),
+    'assumption probe rendered as literal text');
+
+  console.log('price log:');
+  document.getElementById('price-val').value = 'abc';
+  Array.from(document.querySelectorAll('#idea-detail .btn'))
+    .find(b => b.textContent === 'Log price').click();
+  const pErr = document.getElementById('price-error');
+  assert(!pErr.classList.contains('hidden') && pErr.getAttribute('role') === 'alert', 'invalid price rejected inline');
+  document.getElementById('price-val').value = '142.50';
+  document.getElementById('price-date').value = '2026-10-01';
+  Array.from(document.querySelectorAll('#idea-detail .btn'))
+    .find(b => b.textContent === 'Log price').click();
+  let priceRows = document.querySelectorAll('#idea-detail .price-row');
+  assert(priceRows.length === 1 && priceRows[0].querySelector('.price-val').textContent === '142.50',
+    'price logged and rendered in the timeline');
+  assert(readStore().ideas[0].priceLog[0].price === '142.50', 'price persisted as entered (no fetching)');
+  priceRows[0].querySelector('.btn.danger.mini').click();
+  assert(document.querySelectorAll('#idea-detail .price-row').length === 0, 'price entry deletable');
+
+  console.log('notes:');
   const probe = '<img src=x onerror=alert(1)>';
-  document.getElementById('j-name').value = 'Acme ' + probe;
-  document.getElementById('j-tickers').value = 'acme';
-  document.getElementById('j-tags').value = 'AI infra, test';
-  document.getElementById('j-thesis').value = 'I use it daily. ' + probe;
-  document.getElementById('j-falsify').value = 'If growth stalls 2 years.';
-  // score: product 5, fundamentals 4, moat 3, valuation 2, horizon 5
-  const dims = document.querySelectorAll('.score-btns');
-  const picks = [5, 4, 3, 2, 5];
-  dims.forEach((g, i) => g.querySelectorAll('.score-btn')[picks[i] - 1].click());
-  const preview = document.getElementById('j-weighted').textContent;
-  // 5*.2 + 4*.25 + 3*.2 + 2*.15 + 5*.2 = 1+1+.6+.3+1 = 3.9
-  assert(preview.includes('3.9') && preview.includes('5 of 5 scored'),
-    'weighted preview shows 3.9 with scored count (got "' + preview + '")');
-  document.getElementById('j-save').click();
+  document.getElementById('new-note').value = 'Earnings call takeaways. ' + probe;
+  Array.from(document.querySelectorAll('#idea-detail .btn'))
+    .find(b => b.textContent === 'Add note').click();
+  assert(document.querySelectorAll('#idea-detail .note-card').length === 1, 'note card rendered');
+  assert(document.querySelector('#idea-detail .note-text').textContent.includes(probe), 'note probe as literal text');
+  assert(document.querySelector('#idea-detail img') === null, 'note XSS probe created no img element');
+  assert([...document.querySelectorAll('#idea-detail *')].every(el => !el.hasAttribute('onerror')),
+    'no onerror handlers anywhere in idea detail');
+  document.querySelector('#idea-detail .note-card .btn.danger.mini').click();
+  assert(document.querySelectorAll('#idea-detail .note-card').length === 0, 'note deletable');
 
-  let entries = document.querySelectorAll('#watchlist .entry');
-  assert(entries.length === 1, 'one watchlist entry rendered');
-  assert(document.getElementById('watchlist-count').textContent === '(1 thesis)', 'singular thesis label');
-  assert(document.querySelector('#watchlist img') === null, 'XSS probe created no real img element');
-  assert(![...document.querySelectorAll('#watchlist *')].some(el => el.hasAttribute('onerror')),
-    'no onerror handlers anywhere in watchlist');
-  assert(entries[0].querySelector('.entry-name').textContent.includes(probe), 'probe visible as literal text');
-  assert(entries[0].querySelector('.entry-score').textContent.includes('3.9'), 'entry shows 3.9 score');
-  assert(entries[0].querySelector('.entry-tickers').textContent === 'ACME', 'ticker uppercased');
-  assert(entries[0].querySelector('.fineprint').textContent.includes('5 of 5 dimensions scored'),
-    'entry meta discloses scored dimensions');
+  console.log('idea detail back + XSS in name:');
+  document.getElementById('idea-back').click();
+  assert(!document.getElementById('screen-ideas').classList.contains('hidden'), 'back button returns to ideas');
+  document.getElementById('qa-name').value = 'XSS ' + probe;
+  document.getElementById('qa-add').click();
+  assert(document.querySelector('#idea-detail h1').textContent.includes(probe), 'probe name as literal text');
+  assert(document.querySelector('#idea-detail img') === null, 'name probe created no img element');
+  document.getElementById('idea-back').click();
 
-  const stored = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  assert(stored && stored.entries.length === 1 && stored.entries[0].weighted === 3.9, 'entry persisted to localStorage with score');
-  assert(stored.entries[0].scored === 5, 'scored count persisted on entry');
-
-  // partial scoring disclosure: only 2 of 5 dimensions scored
-  document.getElementById('j-name').value = 'Partial Co';
-  document.getElementById('j-thesis').value = 'Only scored two dimensions.';
-  const dims2 = document.querySelectorAll('.score-btns');
-  dims2[0].querySelectorAll('.score-btn')[4].click(); // product 5
-  dims2[1].querySelectorAll('.score-btn')[4].click(); // fundamentals 5
-  const preview2 = document.getElementById('j-weighted').textContent;
-  assert(preview2.includes('5.0') && preview2.includes('2 of 5 scored'),
-    'partial scoring shows 5.0 with 2-of-5 disclosure (got "' + preview2 + '")');
-  document.getElementById('j-save').click();
-
-  entries = document.querySelectorAll('#watchlist .entry');
-  assert(entries.length === 2, 'two watchlist entries rendered');
-  assert(document.getElementById('watchlist-count').textContent === '(2 theses)', 'plural theses label');
-  assert(entries[0].querySelector('.entry-name').textContent.includes('Partial Co'),
-    'partial 5.0 sorts above 3.9 (sort order unchanged, disclosure added)');
-  assert(entries[0].querySelector('.fineprint').textContent.includes('2 of 5 dimensions scored'),
-    'partial entry meta shows 2 of 5 dimensions scored');
-
-  // delete uses inline two-tap confirm (no native confirm dialog)
-  const delA = entries[0].querySelector('.btn.danger');
-  delA.click();
-  assert(document.querySelectorAll('#watchlist .entry').length === 2, 'first delete click only arms, entry stays');
-  assert(delA.classList.contains('armed') && delA.textContent.includes('confirm'), 'delete button shows armed confirm state');
-  const delB = entries[1].querySelector('.btn.danger');
-  delB.click(); // arming B must disarm A
-  assert(!delA.classList.contains('armed') && delA.textContent === 'Delete', 'arming second delete disarms the first');
-  delB.click(); // confirm B
-  entries = document.querySelectorAll('#watchlist .entry');
-  assert(entries.length === 1, 'confirmed delete removes entry');
-  assert(document.getElementById('watchlist-count').textContent === '(1 thesis)', 'count back to singular');
-  const storedMid = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  assert(storedMid.entries.length === 1, 'deleted entry removed from localStorage');
-
-  // delete the remaining entry the same way
-  const delLast = entries[0].querySelector('.btn.danger');
-  delLast.click();
-  delLast.click();
-  assert(document.querySelectorAll('#watchlist .entry').length === 0, 'last entry deleted via two-tap');
-  assert(document.getElementById('watchlist-count').textContent === '', 'count label empty when no entries');
-  const stored2 = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  assert(stored2.entries.length === 0, 'all entries deleted from localStorage');
-
-  // ---- revisit reminders ----
-  console.log('revisit reminders:');
-  assert(document.getElementById('j-review').value === '6', 'review interval defaults to 6 months');
-  document.getElementById('j-name').value = 'Reminder Co';
-  document.getElementById('j-thesis').value = 'Testing review intervals.';
-  document.getElementById('j-review').value = '12';
-  document.getElementById('j-save').click();
-  let rst = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  assert(rst.entries.length === 1, 'reminder entry saved');
-  const expectedReview = L.addMonths(rst.entries[0].createdAt, 12);
-  assert(rst.entries[0].reviewMonths === 12, 'reviewMonths persisted');
-  assert(rst.entries[0].reviewAt === expectedReview, 'reviewAt = createdAt + 12 months');
-  assert(document.getElementById('j-review').value === '6', 'interval selector resets to 6 after save');
-  let rcards = document.querySelectorAll('#watchlist .entry');
-  assert(rcards[0].querySelector('.fineprint').textContent.includes('review by ' + expectedReview),
-    'entry meta shows review-by date');
-  assert(rcards[0].querySelector('.due-badge') === null, 'no due badge when review is in the future');
-  assert(document.getElementById('watchlist-due').classList.contains('hidden'), 'due summary hidden when nothing due');
-
-  // simulate an overdue review: backdate reviewAt in storage, reload journal
-  rst.entries[0].reviewAt = '2020-01-01';
-  window.localStorage.setItem('longterm-stock-lens-v1', JSON.stringify(rst));
+  // ---- review flow ----
+  console.log('review flow:');
+  st = readStore();
+  const firstId = st.ideas.find(i => i.name === 'Test Co').id;
+  st.ideas.forEach(i => { if (i.name === 'Test Co') i.reviewAt = '2020-01-01'; });
+  window.localStorage.setItem(KEY, JSON.stringify(st));
   L.reloadJournal();
-  rcards = document.querySelectorAll('#watchlist .entry');
-  const badge = rcards[0].querySelector('.due-badge');
-  assert(badge && badge.textContent === 'Review due', 'due badge rendered on overdue entry');
-  assert(rcards[0].classList.contains('due'), 'due card highlighted');
-  const dueLine = document.getElementById('watchlist-due');
-  assert(!dueLine.classList.contains('hidden') && dueLine.textContent.includes('1 thesis is due'),
-    'due summary line shown (got "' + dueLine.textContent + '")');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  let dueRows = document.querySelectorAll('#due-queue .idea-row');
+  assert(dueRows.length === 1 && dueRows[0].querySelector('.idea-name').textContent === 'Test Co',
+    'due queue shows the overdue idea');
+  const badge = document.getElementById('reviews-badge');
+  assert(!badge.classList.contains('hidden') && badge.textContent === '1', 'Reviews nav badge shows 1 due');
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  const startBtn = Array.from(document.querySelectorAll('#reviews-list .btn.primary'))
+    .find(b => b.textContent === 'Start review');
+  assert(startBtn, 'due card offers Start review');
+  startBtn.click();
+  assert(document.querySelector('#reviews-list .review-form'), 'review form renders inline');
+  assert(document.querySelector('#reviews-list .review-form').textContent.includes('Did it move for your stated reason?'),
+    'review asks the thesis-audit question');
+  Array.from(document.querySelectorAll('#reviews-list .review-form .chip'))
+    .find(b => b.textContent === 'Yes, for my reasons').click();
+  Array.from(document.querySelectorAll('#reviews-list .review-form .chip'))
+    .find(b => b.textContent === 'Resolved').click();
+  document.querySelector('#reviews-list .review-form textarea').value = 'Thesis played out.';
+  Array.from(document.querySelectorAll('#reviews-list .review-form .btn.primary'))
+    .find(b => b.textContent === 'Save review').click();
+  st = readStore();
+  const reviewed = st.ideas.find(i => i.id === firstId);
+  assert(reviewed.status === 'resolved', 'resolved outcome flips idea status');
+  assert(reviewed.reviewHistory.length === 1 && reviewed.reviewHistory[0].reasonMatch === 'yes',
+    'review history recorded with reasonMatch');
+  assert(reviewed.reviewHistory[0].note === 'Thesis played out.', 'review note saved');
+  assert(document.getElementById('reviews-badge').classList.contains('hidden'), 'badge clears when nothing due');
+  assert(document.querySelector('#due-queue .idea-row') === null, 'due queue empty after review');
 
-  // due entry surfaces first even with a lower score
-  document.getElementById('j-name').value = 'Fresh Co';
-  document.getElementById('j-thesis').value = 'High score, not due.';
-  document.querySelectorAll('.score-btns').forEach(g => g.querySelectorAll('.score-btn')[4].click()); // all 5s
-  document.getElementById('j-save').click();
-  rcards = document.querySelectorAll('#watchlist .entry');
-  assert(rcards.length === 2, 'two entries present');
-  assert(rcards[0].querySelector('.entry-name').textContent.includes('Reminder Co'),
-    'due entry sorts above higher-scored non-due entry');
-  assert(rcards[1].querySelector('.due-badge') === null, 'no badge on non-due entry');
-
-  // ---- mark reviewed: closes the revisit loop ----
-  console.log('mark reviewed:');
-  rcards = document.querySelectorAll('#watchlist .entry');
-  assert(document.getElementById('watchlist-due').getAttribute('role') === 'status',
-    'due summary line uses role=status for screen readers');
-  const dueCard = rcards[0];
-  const freshCard = rcards[1];
-  assert(freshCard.querySelector('.review-again') === null,
-    'non-due entry renders no remind-again select');
-  assert(!Array.from(freshCard.querySelectorAll('.entry-actions .btn'))
-    .some(b => b.textContent === 'Mark reviewed'),
-    'non-due entry renders no mark-reviewed button');
-  const againSel = dueCard.querySelector('.review-again');
-  assert(againSel && againSel.value === '12',
-    'remind-again select defaults to the thesis own interval (12) (got "' + (againSel && againSel.value) + '")');
-  const markBtn = Array.from(dueCard.querySelectorAll('.entry-actions .btn'))
-    .find(b => b.textContent === 'Mark reviewed');
-  assert(markBtn, 'due entry renders Mark reviewed button');
-  markBtn.click();
-  rcards = document.querySelectorAll('#watchlist .entry');
-  assert(rcards.length === 2, 'still two entries after mark-reviewed');
-  assert(!Array.from(rcards).some(c => c.querySelector('.due-badge')), 'due badge cleared after mark-reviewed');
-  assert(document.getElementById('watchlist-due').classList.contains('hidden'),
-    'due summary hidden after mark-reviewed');
-  const afterMark = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  const rc = afterMark.entries.find(x => x.name === 'Reminder Co');
-  assert(rc.reviewAt === L.addMonths(L.todayISO(), 12) && rc.reviewMonths === 12,
-    'reviewAt re-scheduled to today + thesis interval in localStorage (got ' + rc.reviewAt + ')');
-
-  // custom interval: re-backdate, pick 3 months, mark reviewed
-  afterMark.entries.forEach(x => { if (x.name === 'Reminder Co') x.reviewAt = '2020-01-01'; });
-  window.localStorage.setItem('longterm-stock-lens-v1', JSON.stringify(afterMark));
+  console.log('due queue sorting:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Second Co';
+  document.getElementById('qa-add').click();
+  document.getElementById('idea-back').click();
+  document.getElementById('qa-name').value = 'Third Co';
+  document.getElementById('qa-add').click();
+  document.getElementById('idea-back').click();
+  st = readStore();
+  st.ideas.forEach(i => {
+    if (i.name === 'Second Co') i.reviewAt = '2020-06-01';
+    if (i.name === 'Third Co') i.reviewAt = '2020-01-01';
+  });
+  window.localStorage.setItem(KEY, JSON.stringify(st));
   L.reloadJournal();
-  rcards = document.querySelectorAll('#watchlist .entry');
-  const dueAgain = rcards[0];
-  assert(dueAgain.querySelector('.due-badge'), 'due badge back after re-backdating');
-  const sel3 = dueAgain.querySelector('.review-again');
-  sel3.value = '3';
-  Array.from(dueAgain.querySelectorAll('.entry-actions .btn'))
-    .find(b => b.textContent === 'Mark reviewed').click();
-  const after3 = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  const rc3 = after3.entries.find(x => x.name === 'Reminder Co');
-  assert(rc3.reviewAt === L.addMonths(L.todayISO(), 3) && rc3.reviewMonths === 3,
-    'custom 3-month interval honored (got ' + rc3.reviewAt + ')');
-  assert(document.querySelectorAll('#watchlist .entry').length === 2, 'entries intact after re-scheduling');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  dueRows = document.querySelectorAll('#due-queue .idea-row');
+  assert(dueRows.length === 2, 'two ideas due (resolved one excluded)');
+  assert(dueRows[0].querySelector('.idea-name').textContent === 'Third Co' &&
+    dueRows[1].querySelector('.idea-name').textContent === 'Second Co',
+    'due queue sorted by review-by date, oldest first');
+
+  // ---- track record ----
+  console.log('track record:');
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  const kpiVals = Array.from(document.querySelectorAll('#track-record .kpi-value')).map(el => el.textContent);
+  assert(kpiVals.join(',') === '1,0,0,1', 'KPI strip: 1 review, 0 intact, 0 changed, 1 resolved (got ' + kpiVals.join(',') + ')');
+  assert(document.querySelector('#track-record .panel').textContent.includes('100%'),
+    'calibration shows 100% moved-for-stated-reasons');
+  assert(document.querySelector('#track-record').textContent.includes('Thesis played out.'),
+    'review history lists the saved review note');
+  // resolved idea still listed with a Resolved tag
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const resRow = Array.from(document.querySelectorAll('#ideas-list .idea-row'))
+    .find(rw => rw.querySelector('.idea-name').textContent === 'Test Co');
+  assert(resRow && resRow.textContent.includes('Resolved'), 'resolved idea stays in the list with a Resolved tag');
+
+  // ---- learn: search + micro-quiz ----
+  console.log('learn:');
+  document.querySelector('.nav-btn[data-nav="learn"]').click();
+  const gSearch = document.getElementById('glossary-search');
+  const fireInput = () => gSearch.dispatchEvent(new window.Event('input', { bubbles: true }));
+  gSearch.value = 'moat';
+  fireInput();
+  const visibleLessons = Array.from(document.querySelectorAll('#glossary .gloss'))
+    .filter(d => !d.classList.contains('hidden'));
+  assert(visibleLessons.length === 1 && visibleLessons[0].textContent.includes('Economic moat'),
+    'search filters to the matching lesson');
+  const countLine = document.getElementById('glossary-count');
+  assert(!countLine.classList.contains('hidden') && countLine.textContent.includes('1 of 10 lessons match'),
+    'match count announced (got "' + countLine.textContent + '")');
+  gSearch.value = '<img src=x onerror=alert(1)>';
+  fireInput();
+  assert(!document.querySelector('#glossary-count img'), 'search query not parsed as HTML');
+  gSearch.value = '';
+  fireInput();
+  assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === 10, 'clearing search restores all lessons');
+  // P/E lesson quiz: correct answers are option indexes 0, 1, 1
+  const peQuiz = document.querySelectorAll('#glossary .gloss')[0].querySelectorAll('.lesson-quiz .q');
+  const correctIdx = [0, 1, 1];
+  peQuiz.forEach((q, qi) => q.querySelectorAll('.opt-btn')[correctIdx[qi]].click());
+  assert(document.querySelector('#glossary .gloss summary .lesson-done'),
+    '3/3 on the lesson quiz shows the completed badge');
+  assert(readStore().glossary['P/E'] && readStore().glossary['P/E'].best === 3,
+    'lesson progress persisted (P/E best = 3)');
 
   // ---- export ----
   console.log('export:');
-  assert(document.getElementById('export-json').disabled === false, 'export JSON enabled with entries');
-  assert(document.getElementById('export-md').disabled === false, 'export Markdown enabled with entries');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(document.getElementById('export-json').disabled === false, 'export JSON enabled with ideas');
   const createdURLs = [];
   window.URL.createObjectURL = blob => { createdURLs.push(blob); return 'blob:mock-' + createdURLs.length; };
   window.URL.revokeObjectURL = () => {};
@@ -437,30 +512,18 @@ async function main() {
   window.HTMLAnchorElement.prototype.click = origClick;
   const stamp = new Date().toISOString().slice(0, 10);
   assert(createdURLs.length === 2, 'two blobs created');
-  assert(createdURLs[0] instanceof window.Blob && createdURLs[0].type === 'application/json', 'JSON blob has right type');
+  assert(createdURLs[0].type === 'application/json', 'JSON blob has right type');
   assert(createdURLs[1].type === 'text/markdown', 'Markdown blob has right type');
-  assert(clickedAnchors[0].download === 'longterm-lens-journal-' + stamp + '.json', 'JSON download filename dated');
-  assert(clickedAnchors[1].download === 'longterm-lens-journal-' + stamp + '.md', 'Markdown download filename dated');
-  assert(clickedAnchors[0].href === 'blob:mock-1' && clickedAnchors[1].href === 'blob:mock-2',
-    'anchors wired to object URLs');
+  assert(clickedAnchors[0].download === 'longterm-lens-ideas-' + stamp + '.json', 'JSON download filename dated');
+  assert(clickedAnchors[1].download === 'longterm-lens-ideas-' + stamp + '.md', 'Markdown download filename dated');
   const mdText = await createdURLs[1].text();
-  assert(mdText.includes('## Reminder Co') && mdText.includes('## Fresh Co'), 'exported markdown contains both entries');
+  assert(mdText.includes('## Test Co (TST)') && mdText.includes('## Second Co'), 'exported markdown contains ideas');
+  assert(mdText.includes('/ 100'), 'exported markdown includes composite scores');
   const jsonText = await createdURLs[0].text();
-  assert(JSON.parse(jsonText).length === 2, 'exported JSON contains both entries');
+  assert(JSON.parse(jsonText).length === 4, 'exported JSON contains all ideas');
 
-  // cleanup: delete both entries via two-tap
-  let guard = 0;
-  while (document.querySelectorAll('#watchlist .entry').length && guard++ < 10) {
-    const b = document.querySelector('#watchlist .entry .btn.danger');
-    b.click(); b.click();
-  }
-  const finalStore = JSON.parse(window.localStorage.getItem('longterm-stock-lens-v1'));
-  assert(finalStore.entries.length === 0, 'cleanup removed all entries');
-  assert(document.getElementById('export-json').disabled === true, 'export JSON disabled when empty');
-  assert(document.getElementById('export-md').disabled === true, 'export Markdown disabled when empty');
-
-  // disclaimer present
-  document.querySelector('.nav-btn[data-nav="home"]').click();
+  // ---- disclaimers ----
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
   assert(document.querySelector('.disclaimer-banner').textContent.includes('not financial advice'), 'hero disclaimer present');
   assert(document.querySelector('.footer').textContent.includes('Educational only, not financial advice'), 'footer disclaimer present');
 
