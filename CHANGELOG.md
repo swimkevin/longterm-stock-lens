@@ -1,5 +1,24 @@
 # Changelog — Long-Term Lens
 
+## [1.3.0] — 2026-10-09
+
+### Changed
+- **The idea page is a quick survey now, not a workbook.** Section order is
+  thesis → checklist → scorecard → AI verify, with assumptions collapsed as
+  optional and notes last. New ideas take minutes, not a research session.
+- **No more manual price log.** Kevin's call: never ask the user to hand-look-up
+  numbers like stock prices — the AI verify prompt covers the financial workup.
+  (Existing priceLog data stays in stored ideas; it just isn't rendered or editable.)
+- **Scorecard simplified:** the weight sliders are gone — dimensions are weighted
+  equally and the composite still auto-normalizes. Tap 1–5, done.
+- **Minimal footer:** "Long-Term Lens v1.3.0 · Your data stays in this browser."
+  The build-tech brag is gone.
+
+### Fixed
+- **More menu on phones:** the dropdown used `position: fixed; top: auto`, which
+  rendered as a broken empty strip under the header in mobile Safari. It now
+  positions explicitly below the sticky header.
+
 ## [1.2.0] — 2026-10-09
 
 ### Added

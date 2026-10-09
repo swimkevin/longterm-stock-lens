@@ -316,6 +316,11 @@ button:active { transform: scale(0.96); }
 .detail-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.6rem 0 1.4rem; }
 .detail-sec { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; }
 .detail-sec h3 { margin-top: 0; }
+/* Collapsible optional sections read as survey headers, not workbook chapters. */
+.detail-sec-summary { font-size: 1.05rem; font-weight: 700; cursor: pointer; list-style: none; margin: 0; }
+.detail-sec-summary::-webkit-details-marker { display: none; }
+.detail-sec-summary::after { content: "▾"; font-size: 0.8em; color: var(--muted); margin-left: 0.35rem; }
+details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
 .empty.mini { padding: 0.8rem; font-size: 0.9rem; margin-bottom: 0.8rem; }
 
 /* Review controls on the idea detail page: the loop is never gated on a
@@ -351,28 +356,8 @@ button:active { transform: scale(0.96); }
 .inline-field { flex-direction: row; align-items: center; gap: 0.6rem; }
 .gate-blocked { color: var(--red); font-weight: 600; }
 
-/* Scorecard weights. */
-.weights-row { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; margin: 1rem 0 0.5rem; }
-.weight-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; font-weight: 600; color: var(--muted); }
-.weight-field input {
-  width: 4.2rem; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
-  color: var(--text); padding: 0.55rem 0.5rem; font: inherit; font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
-}
-.weight-field input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .composite-line { margin: 0.8rem 0 0; font-size: 1.05rem; }
 .composite-line strong { font-variant-numeric: tabular-nums; }
-
-/* Manual price log timeline. */
-.price-timeline { margin-bottom: 1rem; }
-.price-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.price-date { color: var(--muted); font-size: 0.88rem; min-width: 6.2rem; font-variant-numeric: tabular-nums; }
-.price-bar { flex: 1; min-width: 6rem; height: 0.55rem; background: var(--panel2); border-radius: 4px; overflow: hidden; }
-.price-fill { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
-.price-val { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 4rem; }
-.price-note { color: var(--muted); font-size: 0.85rem; flex-basis: 100%; }
-.price-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; align-items: end; }
-.price-form .form-error { grid-column: 1 / -1; }
 
 /* Notes. */
 .notes-list { margin-bottom: 1rem; }
@@ -436,6 +421,14 @@ button:active { transform: scale(0.96); }
 .analyze-sec .btn-row { margin-top: 0.2rem; }
 
 @media (max-width: 640px) {
-  /* Keep the dropdown inside the scrolled topbar usable on phones. */
-  .nav-more-menu { position: fixed; top: auto; }
+  /* The dropdown must clear the sticky header with an explicit position —
+   * `top: auto` on fixed elements renders at a broken static position in
+   * mobile Safari (empty white strip under the header). */
+  .nav-more-menu {
+    position: fixed;
+    top: 3.6rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    min-width: 0;
+  }
 }

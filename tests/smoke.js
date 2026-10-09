@@ -1,11 +1,11 @@
-/* Long-Term Lens smoke test (v1.2: trends & misses).
+/* Long-Term Lens smoke test (v1.3: streamlined idea page).
  * 1. Boots the real index.html in jsdom (reusing the sibling poker-sparring
  *    install — dev-only, the shipped site has zero dependencies).
  * 2. Asserts pure-logic behavior via window.LongTermLens.
  * 3. Clicks through every nav tab, runs the investor-profile quiz, quick-adds
  *    an idea (incl. an XSS probe), exercises the thesis template, the
- *    checklist conviction gate, the weighted scorecard, assumptions, the
- *    manual price log, notes, the review flow, the track record, a lesson
+ *    checklist conviction gate, the equal-weighted scorecard, collapsed
+ *    assumptions, notes, the review flow, the track record, a lesson
  *    quiz, migration of legacy journal data, and exports.
  * Fails loudly on any script error.
  */
@@ -124,7 +124,7 @@ async function main() {
   assert(idea0.status === 'open' && idea0.convictionLevel === 'watching', 'draft defaults: open + watching');
   assert(idea0.reviewAt === '2027-01-09' && idea0.reviewMonths === 3, '~90-day review default (got ' + idea0.reviewAt + ')');
   assert(idea0.tickers === 'TST', 'ticker uppercased');
-  assert(JSON.stringify(idea0.weights) === JSON.stringify({ quality: 40, value: 30, conviction: 30 }), 'default weights 40/30/30');
+  assert(JSON.stringify(idea0.weights) === JSON.stringify({ quality: 1, value: 1, conviction: 1 }), 'default weights equal (1/1/1)');
   assert(L.compositeScore(idea0) === null, 'fresh idea is unscored');
 
   console.log('review dates:');
@@ -225,7 +225,7 @@ async function main() {
   assert(m0.scores.conviction === 4, 'conviction = rounded mean of product/moat/horizon (5,3,5 -> 4)');
   assert(m0.legacyScores.fundamentals === 4 && m0.legacyScores.horizon === 5, 'old 5-dim scores kept verbatim as legacyScores');
   assert(m0.reviewAt === '2027-10-04' && m0.reviewMonths === 12, 'review date preserved');
-  assert(L.compositeScore(m0) === 68, 'migrated scorecard computes (got ' + L.compositeScore(m0) + ')');
+  assert(L.compositeScore(m0) === 67, 'migrated scorecard computes (got ' + L.compositeScore(m0) + ')');
   const m1 = mig.ideas[1];
   assert(m1.reviewAt === '2027-04-04' && m1.reviewMonths === 6, 'pre-reviewAt legacy entry defaults to createdAt + 6mo');
   assert(m1.scores.quality === null && L.compositeScore(m1) === null, 'unscored legacy entry stays unscored');
@@ -294,7 +294,7 @@ async function main() {
   console.log('export builders:');
   const md = L.journalToMarkdown(mig.ideas, '2026-10-04');
   assert(md.includes('## Acme (ACME)'), 'markdown has name + ticker heading');
-  assert(md.includes('68 / 100'), 'markdown shows composite score');
+  assert(md.includes('67 / 100'), 'markdown shows composite score');
   assert(md.includes('Would prove me wrong: If not.'), 'markdown includes falsify text');
   assert(md.includes('not financial advice'), 'markdown carries disclaimer');
   assert(L.journalToMarkdown([], '2026-10-04').includes('No ideas yet'), 'empty markdown export handled');
@@ -348,7 +348,7 @@ async function main() {
   let rows = document.querySelectorAll('#ideas-list .idea-row');
   assert(rows.length === 2, 'migrated ideas render in the ideas list (got ' + rows.length + ')');
   assert(rows[0].querySelector('.idea-name').textContent === 'Acme', 'higher-scored migrated idea sorts first');
-  assert(rows[0].querySelector('.idea-score').textContent === '68 / 100', 'migrated composite renders as 68 / 100');
+  assert(rows[0].querySelector('.idea-score').textContent === '67 / 100', 'migrated composite renders as 67 / 100');
   assert(readStore().schema === 3, 'store upgraded to schema 3');
   // wipe for the rest of the UI tests
   window.localStorage.removeItem(KEY);
@@ -407,23 +407,27 @@ async function main() {
   dimBtns()[1].querySelectorAll('.score-btn')[3].click(); // value 4
   dimBtns()[2].querySelectorAll('.score-btn')[2].click(); // conviction 3
   let compText = document.querySelector('.composite-line strong').textContent;
-  assert(compText.includes('82 / 100') && compText.includes('Strong conviction'),
-    'composite 82 / Strong conviction (got "' + compText + '")');
+  assert(compText.includes('80 / 100') && compText.includes('Strong conviction'),
+    'composite 80 / Strong conviction with equal weights (got "' + compText + '")');
   // toggle a score off: click the selected 5 again
   dimBtns()[0].querySelectorAll('.score-btn')[4].click();
   compText = document.querySelector('.composite-line strong').textContent;
-  // (4/5*.3 + 3/5*.3) / .6 = .7 -> 70
+  // (4/5 + 3/5) / 2 = .7 -> 70
   assert(compText.includes('70 / 100'), 'toggling a score off recomputes over remaining dims (got "' + compText + '")');
   dimBtns()[0].querySelectorAll('.score-btn')[4].click(); // quality 5 again
-  // weights: quality -> 0 (normalizes over value+conviction)
-  const wInputs = document.querySelectorAll('#idea-detail .weight-field input');
-  wInputs[0].value = '0';
-  wInputs[0].dispatchEvent(new window.Event('change', { bubbles: true }));
-  compText = document.querySelector('.composite-line strong').textContent;
-  assert(compText.includes('70 / 100'), 'zero weight excluded from normalization (got "' + compText + '")');
-  assert(readStore().ideas[0].weights.quality === 0, 'weight persisted');
+  // No weight sliders in the quick-survey UI: dimensions are weighted equally.
+  assert(document.querySelectorAll('#idea-detail .weight-field input').length === 0,
+    'no weight inputs rendered');
+  const scoreSec = [...document.querySelectorAll('#idea-detail .detail-sec')]
+    .find(s => s.querySelector('h3') && s.querySelector('h3').textContent === 'Scorecard');
+  assert(scoreSec && scoreSec.textContent.includes('weighted equally'),
+    'equal-weights note shown');
 
-  console.log('assumptions:');
+  console.log('assumptions (collapsed optional section):');
+  const assumpDetails = document.querySelector('#idea-detail details.detail-sec');
+  assert(assumpDetails && !assumpDetails.open, 'assumptions start collapsed');
+  assert(assumpDetails.querySelector('summary').textContent.includes('optional'), 'labeled optional');
+  assumpDetails.open = true; // expand for the interaction tests below
   document.getElementById('new-assump').value = 'Revenue grows 15%+ a year for 5 years.';
   Array.from(document.querySelectorAll('#idea-detail .btn'))
     .find(b => b.textContent === 'Add assumption').click();
@@ -441,22 +445,13 @@ async function main() {
   assert(document.querySelectorAll('#idea-detail .assump-text')[1].textContent.includes('<img'),
     'assumption probe rendered as literal text');
 
-  console.log('price log:');
-  document.getElementById('price-val').value = 'abc';
-  Array.from(document.querySelectorAll('#idea-detail .btn'))
-    .find(b => b.textContent === 'Log price').click();
-  const pErr = document.getElementById('price-error');
-  assert(!pErr.classList.contains('hidden') && pErr.getAttribute('role') === 'alert', 'invalid price rejected inline');
-  document.getElementById('price-val').value = '142.50';
-  document.getElementById('price-date').value = '2026-10-01';
-  Array.from(document.querySelectorAll('#idea-detail .btn'))
-    .find(b => b.textContent === 'Log price').click();
-  let priceRows = document.querySelectorAll('#idea-detail .price-row');
-  assert(priceRows.length === 1 && priceRows[0].querySelector('.price-val').textContent === '142.50',
-    'price logged and rendered in the timeline');
-  assert(readStore().ideas[0].priceLog[0].price === '142.50', 'price persisted as entered (no fetching)');
-  priceRows[0].querySelector('.btn.danger.mini').click();
-  assert(document.querySelectorAll('#idea-detail .price-row').length === 0, 'price entry deletable');
+  console.log('streamlined page: no manual price entry, quick-survey order');
+  assert(!document.getElementById('price-val') && ![...document.querySelectorAll('#idea-detail .detail-sec h3, #idea-detail .detail-sec-summary')]
+    .some(el => el.textContent === 'Price log'), 'price log section removed — no hand-looked-up numbers');
+  const secTitles = [...document.querySelectorAll('#idea-detail .detail-sec h3, #idea-detail .detail-sec-summary')]
+    .map(el => el.textContent.replace(' (optional)', ''));
+  assert(JSON.stringify(secTitles) === JSON.stringify(['Thesis', 'Pre-decision checklist', 'Scorecard', 'AI verify', 'Key assumptions', 'Research notes', 'Danger zone']),
+    'survey order: thesis -> checklist -> score -> AI verify (got ' + JSON.stringify(secTitles) + ')');
 
   console.log('notes:');
   const probe = '<img src=x onerror=alert(1)>';

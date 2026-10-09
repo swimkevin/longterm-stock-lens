@@ -305,7 +305,7 @@ const SCORE_DIM_HINTS = {
   value: '1 = far too expensive, 5 = comfortable price',
   conviction: '1 = surface-level, 5 = deep understanding',
 };
-const DEFAULT_WEIGHTS = { quality: 40, value: 30, conviction: 30 };
+const DEFAULT_WEIGHTS = { quality: 1, value: 1, conviction: 1 }; // equal shares; no fiddly sliders in the UI
 
 function normalizeWeights(weights) {
   // Returns {quality, value, conviction} shares summing to 1, or null when the
@@ -1207,12 +1207,14 @@ function renderIdeaDetail(idea) {
   revCtl.appendChild(nowBtn);
   box.appendChild(revCtl);
 
+  // Quick survey flow: thesis -> checklist -> score -> AI verify. Assumptions
+  // are optional (collapsed); the manual price log is gone — no hand-looked-up
+  // numbers, the AI verify prompt covers the financial workup.
   renderThesisSection(box, idea);
-  renderAssumptionsSection(box, idea);
   renderChecklistSection(box, idea);
   renderScorecardSection(box, idea);
   renderAnalyzeSection(box, idea);
-  renderPriceLogSection(box, idea);
+  renderAssumptionsSection(box, idea);
   renderNotesSection(box, idea);
   renderIdeaDanger(box, idea);
 }
@@ -1264,7 +1266,18 @@ function renderThesisSection(box, idea) {
 const CONFIDENCE_CHIPS = [10, 25, 50, 75, 90];
 
 function renderAssumptionsSection(box, idea) {
-  const sec = sectionShell('Key assumptions', 'Break the thesis into what has to be true — each with your confidence. Vague conviction becomes testable parts.');
+  // Collapsed by default: assumptions are useful but optional, and the page
+  // should read as a quick survey, not a workbook.
+  const sec = document.createElement('details');
+  sec.className = 'detail-sec';
+  const sum = document.createElement('summary');
+  sum.className = 'detail-sec-summary';
+  sum.textContent = 'Key assumptions (optional)';
+  sec.appendChild(sum);
+  const hint = document.createElement('p');
+  hint.className = 'fineprint';
+  hint.textContent = 'Break the thesis into what has to be true — each with your confidence. Vague conviction becomes testable parts.';
+  sec.appendChild(hint);
   const list = document.createElement('div');
   list.className = 'assump-list';
   (idea.assumptions || []).forEach(a => {
@@ -1412,7 +1425,7 @@ function renderChecklistSection(box, idea) {
 /* (d) Scorecard — StockRanks-style composite 0-100 on user-weighted
  * criteria: Quality / Value / Conviction. */
 function renderScorecardSection(box, idea) {
-  const sec = sectionShell('Scorecard', 'Score each dimension 1–5, then set what matters most to you. The composite makes comparing two opportunities mechanical instead of a gut feeling.');
+  const sec = sectionShell('Scorecard', 'Tap 1–5 for each dimension. The composite makes comparing two opportunities mechanical instead of a gut feeling.');
   SCORE_DIMS.forEach(d => {
     const row = document.createElement('div');
     row.className = 'score-row';
@@ -1442,32 +1455,12 @@ function renderScorecardSection(box, idea) {
     row.appendChild(group);
     sec.appendChild(row);
   });
-  const wRow = document.createElement('div');
-  wRow.className = 'weights-row';
-  const wLab = document.createElement('span');
-  wLab.textContent = 'My weights (%):';
-  wRow.appendChild(wLab);
-  SCORE_DIMS.forEach(d => {
-    const lab = document.createElement('label');
-    lab.className = 'weight-field';
-    lab.appendChild(document.createTextNode(d[0].toUpperCase() + d.slice(1)));
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.max = '100';
-    input.value = idea.weights[d];
-    input.setAttribute('aria-label', SCORE_DIM_LABELS[d] + ' weight percent');
-    input.addEventListener('change', () => {
-      let v = Math.round(Number(input.value));
-      if (!isFinite(v) || v < 0) v = 0;
-      if (v > 100) v = 100;
-      updateIdea(idea.id, i => { i.weights[d] = v; });
-      renderIdeaDetail(getIdea(idea.id));
-    });
-    lab.appendChild(input);
-    wRow.appendChild(lab);
-  });
-  sec.appendChild(wRow);
+  // No weight sliders — the page is a quick survey, not a spreadsheet.
+  // Dimensions are weighted equally; the composite still auto-normalizes.
+  const wNote = document.createElement('p');
+  wNote.className = 'fineprint';
+  wNote.textContent = 'Dimensions weighted equally.';
+  sec.appendChild(wNote);
   const comp = compositeScore(idea);
   const compLine = document.createElement('p');
   compLine.className = 'composite-line';
@@ -1476,7 +1469,7 @@ function renderScorecardSection(box, idea) {
   compLine.appendChild(strong);
   const hint = document.createElement('span');
   hint.className = 'hint';
-  hint.textContent = ' weights auto-normalize, so 50/30/20 and 5/3/2 give the same result';
+  hint.textContent = 'tap a number in each row — the composite updates live';
   compLine.appendChild(hint);
   sec.appendChild(compLine);
   box.appendChild(sec);
@@ -1530,119 +1523,6 @@ function renderAnalyzeSection(box, idea) {
   fp.className = 'fineprint';
   fp.textContent = 'Tip: paste it here in chat with me and I\u2019ll do the full workup against your thesis.';
   sec.appendChild(fp);
-  box.appendChild(sec);
-}
-
-/* (e) Manual price log — Stockxy's thesis-flags idea without a data feed:
- * prices you type yourself, rendered as a dated timeline. */
-function renderPriceLogSection(box, idea) {
-  const sec = sectionShell('Price log', 'Type the price yourself when you check in — the timeline connects your logic to reality. No fetching, ever.');
-  const entries = (idea.priceLog || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-  const list = document.createElement('div');
-  list.className = 'price-timeline';
-  if (!entries.length) {
-    const d = document.createElement('div');
-    d.className = 'empty mini';
-    d.textContent = 'No prices logged yet. Add the price from any public quote when you review the idea.';
-    list.appendChild(d);
-  } else {
-    const prices = entries.map(p => Number(p.price)).filter(isFinite);
-    const lo = Math.min.apply(null, prices), hi = Math.max.apply(null, prices);
-    entries.forEach(p => {
-      const row = document.createElement('div');
-      row.className = 'price-row';
-      const dt = document.createElement('span');
-      dt.className = 'price-date';
-      dt.textContent = p.date;
-      row.appendChild(dt);
-      const bar = document.createElement('span');
-      bar.className = 'price-bar';
-      const val = Number(p.price);
-      const pct = (hi === lo) ? 50 : Math.round(((val - lo) / (hi - lo)) * 100);
-      const fill = document.createElement('span');
-      fill.className = 'price-fill';
-      fill.style.width = pct + '%';
-      bar.appendChild(fill);
-      row.appendChild(bar);
-      const pr = document.createElement('span');
-      pr.className = 'price-val';
-      pr.textContent = p.price;
-      row.appendChild(pr);
-      if (p.note) {
-        const note = document.createElement('span');
-        note.className = 'price-note';
-        note.textContent = p.note;
-        row.appendChild(note);
-      }
-      const del = document.createElement('button');
-      del.className = 'btn danger mini';
-      del.textContent = '×';
-      del.setAttribute('aria-label', 'Delete price entry for ' + p.date);
-      del.addEventListener('click', () => {
-        updateIdea(idea.id, i => { i.priceLog = i.priceLog.filter(x => x.id !== p.id); });
-        renderIdeaDetail(getIdea(idea.id));
-      });
-      row.appendChild(del);
-      list.appendChild(row);
-    });
-  }
-  sec.appendChild(list);
-  const form = document.createElement('div');
-  form.className = 'price-form';
-  const dLab = document.createElement('label');
-  dLab.className = 'field';
-  dLab.appendChild(document.createTextNode('Date'));
-  const dIn = document.createElement('input');
-  dIn.id = 'price-date';
-  dIn.type = 'date';
-  dIn.value = todayISO();
-  dIn.max = todayISO();
-  dLab.appendChild(dIn);
-  form.appendChild(dLab);
-  const pLab = document.createElement('label');
-  pLab.className = 'field';
-  pLab.appendChild(document.createTextNode('Price'));
-  const pIn = document.createElement('input');
-  pIn.id = 'price-val';
-  pIn.type = 'text';
-  pIn.inputMode = 'decimal';
-  pIn.maxLength = 20;
-  pIn.placeholder = 'e.g. 142.50';
-  pLab.appendChild(pIn);
-  form.appendChild(pLab);
-  const nLab = document.createElement('label');
-  nLab.className = 'field';
-  nLab.appendChild(document.createTextNode('Note (optional)'));
-  const nIn = document.createElement('input');
-  nIn.id = 'price-note';
-  nIn.type = 'text';
-  nIn.maxLength = 140;
-  nIn.placeholder = 'why are you logging this price?';
-  nLab.appendChild(nIn);
-  form.appendChild(nLab);
-  const err = document.createElement('p');
-  err.className = 'form-error hidden';
-  err.id = 'price-error';
-  err.setAttribute('role', 'alert');
-  form.appendChild(err);
-  const add = document.createElement('button');
-  add.className = 'btn';
-  add.textContent = 'Log price';
-  add.addEventListener('click', () => {
-    const e2 = $('price-error');
-    e2.textContent = '';
-    e2.classList.add('hidden');
-    const date = $('price-date').value;
-    const price = $('price-val').value.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { e2.textContent = 'Pick a date for this price.'; e2.classList.remove('hidden'); return; }
-    if (!/^\d+(\.\d{1,4})?$/.test(price)) { e2.textContent = 'Enter a plain number for the price (no $ or commas).'; e2.classList.remove('hidden'); return; }
-    updateIdea(idea.id, i => {
-      i.priceLog.push({ id: uid(), date, price, note: $('price-note').value.trim() });
-    });
-    renderIdeaDetail(getIdea(idea.id));
-  });
-  form.appendChild(add);
-  sec.appendChild(form);
   box.appendChild(sec);
 }
 
