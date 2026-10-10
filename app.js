@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '2.0.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -314,22 +314,6 @@ const CHECKLIST_ITEMS = [
     help: 'Do I genuinely understand how this business makes money? If not, I can\'t judge the risks.' },
 ];
 
-function checklistComplete(idea) {
-  if (!idea || !idea.checklist) return false;
-  return CHECKLIST_ITEMS.every(item => idea.checklist[item.key] === true);
-}
-
-const CONVICTION_LEVELS = ['watching', 'leaning', 'strong'];
-const CONVICTION_LEVEL_LABELS = { watching: 'Watching', leaning: 'Leaning in', strong: 'Strong conviction' };
-
-function canRaiseConviction(idea, level) {
-  if (!CONVICTION_LEVELS.includes(level)) return { ok: false, reason: 'Unknown conviction level.' };
-  if (CONVICTION_LEVELS.indexOf(level) <= 0) return { ok: true };
-  if (!checklistComplete(idea)) {
-    return { ok: false, reason: 'Finish the 5-item pre-decision checklist first — conviction stays at "Watching" until every item is checked.' };
-  }
-  return { ok: true };
-}
 
 const SCORE_DIMS = ['quality', 'value', 'conviction'];
 const SCORE_DIM_LABELS = {
@@ -357,6 +341,19 @@ function normalizeWeights(weights) {
     out[d] = ((isFinite(v) && v > 0) ? v : 0) / total;
   });
   return out;
+}
+
+function convictionOf(idea) {
+  if (!idea) return null;
+  if (typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5) return idea.conviction;
+  const legacy = compositeScore(idea);
+  if (legacy === null) return null;
+  return Math.max(1, Math.min(5, Math.ceil(legacy / 20)));
+}
+
+function convictionDots(n) {
+  if (n === null || n === undefined) return 'Unscored';
+  return '●'.repeat(n) + '○'.repeat(5 - n);
 }
 
 function compositeScore(idea) {
@@ -389,29 +386,8 @@ function buildAnalyzePrompt(idea) {
   const tickers = (idea && idea.tickers) ? idea.tickers : 'no ticker';
   const th = (idea && idea.thesis) || {};
   const belief = th.belief || notYet;
-  const reasons = th.reasons || notYet;
   const falsify = th.falsify || notYet;
-
-  const assumptions = (idea && Array.isArray(idea.assumptions)) ? idea.assumptions : [];
-  const assumptionsBlock = assumptions.length
-    ? assumptions.map(a => '- ' + (a.text || '(blank)') + ' (' + (a.confidence != null ? a.confidence + '%' : '?') + ' confident)').join('\n')
-    : '- ' + notYet;
-
-  const checklistBlock = CHECKLIST_ITEMS.map(item => {
-    const done = idea && idea.checklist && idea.checklist[item.key] === true;
-    return '- [' + (done ? 'x' : ' ') + '] ' + item.label;
-  }).join('\n');
-
-  const shares = normalizeWeights(idea && idea.weights) || {};
-  const scoreLines = SCORE_DIMS.map(d => {
-    const v = idea && idea.scores ? idea.scores[d] : null;
-    const shortLabel = d.charAt(0).toUpperCase() + d.slice(1);
-    const pct = shares[d] != null ? Math.round(shares[d] * 100) + '%' : '?';
-    return '- ' + shortLabel + ': ' + (typeof v === 'number' ? v + ' / 5' : 'unscored') +
-      ' (weight: ' + pct + ')';
-  }).join('\n');
-  const comp = compositeScore(idea);
-  const conviction = idea ? (CONVICTION_LEVEL_LABELS[idea.convictionLevel] || idea.convictionLevel) : '?';
+  const conv = convictionOf(idea);
   const reviewBy = (idea && idea.reviewAt) || '(none set)';
 
   return [
@@ -419,21 +395,10 @@ function buildAnalyzePrompt(idea) {
     '',
     'IDEA: ' + name + ' (' + tickers + ')',
     '',
-    'MY THESIS:',
-    '- I believe: ' + belief,
-    '- Why (2-3 reasons): ' + reasons,
-    '- What would prove me wrong: ' + falsify,
-    '',
-    'MY ASSUMPTIONS (with my confidence):',
-    assumptionsBlock,
-    '',
-    'MY PRE-DECISION CHECKLIST (I only raise conviction when every item is true):',
-    checklistBlock,
-    '',
-    'MY SCORECARD (1-5 each):',
-    scoreLines,
-    'Composite: ' + (comp === null ? 'unscored' : comp + ' / 100 \u2014 ' + scoreBand(comp)) + ' \u00b7 Conviction level: ' + conviction,
-    'Review by: ' + reviewBy,
+    'MY THESIS: ' + belief,
+    'WHAT WOULD PROVE ME WRONG: ' + falsify,
+    'MY CONVICTION: ' + (conv === null ? 'unscored' : conv + ' / 5'),
+    'REVIEW BY: ' + reviewBy,
     '',
     'Please do a full workup:',
     '1. Metrics check \u2014 for the ticker above, report the key long-term metrics (P/E or forward P/E, 3-5y revenue growth, operating margin, free cash flow, debt-to-equity, dividend yield if any). Cite the source and date of each number.',
@@ -445,7 +410,6 @@ function buildAnalyzePrompt(idea) {
     'Format: headers with short bullets. Analytical, no hype.',
   ].join('\n');
 }
-
 function thesesLabel(n) {
   if (!n) return '';
   return '(' + n + (n === 1 ? ' thesis)' : ' theses)');
@@ -510,12 +474,8 @@ function makeIdea(name, tickers, today) {
     status: 'open',
     createdAt: t,
     updatedAt: t,
-    thesis: { belief: '', reasons: '', falsify: '' },
-    assumptions: [],
-    checklist: { moat: false, earnings: false, debt: false, valuation: false, circle: false },
-    scores: { quality: null, value: null, conviction: null },
-    weights: Object.assign({}, DEFAULT_WEIGHTS),
-    convictionLevel: 'watching',
+    thesis: { belief: '', falsify: '' },
+    conviction: null,
     reviewMonths: DEFAULT_REVIEW_MONTHS,
     reviewAt: addMonths(t, DEFAULT_REVIEW_MONTHS),
     reviewHistory: [],
@@ -634,18 +594,16 @@ function journalToMarkdown(ideas, stamp, trends) {
     lines.push('_No ideas yet._', '');
   }
   ideas.forEach(e => {
-    const score = compositeScore(e);
+    const conv = convictionOf(e);
     lines.push('## ' + e.name + (e.tickers ? ' (' + e.tickers + ')' : ''));
     lines.push('');
-    lines.push('- Composite score: ' + (score === null ? 'unscored' : score + ' / 100 (' + scoreBand(score) + ')'));
-    lines.push('- Conviction level: ' + (CONVICTION_LEVEL_LABELS[e.convictionLevel] || e.convictionLevel));
+    lines.push('- Conviction: ' + (conv === null ? 'unscored' : conv + ' / 5'));
     lines.push('- Status: ' + (e.status || 'open') + ' · Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
     if (e.tags && e.tags.length) lines.push('- Tags: ' + e.tags.join(', '));
     lines.push('');
-    if (e.thesis && (e.thesis.belief || e.thesis.reasons || e.thesis.falsify)) {
+    if (e.thesis && (e.thesis.belief || e.thesis.falsify)) {
       lines.push('What I believe: ' + (e.thesis.belief || ''));
       lines.push('');
-      if (e.thesis.reasons) { lines.push('Why: ' + e.thesis.reasons); lines.push(''); }
       if (e.thesis.falsify) { lines.push('Would prove me wrong: ' + e.thesis.falsify); lines.push(''); }
     }
     if (e.assumptions && e.assumptions.length) {
@@ -709,23 +667,18 @@ function migrateStore(raw) {
     const oldScores = e.scores || {};
     const num = v => (typeof v === 'number' && v >= 1 && v <= 5) ? v : null;
 
-    const beliefDims = [num(oldScores.product), num(oldScores.moat), num(oldScores.horizon)]
-      .filter(v => v !== null);
-    const conviction = beliefDims.length
-      ? Math.round(beliefDims.reduce((s, v) => s + v, 0) / beliefDims.length)
+    const allDims = [num(oldScores.product), num(oldScores.fundamentals), num(oldScores.moat),
+      num(oldScores.valuation), num(oldScores.horizon)].filter(v => v !== null);
+    const conviction = allDims.length
+      ? Math.round(allDims.reduce((s, v) => s + v, 0) / allDims.length)
       : null;
     const idea = makeIdea(e.name || 'Untitled idea', e.tickers || '', t);
     idea.tags = Array.isArray(e.tags) ? e.tags : [];
     idea.thesis = {
       belief: e.thesis || '',
-      reasons: '',
       falsify: e.falsify || '',
     };
-    idea.scores = {
-      quality: num(oldScores.fundamentals),
-      value: num(oldScores.valuation),
-      conviction,
-    };
+    idea.conviction = conviction;
     idea.legacyScores = {
       product: num(oldScores.product),
       fundamentals: num(oldScores.fundamentals),
@@ -749,18 +702,14 @@ function migrateStore(raw) {
 function normalizeIdea(rawIdea) {
   const idea = Object.assign({
     tags: [], status: 'open', trendId: null,
-    thesis: {}, assumptions: [], checklist: {}, scores: {},
-    weights: {}, convictionLevel: 'watching',
+    thesis: {}, conviction: null,
     reviewMonths: DEFAULT_REVIEW_MONTHS,
-    reviewHistory: [], priceLog: [], notes: [],
+    reviewHistory: [],
   }, rawIdea || {});
-  idea.thesis = Object.assign({ belief: '', reasons: '', falsify: '' }, idea.thesis);
-  idea.checklist = Object.assign({ moat: false, earnings: false, debt: false, valuation: false, circle: false }, idea.checklist);
-  idea.scores = Object.assign({ quality: null, value: null, conviction: null }, idea.scores);
-  idea.weights = Object.assign({}, DEFAULT_WEIGHTS, idea.weights);
-  if (!CONVICTION_LEVELS.includes(idea.convictionLevel)) idea.convictionLevel = 'watching';
+  idea.thesis = Object.assign({ belief: '', falsify: '' }, idea.thesis);
+  if (!(typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5)) idea.conviction = null;
   if (!Array.isArray(idea.tags)) idea.tags = [];
-  ['assumptions', 'reviewHistory', 'priceLog', 'notes'].forEach(k => { if (!Array.isArray(idea[k])) idea[k] = []; });
+  if (!Array.isArray(idea.reviewHistory)) idea.reviewHistory = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.createdAt || '')) idea.createdAt = todayISO();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) idea.reviewAt = reviewAtOf(idea);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.updatedAt || '')) idea.updatedAt = idea.createdAt;
@@ -945,7 +894,7 @@ function convictionPillClass(score) {
 function ideaRow(idea, opts) {
   opts = opts || {};
   const today = opts.today || todayISO();
-  const score = compositeScore(idea);
+  const conv = convictionOf(idea);
   const row = document.createElement('div');
   row.className = 'idea-row' + (isReviewDue(idea, today) && idea.status !== 'resolved' ? ' due' : '') +
     (idea.status === 'resolved' ? ' resolved' : '');
@@ -966,20 +915,13 @@ function ideaRow(idea, opts) {
     top.appendChild(tk);
   }
   const sc = document.createElement('span');
-  sc.className = 'idea-score ' + convictionPillClass(score);
-  sc.textContent = score === null ? 'unscored' : score + ' / 100';
+  sc.className = 'idea-score ' + (conv === null ? 's-mid' : conv >= 4 ? 's-high' : conv >= 3 ? 's-mid' : 's-low');
+  sc.textContent = convictionDots(conv);
   top.appendChild(sc);
   main.appendChild(top);
   const meta = document.createElement('div');
   meta.className = 'idea-meta';
-  const lvl = document.createElement('span');
-  lvl.textContent = scoreBand(score);
-  meta.appendChild(lvl);
-  meta.appendChild(document.createTextNode(' · '));
-  const cl = document.createElement('span');
-  cl.textContent = 'Conviction: ' + (CONVICTION_LEVEL_LABELS[idea.convictionLevel] || idea.convictionLevel);
-  meta.appendChild(cl);
-  meta.appendChild(document.createTextNode(' · review by ' + (reviewAtOf(idea) || '—')));
+  meta.appendChild(document.createTextNode('review by ' + (reviewAtOf(idea) || '—')));
   if (isReviewDue(idea, today) && idea.status !== 'resolved') {
     const badge = document.createElement('span');
     badge.className = 'due-badge';
@@ -1015,7 +957,7 @@ function renderIdeasHome() {
   }
 
   const open = openIdeas(today).slice().sort((a, b) => {
-    const sa = compositeScore(a), sb = compositeScore(b);
+    const sa = convictionOf(a), sb = convictionOf(b);
     if (sa === null && sb === null) return a.name.localeCompare(b.name);
     if (sa === null) return 1;
     if (sb === null) return -1;
@@ -1094,8 +1036,7 @@ function sectionShell(title, hint) {
 function renderIdeaDetail(idea) {
   const box = $('idea-detail');
   box.innerHTML = '';
-  const today = todayISO();
-  const score = compositeScore(idea);
+  const conv = convictionOf(idea);
 
   const head = document.createElement('div');
   head.className = 'detail-head';
@@ -1109,35 +1050,83 @@ function renderIdeaDetail(idea) {
     tk.className = 'idea-ticker';
     tk.textContent = idea.tickers;
     meta.appendChild(tk);
-    meta.appendChild(document.createTextNode(' · '));
+    meta.appendChild(document.createTextNode(' \u00b7 '));
   }
-  meta.appendChild(document.createTextNode('opened ' + idea.createdAt));
+  meta.appendChild(document.createTextNode('opened ' + idea.createdAt + ' \u00b7 ' + convictionDots(conv)));
   head.appendChild(meta);
-  const pills = document.createElement('div');
-  pills.className = 'detail-pills';
-  const sp = document.createElement('span');
-  sp.className = 'idea-score ' + convictionPillClass(score);
-  sp.textContent = score === null ? 'unscored' : score + ' / 100';
-  pills.appendChild(sp);
-  const lp = document.createElement('span');
-  lp.className = 'tag';
-  lp.textContent = scoreBand(score);
-  pills.appendChild(lp);
-  const cp = document.createElement('span');
-  cp.className = 'tag';
-  cp.textContent = 'Conviction: ' + (CONVICTION_LEVEL_LABELS[idea.convictionLevel] || idea.convictionLevel);
-  pills.appendChild(cp);
-  if (idea.status === 'resolved') {
-    const rp = document.createElement('span');
-    rp.className = 'tag';
-    rp.textContent = 'Resolved';
-    pills.appendChild(rp);
-  }
-  head.appendChild(pills);
   box.appendChild(head);
 
-  const revCtl = document.createElement('div');
-  revCtl.className = 'review-controls';
+  const th = document.createElement('section');
+  th.className = 'panel';
+  const thH = document.createElement('h2');
+  thH.textContent = 'Thesis';
+  th.appendChild(thH);
+  const beliefLab = document.createElement('label');
+  beliefLab.className = 'field';
+  beliefLab.appendChild(document.createTextNode('What I believe and why'));
+  const belief = document.createElement('textarea');
+  belief.rows = 3;
+  belief.maxLength = 2000;
+  belief.placeholder = 'One or two sentences: the core claim and the reasons.';
+  belief.value = (idea.thesis && idea.thesis.belief) || '';
+  beliefLab.appendChild(belief);
+  th.appendChild(beliefLab);
+  const falsLab = document.createElement('label');
+  falsLab.className = 'field';
+  falsLab.appendChild(document.createTextNode('What would prove me wrong'));
+  const falsify = document.createElement('input');
+  falsify.type = 'text';
+  falsify.maxLength = 500;
+  falsify.placeholder = 'The kill criteria \u2014 write it while you\u2019re honest.';
+  falsify.value = (idea.thesis && idea.thesis.falsify) || '';
+  falsLab.appendChild(falsify);
+  th.appendChild(falsLab);
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn primary';
+  saveBtn.textContent = 'Save';
+  saveBtn.addEventListener('click', () => {
+    updateIdea(idea.id, i => {
+      i.thesis = { belief: belief.value.trim(), falsify: falsify.value.trim() };
+    });
+    renderIdeaDetail(getIdea(idea.id));
+  });
+  th.appendChild(saveBtn);
+  box.appendChild(th);
+
+  const cv = document.createElement('section');
+  cv.className = 'panel';
+  const cvH = document.createElement('h2');
+  cvH.textContent = 'Conviction';
+  cv.appendChild(cvH);
+  const cvRow = document.createElement('div');
+  cvRow.className = 'conv-row';
+  cvRow.setAttribute('role', 'radiogroup');
+  cvRow.setAttribute('aria-label', 'Conviction, 1 to 5');
+  for (let n = 1; n <= 5; n++) {
+    const b = document.createElement('button');
+    b.className = 'conv-btn' + (conv === n ? ' selected' : '');
+    b.textContent = n;
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', conv === n ? 'true' : 'false');
+    b.setAttribute('aria-label', n + ' out of 5');
+    b.addEventListener('click', () => {
+      updateIdea(idea.id, i => { i.conviction = n; });
+      renderIdeaDetail(getIdea(idea.id));
+    });
+    cvRow.appendChild(b);
+  }
+  cv.appendChild(cvRow);
+  box.appendChild(cv);
+
+  renderAnalyzeSection(box, idea);
+
+  const rev = document.createElement('section');
+  rev.className = 'panel';
+  const revH = document.createElement('h2');
+  revH.textContent = 'Review';
+  rev.appendChild(revH);
+  const revRow = document.createElement('div');
+  revRow.className = 'review-row';
   const revLab = document.createElement('label');
   revLab.className = 'field inline-field';
   revLab.appendChild(document.createTextNode('Review by'));
@@ -1153,275 +1142,31 @@ function renderIdeaDetail(idea) {
     openIdea(idea.id);
   });
   revLab.appendChild(revDate);
-  revCtl.appendChild(revLab);
+  revRow.appendChild(revLab);
   const nowBtn = document.createElement('button');
   nowBtn.className = 'btn primary';
   nowBtn.textContent = 'Review now';
-  nowBtn.setAttribute('aria-label', 'Start a review of this idea now');
   nowBtn.addEventListener('click', () => {
-    const existing = box.querySelector('.detail-review-wrap');
-    if (existing) { existing.remove(); return; }
     const wrap = document.createElement('div');
     wrap.className = 'detail-review-wrap';
     box.appendChild(wrap);
     renderReviewForm(wrap, getIdea(idea.id) || idea, () => openIdea(idea.id));
     wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
-  revCtl.appendChild(nowBtn);
-  box.appendChild(revCtl);
+  revRow.appendChild(nowBtn);
+  rev.appendChild(revRow);
+  box.appendChild(rev);
 
-  renderThesisSection(box, idea);
-  renderChecklistSection(box, idea);
-  renderScorecardSection(box, idea);
-  renderAnalyzeSection(box, idea);
-  renderAssumptionsSection(box, idea);
-  renderNotesSection(box, idea);
-  renderIdeaDanger(box, idea);
-}
-
-function renderThesisSection(box, idea) {
-  const sec = sectionShell('Thesis', 'Three fields, every time — this is what kills blank-page paralysis and makes your past ideas comparable.');
-  const fields = [
-    ['t-belief', 'What I believe', idea.thesis.belief, 2, 'One sentence: the core claim.'],
-    ['t-reasons', 'Why I believe it (2–3 reasons)', idea.thesis.reasons, 3, 'Concrete reasons, not vibes.'],
-    ['t-falsify', 'What would prove me wrong', idea.thesis.falsify, 2, 'The kill criteria. Write it now, while you\'re honest.'],
-  ];
-  fields.forEach(f => {
-    const lab = document.createElement('label');
-    lab.className = 'field';
-    lab.appendChild(document.createTextNode(f[1]));
-    const ta = document.createElement('textarea');
-    ta.id = f[0];
-    ta.rows = f[3];
-    ta.maxLength = 2000;
-    ta.placeholder = f[4];
-    ta.value = f[2] || '';
-    lab.appendChild(ta);
-    sec.appendChild(lab);
+  const del = document.createElement('button');
+  del.className = 'link-danger';
+  del.textContent = 'Delete this idea';
+  del.addEventListener('click', () => {
+    if (!confirm('Delete "' + idea.name + '"? This cannot be undone.')) return;
+    deleteIdea(idea.id);
+    showScreen('ideas');
+    renderIdeasHome();
   });
-  const row = document.createElement('div');
-  row.className = 'btn-row';
-  const save = document.createElement('button');
-  save.className = 'btn primary';
-  save.textContent = 'Save thesis';
-  save.addEventListener('click', () => {
-    updateIdea(idea.id, i => {
-      i.thesis = {
-        belief: $('t-belief').value.trim(),
-        reasons: $('t-reasons').value.trim(),
-        falsify: $('t-falsify').value.trim(),
-      };
-    });
-    renderIdeaDetail(getIdea(idea.id));
-  });
-  row.appendChild(save);
-  sec.appendChild(row);
-  box.appendChild(sec);
-}
-
-const CONFIDENCE_CHIPS = [10, 25, 50, 75, 90];
-
-function renderAssumptionsSection(box, idea) {
-  const sec = document.createElement('details');
-  sec.className = 'detail-sec';
-  const sum = document.createElement('summary');
-  sum.className = 'detail-sec-summary';
-  sum.textContent = 'Key assumptions (optional)';
-  sec.appendChild(sum);
-  const hint = document.createElement('p');
-  hint.className = 'fineprint';
-  hint.textContent = 'Break the thesis into what has to be true — each with your confidence. Vague conviction becomes testable parts.';
-  sec.appendChild(hint);
-  const list = document.createElement('div');
-  list.className = 'assump-list';
-  (idea.assumptions || []).forEach(a => {
-    const row = document.createElement('div');
-    row.className = 'assump-row';
-    const txt = document.createElement('span');
-    txt.className = 'assump-text';
-    txt.textContent = a.text;
-    row.appendChild(txt);
-    const chips = document.createElement('div');
-    chips.className = 'chips';
-    CONFIDENCE_CHIPS.forEach(c => {
-      const b = document.createElement('button');
-      b.className = 'chip' + (a.confidence === c ? ' selected' : '');
-      b.textContent = c + '%';
-      b.setAttribute('aria-pressed', a.confidence === c ? 'true' : 'false');
-      b.setAttribute('aria-label', 'Set confidence to ' + c + ' percent');
-      b.addEventListener('click', () => {
-        updateIdea(idea.id, i => {
-          const x = i.assumptions.find(y => y.id === a.id);
-          if (x) x.confidence = c;
-        });
-        renderIdeaDetail(getIdea(idea.id));
-      });
-      chips.appendChild(b);
-    });
-    row.appendChild(chips);
-    const del = document.createElement('button');
-    del.className = 'btn danger mini';
-    del.textContent = '×';
-    del.setAttribute('aria-label', 'Delete assumption: ' + a.text);
-    del.addEventListener('click', () => {
-      updateIdea(idea.id, i => { i.assumptions = i.assumptions.filter(y => y.id !== a.id); });
-      renderIdeaDetail(getIdea(idea.id));
-    });
-    row.appendChild(del);
-    list.appendChild(row);
-  });
-  if (!(idea.assumptions || []).length) {
-    const d = document.createElement('div');
-    d.className = 'empty mini';
-    d.textContent = 'No assumptions yet. Example: "Revenue grows 15%+ a year for 5 years."';
-    list.appendChild(d);
-  }
-  sec.appendChild(list);
-  const lab = document.createElement('label');
-  lab.className = 'field';
-  lab.appendChild(document.createTextNode('New assumption'));
-  const input = document.createElement('input');
-  input.id = 'new-assump';
-  input.type = 'text';
-  input.maxLength = 300;
-  input.placeholder = 'What has to be true for this thesis to work?';
-  lab.appendChild(input);
-  sec.appendChild(lab);
-  const row = document.createElement('div');
-  row.className = 'btn-row';
-  const add = document.createElement('button');
-  add.className = 'btn';
-  add.textContent = 'Add assumption';
-  add.addEventListener('click', () => {
-    const text = $('new-assump').value.trim();
-    if (!text) { $('new-assump').focus(); return; }
-    updateIdea(idea.id, i => {
-      i.assumptions.push({ id: uid(), text, confidence: 50 });
-    });
-    renderIdeaDetail(getIdea(idea.id));
-  });
-  row.appendChild(add);
-  sec.appendChild(row);
-  box.appendChild(sec);
-}
-
-function renderChecklistSection(box, idea) {
-  const sec = sectionShell('Pre-decision checklist', 'Debiasing works only in the flow, not as an afterthought. Every item must be checked before conviction can rise above "Watching".');
-  const list = document.createElement('div');
-  list.className = 'check-list';
-  CHECKLIST_ITEMS.forEach(item => {
-    const lab = document.createElement('label');
-    lab.className = 'check-item';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = !!(idea.checklist && idea.checklist[item.key]);
-    cb.addEventListener('change', () => {
-      updateIdea(idea.id, i => { i.checklist[item.key] = cb.checked; });
-      renderIdeaDetail(getIdea(idea.id));
-    });
-    lab.appendChild(cb);
-    const wrap = document.createElement('span');
-    const strong = document.createElement('strong');
-    strong.textContent = item.label;
-    wrap.appendChild(strong);
-    const help = document.createElement('span');
-    help.className = 'check-help';
-    help.textContent = ' ' + item.help;
-    wrap.appendChild(help);
-    lab.appendChild(wrap);
-    list.appendChild(lab);
-  });
-  sec.appendChild(list);
-
-  const gate = document.createElement('div');
-  gate.className = 'conviction-gate';
-  const lab = document.createElement('label');
-  lab.className = 'field inline-field';
-  lab.appendChild(document.createTextNode('My conviction level'));
-  const sel = document.createElement('select');
-  sel.id = 'conviction-level';
-  CONVICTION_LEVELS.forEach(lv => {
-    const o = document.createElement('option');
-    o.value = lv;
-    o.textContent = CONVICTION_LEVEL_LABELS[lv];
-    if (idea.convictionLevel === lv) o.selected = true;
-    sel.appendChild(o);
-  });
-  lab.appendChild(sel);
-  gate.appendChild(lab);
-  const gateMsg = document.createElement('p');
-  gateMsg.className = 'fineprint';
-  gateMsg.id = 'conviction-gate-msg';
-  const done = checklistComplete(idea);
-  gateMsg.textContent = done
-    ? 'Checklist complete — you can set conviction to any level.'
-    : 'Checklist incomplete (' + CHECKLIST_ITEMS.filter(x => !(idea.checklist && idea.checklist[x.key])).length +
-      ' of 5 to go) — conviction stays at "Watching" until every item is checked.';
-  gate.appendChild(gateMsg);
-  sel.addEventListener('change', () => {
-    const check = canRaiseConviction(getIdea(idea.id), sel.value);
-    if (!check.ok) {
-      gateMsg.textContent = check.reason;
-      gateMsg.classList.add('gate-blocked');
-      sel.value = 'watching';
-      return;
-    }
-    gateMsg.classList.remove('gate-blocked');
-    updateIdea(idea.id, i => { i.convictionLevel = sel.value; });
-    renderIdeaDetail(getIdea(idea.id));
-  });
-  sec.appendChild(gate);
-  box.appendChild(sec);
-}
-
-function renderScorecardSection(box, idea) {
-  const sec = sectionShell('Scorecard', 'Tap 1–5 for each dimension. The composite makes comparing two opportunities mechanical instead of a gut feeling.');
-  SCORE_DIMS.forEach(d => {
-    const row = document.createElement('div');
-    row.className = 'score-row';
-    const lab = document.createElement('span');
-    const strong = document.createElement('strong');
-    strong.textContent = SCORE_DIM_LABELS[d];
-    lab.appendChild(strong);
-    const hint = document.createElement('span');
-    hint.className = 'hint';
-    hint.textContent = ' ' + SCORE_DIM_HINTS[d];
-    lab.appendChild(hint);
-    row.appendChild(lab);
-    const group = document.createElement('div');
-    group.className = 'score-btns';
-    for (let v = 1; v <= 5; v++) {
-      const b = document.createElement('button');
-      b.className = 'score-btn' + (idea.scores[d] === v ? ' selected' : '');
-      b.textContent = v;
-      b.setAttribute('aria-pressed', idea.scores[d] === v ? 'true' : 'false');
-      b.setAttribute('aria-label', SCORE_DIM_LABELS[d] + ' score ' + v + ' of 5');
-      b.addEventListener('click', () => {
-        updateIdea(idea.id, i => { i.scores[d] = (i.scores[d] === v) ? null : v; });
-        renderIdeaDetail(getIdea(idea.id));
-      });
-      group.appendChild(b);
-    }
-    row.appendChild(group);
-    sec.appendChild(row);
-  });
-
-  const wNote = document.createElement('p');
-  wNote.className = 'fineprint';
-  wNote.textContent = 'Dimensions weighted equally.';
-  sec.appendChild(wNote);
-  const comp = compositeScore(idea);
-  const compLine = document.createElement('p');
-  compLine.className = 'composite-line';
-  const strong = document.createElement('strong');
-  strong.textContent = comp === null ? 'Unscored' : comp + ' / 100 — ' + scoreBand(comp);
-  compLine.appendChild(strong);
-  const hint = document.createElement('span');
-  hint.className = 'hint';
-  hint.textContent = 'tap a number in each row — the composite updates live';
-  compLine.appendChild(hint);
-  sec.appendChild(compLine);
-  box.appendChild(sec);
+  box.appendChild(del);
 }
 
 function renderAnalyzeSection(box, idea) {
@@ -1471,104 +1216,6 @@ function renderAnalyzeSection(box, idea) {
   sec.appendChild(fp);
   box.appendChild(sec);
 }
-
-function renderNotesSection(box, idea) {
-  const sec = sectionShell('Research notes', 'Free-form journal entries attached to this idea — inline $TICKER-style structure without the form-filling.');
-  const list = document.createElement('div');
-  list.className = 'notes-list';
-  const notes = (idea.notes || []).slice().sort((a, b) => b.date.localeCompare(a.date) || (a.id < b.id ? 1 : -1));
-  if (!notes.length) {
-    const d = document.createElement('div');
-    d.className = 'empty mini';
-    d.textContent = 'No notes yet.';
-    list.appendChild(d);
-  } else {
-    notes.forEach(n => {
-      const card = document.createElement('div');
-      card.className = 'note-card';
-      const dt = document.createElement('div');
-      dt.className = 'fineprint';
-      dt.textContent = n.date;
-      card.appendChild(dt);
-      const p = document.createElement('p');
-      p.className = 'note-text';
-      p.textContent = n.text;
-      card.appendChild(p);
-      const del = document.createElement('button');
-      del.className = 'btn danger mini';
-      del.textContent = '×';
-      del.setAttribute('aria-label', 'Delete note from ' + n.date);
-      del.addEventListener('click', () => {
-        updateIdea(idea.id, i => { i.notes = i.notes.filter(x => x.id !== n.id); });
-        renderIdeaDetail(getIdea(idea.id));
-      });
-      card.appendChild(del);
-      list.appendChild(card);
-    });
-  }
-  sec.appendChild(list);
-  const lab = document.createElement('label');
-  lab.className = 'field';
-  lab.appendChild(document.createTextNode('New note'));
-  const ta = document.createElement('textarea');
-  ta.id = 'new-note';
-  ta.rows = 3;
-  ta.maxLength = 2000;
-  ta.placeholder = 'What did you learn? Earnings call takeaways, a red flag, a change of mind…';
-  lab.appendChild(ta);
-  sec.appendChild(lab);
-  const row = document.createElement('div');
-  row.className = 'btn-row';
-  const add = document.createElement('button');
-  add.className = 'btn';
-  add.textContent = 'Add note';
-  add.addEventListener('click', () => {
-    const text = $('new-note').value.trim();
-    if (!text) { $('new-note').focus(); return; }
-    updateIdea(idea.id, i => {
-      i.notes.push({ id: uid(), date: todayISO(), text });
-    });
-    renderIdeaDetail(getIdea(idea.id));
-  });
-  row.appendChild(add);
-  sec.appendChild(row);
-  box.appendChild(sec);
-}
-
-function renderIdeaDanger(box, idea) {
-  const sec = sectionShell('Danger zone', null);
-  const row = document.createElement('div');
-  row.className = 'btn-row';
-  const del = document.createElement('button');
-  del.className = 'btn danger';
-  del.textContent = 'Delete idea';
-  del.setAttribute('aria-label', 'Delete idea: ' + idea.name);
-
-  del.addEventListener('click', () => {
-    if (del.dataset.armed === '1') {
-      store.ideas = store.ideas.filter(i => i.id !== idea.id);
-      saveStore(store);
-      renderIdeasHome();
-      showScreen('ideas');
-      return;
-    }
-    del.dataset.armed = '1';
-    del.textContent = 'Tap again to confirm delete';
-    del.classList.add('armed');
-    setTimeout(() => {
-      if (del.isConnected) {
-        del.dataset.armed = '';
-        del.textContent = 'Delete idea';
-        del.classList.remove('armed');
-      }
-    }, 3000);
-  });
-  row.appendChild(del);
-  sec.appendChild(row);
-  box.appendChild(sec);
-}
-
-let activeReviewId = null;
 
 function renderReviews() {
   const today = todayISO();
@@ -2258,10 +1905,9 @@ if (document.readyState === 'loading') {
 
 if (typeof globalThis !== 'undefined') {
   globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms,
-    CHECKLIST_ITEMS, SCORE_DIMS, SCORE_DIM_LABELS, DEFAULT_WEIGHTS,
-    CONVICTION_LEVELS, CONVICTION_LEVEL_LABELS, REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
+    REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
-    normalizeWeights, compositeScore, scoreBand, checklistComplete, canRaiseConviction,
+    convictionOf, convictionDots, normalizeWeights, compositeScore, scoreBand,
     ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,

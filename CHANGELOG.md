@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [2.0.0] — 2026-10-09
+
+### Changed — radical simplification
+- **Idea page rebuilt for simplicity:** 9 sections → 4. Thesis (2 fields),
+  Conviction (single 1–5 tap), AI verify, Review. Removed the 5-item checklist,
+  3-row scorecard, assumptions, research notes, and danger zone from the UI.
+- **One conviction score:** the three overlapping scoring systems (checklist-gated
+  levels, 0–100 composite, pills) are now a single 1–5 tap. Old scores migrate
+  automatically; no user data is lost.
+- **Less text everywhere:** home hero, section intros, and helper copy trimmed
+  to the essentials.
+- app.js slimmed by ~290 lines of removed UI code.
+
 ## [1.5.1] — 2026-10-09
 
 ### Fixed
