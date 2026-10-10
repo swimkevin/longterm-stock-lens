@@ -1,5 +1,12 @@
 # Changelog — Long-Term Lens
 
+## [2.1.0] — 2026-10-10
+
+### Added — design principles from studying successful apps
+- **Empty state as onboarding:** the zero-ideas screen now sells the loop ("Your next ten-bagger starts here") with a one-tap action, instead of a dead "No ideas yet."
+- **⌘K / Ctrl+K quick-add:** keyboard-first capture from anywhere, Linear-style. Hint added to the quick-add panel.
+- **README rewritten as a 30-second pitch** (hiring-manager research: the README is the first and often only thing read): personal story up top, "By the numbers", "What I learned", "Honest limitations", screenshot placeholders with instructions.
+
 ## [2.0.0] — 2026-10-09
 
 ### Changed — radical simplification

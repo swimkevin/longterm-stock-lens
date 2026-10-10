@@ -49,6 +49,7 @@ h3 { font-size: 1.05rem; margin: 0 0 0.8em; }
 .accent { color: var(--green); }
 .hint { color: var(--muted); font-size: 0.8em; font-weight: normal; }
 .fineprint { color: var(--muted); font-size: 0.85rem; }
+kbd { font-family: inherit; font-size: 0.8em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0.05em 0.35em; background: var(--panel); }
 a { color: var(--blue); }
 .hidden { display: none !important; }
 
@@ -195,6 +196,10 @@ button:active { transform: scale(0.96); }
 .entry-falsify strong { color: var(--amber); }
 .entry-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; flex-wrap: wrap; align-items: center; }
 .empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 1.5rem; text-align: center; }
+.empty.rich { padding: 2.5rem 1.5rem; }
+.empty-title { font-size: 1.15rem; font-weight: 650; color: var(--ink); margin-bottom: 0.5rem; }
+.empty-body { max-width: 34ch; margin: 0 auto 1.25rem; line-height: 1.55; }
+.empty-action { margin: 0 auto; }
 .due-badge {
   background: #2a1f0d; border: 1px solid var(--amber); color: var(--amber);
   font-weight: 800; padding: 0.25rem 0.7rem; border-radius: 20px; font-size: 0.85rem;

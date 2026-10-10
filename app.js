@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.1.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -748,6 +748,27 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function $(id) { return document.getElementById(id); }
+// Rich empty state: acknowledge the zero + explain what appears + one clear action.
+function emptyState({ title, body, actionId, actionLabel }) {
+  const d = document.createElement('div');
+  d.className = 'empty rich';
+  const t = document.createElement('div');
+  t.className = 'empty-title';
+  t.textContent = title;
+  const b = document.createElement('div');
+  b.className = 'empty-body';
+  b.textContent = body;
+  d.appendChild(t); d.appendChild(b);
+  if (actionId && actionLabel) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn empty-action';
+    btn.textContent = actionLabel;
+    btn.addEventListener('click', () => { const f = $(actionId); if (f) f.focus(); });
+    d.appendChild(btn);
+  }
+  return d;
+}
 function uid() {
   return 'x' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
 }
@@ -968,10 +989,12 @@ function renderIdeasHome() {
   list.innerHTML = '';
   const all = open.concat(resolved);
   if (!all.length) {
-    const d = document.createElement('div');
-    d.className = 'empty';
-    d.textContent = 'No ideas yet. Quick-add one above — start with a product you already love.';
-    list.appendChild(d);
+    list.appendChild(emptyState({
+      title: 'Your next ten-bagger starts here',
+      body: 'Spot a trend, name a company, write two sentences about why. The app handles the rest — conviction, AI verification, review reminders.',
+      actionId: 'qa-name',
+      actionLabel: 'Add your first idea'
+    }));
   } else {
     all.forEach(i => list.appendChild(ideaRow(i, { today })));
   }
@@ -1873,6 +1896,15 @@ function init() {
   $('qa-add').addEventListener('click', quickAddIdea);
   ['qa-name', 'qa-tickers'].forEach(id => {
     $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddIdea(); });
+  });
+  // Cmd/Ctrl+K focuses quick-add from anywhere (keyboard-first, Linear-style).
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      showScreen('ideas');
+      const f = $('qa-name');
+      if (f) f.focus();
+    }
   });
   $('trend-add').addEventListener('click', quickAddTrend);
   ['trend-name', 'trend-why'].forEach(id => {
