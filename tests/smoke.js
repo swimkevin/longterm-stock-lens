@@ -1,14 +1,3 @@
-/* Long-Term Lens smoke test (v1.3: streamlined idea page).
- * 1. Boots the real index.html in jsdom (reusing the sibling poker-sparring
- *    install — dev-only, the shipped site has zero dependencies).
- * 2. Asserts pure-logic behavior via window.LongTermLens.
- * 3. Clicks through every nav tab, runs the investor-profile quiz, quick-adds
- *    an idea (incl. an XSS probe), exercises the thesis template, the
- *    checklist conviction gate, the equal-weighted scorecard, collapsed
- *    assumptions, notes, the review flow, the track record, a lesson
- *    quiz, migration of legacy journal data, and exports.
- * Fails loudly on any script error.
- */
 'use strict';
 const fs = require('fs');
 const http = require('http');
@@ -91,17 +80,16 @@ async function main() {
   assert(L.convictionOf(null) === null, 'null idea -> null');
   assert(L.convictionDots(4) === '●●●●○', 'dots render');
   assert(L.convictionDots(null) === 'Unscored', 'null -> Unscored');
-  const legacyHi = { scores: { quality: 5, value: 5, conviction: 5 }, weights: { quality: 40, value: 30, conviction: 30 } };
-  assert(L.convictionOf(legacyHi) === 5, 'legacy 100 composite migrates to 5');
-  const legacyLow = { scores: { quality: 1, value: 1, conviction: 1 }, weights: { quality: 40, value: 30, conviction: 30 } };
-  assert(L.convictionOf(legacyLow) === 1, 'legacy 20 composite migrates to 1');
+  const legacyHi = L.normalizeIdea({ name: 'Old', scores: { quality: 5, value: 5, conviction: 5 }, weights: { quality: 40, value: 30, conviction: 30 } });
+  assert(L.convictionOf(legacyHi) === 5 && legacyHi.scores === undefined, 'legacy top scores migrate to conviction 5 at load');
+  const legacyLow = L.normalizeIdea({ name: 'Old', scores: { quality: 1, value: 1, conviction: 1 }, weights: { quality: 40, value: 30, conviction: 30 } });
+  assert(L.convictionOf(legacyLow) === 1, 'legacy low scores migrate to conviction 1 at load');
 
   console.log('makeIdea defaults:');
   const idea0 = L.makeIdea('Test Co', 'TST', '2026-10-09');
   assert(idea0.status === 'open' && idea0.conviction == null, 'draft defaults: open + unscored');
   assert(idea0.reviewAt === '2027-01-09' && idea0.reviewMonths === 3, '~90-day review default (got ' + idea0.reviewAt + ')');
   assert(idea0.tickers === 'TST', 'ticker uppercased');
-  assert(L.compositeScore(idea0) === null, 'fresh idea is unscored');
 
   console.log('review dates:');
   assert(L.addMonths('2026-10-04', 6) === '2027-04-04', '6 months from Oct -> Apr next year');

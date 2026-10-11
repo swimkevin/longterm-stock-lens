@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.3.0';
+const APP_VERSION = '3.4.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -301,84 +301,6 @@ function filterGlossaryTerms(query) {
       .toLowerCase().includes(q));
 }
 
-const CHECKLIST_ITEMS = [
-  { key: 'moat', label: 'Does it have a durable edge?',
-    help: 'Something competitors can\'t easily copy — network effects, switching costs, brand, scale, or patents.' },
-  { key: 'earnings', label: 'Is it actually profitable — or credibly on the way?',
-    help: 'Check operating margin and free cash flow over several years, not just headlines.' },
-  { key: 'debt', label: 'Is debt at a safe level?',
-    help: 'Debt-to-equity that\'s low for its industry means survival room in downturns.' },
-  { key: 'valuation', label: 'Is the price sane compared to its worth?',
-    help: 'A great company at an extreme valuation can still be a poor decade-long hold.' },
-  { key: 'circle', label: 'Is this inside my circle of competence?',
-    help: 'Do I genuinely understand how this business makes money? If not, I can\'t judge the risks.' },
-];
-
-
-const SCORE_DIMS = ['quality', 'value', 'conviction'];
-const SCORE_DIM_LABELS = {
-  quality: 'Quality — how good is the business?',
-  value: 'Value — is the price sane for what you get?',
-  conviction: 'Conviction — how well do I understand it?',
-};
-const SCORE_DIM_HINTS = {
-  quality: '1 = shaky, 5 = excellent business',
-  value: '1 = far too expensive, 5 = comfortable price',
-  conviction: '1 = surface-level, 5 = deep understanding',
-};
-const DEFAULT_WEIGHTS = { quality: 1, value: 1, conviction: 1 };
-
-function normalizeWeights(weights) {
-  let total = 0;
-  SCORE_DIMS.forEach(d => {
-    const v = Number(weights && weights[d]);
-    total += (isFinite(v) && v > 0) ? v : 0;
-  });
-  if (total <= 0) return null;
-  const out = {};
-  SCORE_DIMS.forEach(d => {
-    const v = Number(weights && weights[d]);
-    out[d] = ((isFinite(v) && v > 0) ? v : 0) / total;
-  });
-  return out;
-}
-
-function convictionOf(idea) {
-  if (!idea) return null;
-  if (typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5) return idea.conviction;
-  const legacy = compositeScore(idea);
-  if (legacy === null) return null;
-  return Math.max(1, Math.min(5, Math.ceil(legacy / 20)));
-}
-
-function convictionDots(n) {
-  if (n === null || n === undefined) return 'Unscored';
-  return '●'.repeat(n) + '○'.repeat(5 - n);
-}
-
-function compositeScore(idea) {
-  if (!idea) return null;
-  const shares = normalizeWeights(idea.weights);
-  if (!shares) return null;
-  let total = 0, wSum = 0;
-  SCORE_DIMS.forEach(d => {
-    const v = idea.scores && idea.scores[d];
-    if (typeof v === 'number' && v >= 1 && v <= 5) {
-      total += (v / 5) * shares[d];
-      wSum += shares[d];
-    }
-  });
-  if (wSum === 0) return null;
-  return Math.round((total / wSum) * 100);
-}
-
-function scoreBand(score) {
-  if (score === null || score === undefined) return 'Unscored';
-  if (score >= 75) return 'Strong signal';
-  if (score >= 55) return 'Moderate signal';
-  if (score >= 40) return 'Weak signal';
-  return 'Early days';
-}
 
 function buildAnalyzePrompt(idea) {
   const notYet = '(not written yet)';
@@ -581,8 +503,17 @@ function trackRecord(ideas) {
   return out;
 }
 
-// Seal the thesis the first time it's written. The sealed copy is never
-// edited — reviews judge you against what you actually believed then.
+function convictionOf(idea) {
+  if (!idea) return null;
+  if (typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5) return idea.conviction;
+  return null;
+}
+
+function convictionDots(n) {
+  if (n === null || n === undefined) return 'Unscored';
+  return '●'.repeat(n) + '○'.repeat(5 - n);
+}
+
 function sealThesis(idea, today) {
   if (!idea || idea.sealed) return idea;
   const belief = (idea.thesis && idea.thesis.belief || '').trim();
@@ -593,9 +524,6 @@ function sealThesis(idea, today) {
   });
 }
 
-// Calibration: when you said N/5, how often did the idea move for your
-// stated reason? This is the one thing a chat AI cannot compute — it needs
-// your sealed, longitudinal record.
 function calibration(ideas) {
   const levels = {};
   for (let n = 1; n <= 5; n++) levels[n] = { n: 0, yes: 0, rate: null };
@@ -769,6 +697,12 @@ function normalizeIdea(rawIdea) {
   }, rawIdea || {});
   idea.thesis = Object.assign({ belief: '', falsify: '' }, idea.thesis);
   if (!(typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5)) idea.conviction = null;
+  if (idea.conviction === null && idea.scores && typeof idea.scores === 'object') {
+    const vals = Object.values(idea.scores).filter(v => typeof v === 'number' && v >= 1 && v <= 5);
+    if (vals.length) idea.conviction = Math.max(1, Math.min(5, Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)));
+  }
+  delete idea.scores;
+  delete idea.weights;
   if (!Array.isArray(idea.tags)) idea.tags = [];
   if (!Array.isArray(idea.reviewHistory)) idea.reviewHistory = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.createdAt || '')) idea.createdAt = todayISO();
@@ -809,7 +743,6 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function $(id) { return document.getElementById(id); }
-// Rich empty state: acknowledge the zero + explain what appears + one clear action.
 function emptyState({ title, body, actionId, actionLabel }) {
   const d = document.createElement('div');
   d.className = 'empty rich';
@@ -829,9 +762,6 @@ function emptyState({ title, body, actionId, actionLabel }) {
     d.appendChild(btn);
   }
   return d;
-}
-function uid() {
-  return 'x' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
 }
 
 function showScreen(name) {
@@ -956,7 +886,6 @@ function showQuizResult() {
   const { total, max, band } = scoreRisk(quizAnswers);
   store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO() };
   saveStore(store);
-  // Refresh the "Last result" line so it reflects the result just saved.
   const quizBox = $('quiz');
   quizBox.querySelectorAll('.quiz-saved').forEach(n => n.remove());
   const saved = document.createElement('p');
@@ -981,10 +910,6 @@ function showQuizResult() {
   res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function convictionPillClass(score) {
-  if (score === null || score === undefined) return 's-mid';
-  return score < 40 ? 's-low' : score < 70 ? 's-mid' : 's-high';
-}
 
 function ideaRow(idea, opts) {
   opts = opts || {};
@@ -1330,7 +1255,6 @@ function renderAnalyzeSection(box, idea) {
   ta.setAttribute('aria-label', 'Generated analysis prompt for this idea');
   ta.value = buildAnalyzePrompt(idea);
   sec.appendChild(ta);
-  // Auto-size to content: the prompt reads as a document, never a scroll box.
   const fitPrompt = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
   fitPrompt();
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fitPrompt);
@@ -2093,7 +2017,6 @@ function init() {
   ['qa-name', 'qa-tickers'].forEach(id => {
     $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddIdea(); });
   });
-  // Cmd/Ctrl+K focuses quick-add from anywhere (keyboard-first, Linear-style).
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
@@ -2135,7 +2058,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms,
     REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
-    convictionOf, convictionDots, normalizeWeights, compositeScore, scoreBand,
+    convictionOf, convictionDots,
     ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,

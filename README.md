@@ -1,92 +1,84 @@
 # Long-Term Lens
 
-**Your judgment, measured.**
+**Spot what's next — and keep score of your own calls.**
+
+[![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
+![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
+![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
+![tests](https://img.shields.io/badge/tests-268%20assertions-brightgreen)
+
+**Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 
 I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it daily, and still didn't know *what* to invest in. The miss wasn't information. It was trust: I didn't know how much to trust my own gut, because I'd never kept score.
 
-This is the tool that scores it.
+This is the tool that keeps score.
 
-Live demo: https://swimkevin.github.io/longterm-stock-lens/
+> **Educational only — not financial advice.** This app helps you organize and test your own thinking. It never tells you what to buy.
 
-![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-269%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
-
-> **Educational only — not financial advice.** This site teaches you how to research. It never tells you what to buy.
-
-## The one thing it does
-
-**It remembers what you believed — sealed, timestamped, un-editable — and grades it when reality arrives.**
-
-Ask a chat AI "was I right about Nvidia?" and it will happily reconstruct a story. It can't tell you what you *actually* wrote on the day, how sure you were, or whether your 5-out-of-5 calls beat your 2-out-of-5s across two years of decisions. That requires a sealed longitudinal record of *your* judgment. That's the whole app:
-
-1. **Capture** — name a company in seconds (⌘K from anywhere).
-2. **Seal a thesis** — two sentences: what you believe, and what would prove you wrong. The first save seals it forever. Later edits never touch the sealed copy.
-3. **Say how sure you are** — one tap, 1–5.
-4. **Verify with AI** — the app builds a structured research prompt from your record; paste it into Muse or Claude for the metric workup.
-5. **Check in** — on the date you picked, the app shows you your own locked-in words and asks one question: *did it play out the way you said?* Your answers build your scorecard.
-
-The **Scorecard** is the payoff: how your calls did, broken down by how sure you were, plus a plain-language read of your pattern ("When you're sure (4–5), you're usually right — trust the strong calls sooner"). No AI can generate this. It's computed from your locked-in history, or it doesn't exist.
-
-## Screenshots
-
-<!--
-  SCREENSHOT INSTRUCTIONS (Kevin):
-  1. Mobile (390px): ideas list with the scorecard strip → docs/screenshots/mobile.png
-  2. Desktop: the Scorecard with per-level bars → docs/screenshots/desktop.png
-  3. Uncomment the two lines below.
+<!-- Screenshots: capture at 390px (mobile) and 1440px (desktop), save into docs/screenshots/, then uncomment.
+![Mobile — Ideas with the scorecard strip](docs/screenshots/mobile.png)
+![Desktop — the Scorecard, broken down by how sure you were](docs/screenshots/desktop.png)
 -->
-<!-- ![Mobile — ideas + scorecard strip](docs/screenshots/mobile.png) -->
-<!-- ![Desktop — Scorecard](docs/screenshots/desktop.png) -->
 
-## By the numbers
+## What it does
 
-- **0 runtime dependencies** — vanilla HTML/CSS/JS, no framework, no bundler, no build step
-- **269 test assertions**, all passing, CI on every push
-- **4 sections per idea** — Thesis, Conviction, AI verify, Review. Down from 9.
-- **1 scorecard engine** — hit rates by how sure you were + pattern insights from your locked-in record
-- **100% local** — your data never leaves the browser
+A calm place for your ideas about the next big thing — AI, AI infrastructure, crypto, whatever's coming — built around one loop:
 
-## What I learned (and what I'd do differently)
+1. **Spot it** — log a trend you're watching, or just name a company.
+2. **Write what you think** — two sentences: what happens, and what would change your mind. The first save **locks it in** — timestamped, and never editable again.
+3. **Say how sure you are** — one tap, 1–5.
+4. **Get a second opinion** — the app builds one prompt from everything you wrote; paste it into any AI for the numbers, the case for, the case against. It analyzes; it never says "buy."
+5. **Check in** — months later, the app shows you your own locked-in words and asks one question: *did it play out the way you said?*
 
-**Complexity was the enemy, and I was the one adding it.** v1.x had a checklist, a weighted scorecard, a 0–100 composite, conviction labels, assumptions, and notes — nine sections per idea. "Thorough," and nobody would use it. v2.0 deleted three scoring systems for one 1–5 tap. Lesson: every field is a tax on every future idea.
+## The interesting part: the Scorecard
 
-**The moat is memory, not features.** Any AI can analyze a stock. None can hold your sealed beliefs for two years and grade them. When I stopped competing with AI on analysis and built the thing AI structurally can't do, the product finally had a reason to exist.
+Ask a chat AI "was I right about Nvidia?" and it will happily reconstruct a story. It can't tell you what you *actually* wrote that day, how sure you were, or whether your 5-out-of-5 calls beat your 2-out-of-5s across two years of decisions. That takes a sealed, longitudinal record of your own judgment — which is exactly what this app keeps.
 
-**Sealed means sealed.** The review compares reality against your *original* words — the app never lets you quietly edit history. Hindsight editing is how journals become fiction.
+The **Scorecard** turns that record into hit rates by how sure you were, with honest presentation: every rate carries its count ("100% — 1 of 1"), small samples are labeled as hints rather than verdicts, and a plain-language read names your pattern. No AI can generate this data. It exists only if you kept the record.
 
-**What I'd do differently:** design mobile-first from day one, and find the calibration angle in v1 instead of v3.
+## Engineering notes
 
-## Engineering highlights
+- **Zero runtime dependencies, no build step.** One IIFE, vanilla JS + CSS custom properties. The whole app is `index.html` + `app.js` + `styles.css`, deployable to any static host.
+- **Local-first by design.** All data lives in `localStorage` (schema-versioned, with migrations from v1 journal formats forward). No accounts, no server, nothing to leak. Export to JSON/Markdown is built in.
+- **Pure logic, tested in isolation.** Scoring, check-in scheduling, the scorecard math, sealing, and prompt building are pure functions exposed on `globalThis.LongTermLens`; rendering is a separate layer on top.
+- **268 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
+- **Design system, not vibes.** Token-based theming (light/dark), one accent color, one primary action per view, hairline surfaces. The UI benchmark is Claude/Linear restraint: nothing on screen that doesn't earn its place.
+- **Accessibility basics done properly:** focus rings, aria labels/pressed states, 44px targets, `prefers-reduced-motion`, keyboard shortcut (⌘K jumps to quick-add).
 
-- **Pure-logic core, DOM-free** — calibration, sealing, prompt building, and migration live outside the UI and are unit-tested in Node (`globalThis.LongTermLens`). The same code runs in the browser.
-- **Migration without data loss** — three generations of scoring (levels → 0–100 composite → 1–5) auto-convert; a user's journal from any version still opens.
-- **XSS-safe by construction** — user strings render via `textContent`/`esc()` only; the suite includes literal injection probes.
+Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/TESTING.md](docs/TESTING.md) · [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
 
-## Honest limitations
-
-- **Calibration needs reviews.** With zero scored reviews the engine has nothing to say — the app is honest about that instead of inventing stats.
-- **One device.** localStorage = no sync. That's the privacy tradeoff, stated upfront.
-- **No live data, by design.** The AI-verify prompt is the bridge to live analysis; a static educational site faking prices would be dishonest.
-
-## Project structure
-
-```
-longterm-stock-lens/
-├── index.html          # All screens
-├── styles.css          # Calm dark/light theme, no frameworks
-├── app.js              # One IIFE; pure logic on globalThis.LongTermLens
-├── tests/smoke.js      # 269 assertions: logic + jsdom UI boot
-├── docs/               # ARCHITECTURE.md, TESTING.md, adr/
-├── CHANGELOG.md
-└── package.json        # Dev tooling only
-```
-
-## Run it
+## Run it locally
 
 ```bash
-python3 -m http.server 8000
-npm test               # 269 assertions
+git clone https://github.com/swimkevin/longterm-stock-lens.git
+cd longterm-stock-lens
+python3 -m http.server 8000   # or any static server
+# → http://localhost:8000
+
+npm install   # dev-only: jsdom for the test suite
+npm test      # 268 assertions
 ```
+
+## Project layout
+
+```
+index.html        screens + static copy
+app.js            data model, pure logic, rendering (one IIFE)
+styles.css        design tokens + components
+tests/smoke.js    jsdom assertion suite
+docs/             architecture, testing, roadmap
+```
+
+## The hardest lesson: deleting
+
+v1.x of this app had a research checklist, a weighted 0–100 scorecard, conviction labels, assumptions, and notes — nine sections per idea. Thorough, and nobody would ever use it. v2.0 deleted three scoring systems for a single 1–5 tap, and usage friction collapsed. The codebase still carries that discipline: dead code and stale layers get removed every few releases (the latest pass cut the entire legacy scoring engine, moving its one live job — migrating old data — into the loader where it belongs).
+
+Every field is a tax on every future idea. The feature set stays small on purpose.
+
+## Roadmap
+
+Honest version: the Scorecard gets more valuable with every real check-in, and that takes calendar time, not code. Next up is in [docs/ROADMAP.md](docs/ROADMAP.md) — trends pattern library, optional cloud backup, and richer scorecard cuts once there's real data to cut.
 
 ---
 
-*Built by Kevin Song — Principal Associate Software Engineer at Capital One. I use this myself; every review makes the next call better calibrated.*
+Built by Kevin Song. Educational project — not financial advice, not a recommendation service, no real-time prices, ever.

@@ -1,5 +1,14 @@
 # Changelog — Long-Term Lens
 
+## [3.4.0] — 2026-10-11
+
+### Debloat pass
+- **Deleted the legacy scoring engine** (~80 lines): SCORE_DIMS/labels/hints, DEFAULT_WEIGHTS, normalizeWeights, compositeScore, scoreBand — runtime machinery for the v1.x scorecard deleted in v2.0. Its one live job (migrating v1 `scores` to the 1–5 scale) moved into `normalizeIdea`, where all data normalization belongs; migration tests rewritten against the loader.
+- **Deleted dead code:** CHECKLIST_ITEMS (deleted checklist's data), convictionPillClass, uid — all defined, never called.
+- **Removed all comments** from app.js/styles.css and the stale test header (it advertised features deleted in v2.0).
+- **README rewritten:** pitch + live demo + real CI badge up top, the loop in the app's plain language, engineering notes, local run instructions, project layout, and a "hardest lesson: deleting" section. Screenshot placeholders retained with capture instructions.
+- 268 assertions (one removed with the deleted API; migration coverage kept via the loader).
+
 ## [3.3.0] — 2026-10-11
 
 ### Plain-language pass — no work words
