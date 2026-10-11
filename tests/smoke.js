@@ -175,6 +175,8 @@ async function main() {
   assert(cal.levels[1].rate === 0 && cal.levels[1].n === 1, 'level 1: 0/1 -> 0%');
   assert(cal.levels[3].rate === null, 'na review not counted at level 3');
   assert(cal.hiRate === 100 && cal.loRate === 0, 'hi/lo rates computed');
+  assert(cal.yesCount === 4, 'yesCount exposed for honest n-of-m display (got ' + cal.yesCount + ')');
+  assert(cal.legacyAnswered === 1, 'legacy review without conviction counted separately (got ' + cal.legacyAnswered + ')');
   assert(typeof cal.insight === 'string' && cal.insight.includes('conviction means something'),
     'positive insight when hi >> lo (got: ' + cal.insight + ')');
   const calEmpty = L.calibration([]);

@@ -8,7 +8,7 @@ This is the tool that scores it.
 
 Live demo: https://swimkevin.github.io/longterm-stock-lens/
 
-![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-267%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
+![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-269%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 
 > **Educational only — not financial advice.** This site teaches you how to research. It never tells you what to buy.
 
@@ -40,7 +40,7 @@ The **Calibration view** is the payoff: hit rates broken down by conviction leve
 ## By the numbers
 
 - **0 runtime dependencies** — vanilla HTML/CSS/JS, no framework, no bundler, no build step
-- **267 test assertions**, all passing, CI on every push
+- **269 test assertions**, all passing, CI on every push
 - **4 sections per idea** — Thesis, Conviction, AI verify, Review. Down from 9.
 - **1 calibration engine** — per-conviction hit rates + pattern insights from your sealed record
 - **100% local** — your data never leaves the browser
@@ -74,7 +74,7 @@ longterm-stock-lens/
 ├── index.html          # All screens
 ├── styles.css          # Calm dark/light theme, no frameworks
 ├── app.js              # One IIFE; pure logic on globalThis.LongTermLens
-├── tests/smoke.js      # 267 assertions: logic + jsdom UI boot
+├── tests/smoke.js      # 269 assertions: logic + jsdom UI boot
 ├── docs/               # ARCHITECTURE.md, TESTING.md, adr/
 ├── CHANGELOG.md
 └── package.json        # Dev tooling only
@@ -84,7 +84,7 @@ longterm-stock-lens/
 
 ```bash
 python3 -m http.server 8000
-npm test               # 267 assertions
+npm test               # 269 assertions
 ```
 
 ---

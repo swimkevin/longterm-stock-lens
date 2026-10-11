@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.1.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -617,6 +617,9 @@ function calibration(ideas) {
   }
   const hi = { n: levels[4].n + levels[5].n, yes: levels[4].yes + levels[5].yes };
   const lo = { n: levels[1].n + levels[2].n, yes: levels[1].yes + levels[2].yes };
+  let leveled = 0;
+  for (let n = 1; n <= 5; n++) leveled += levels[n].n;
+  const legacyAnswered = answered - leveled;
   const hiRate = hi.n ? Math.round((hi.yes / hi.n) * 100) : null;
   const loRate = lo.n ? Math.round((lo.yes / lo.n) * 100) : null;
   let insight = null;
@@ -630,6 +633,8 @@ function calibration(ideas) {
   return {
     levels,
     answered,
+    yesCount: yes,
+    legacyAnswered,
     overallRate: answered ? Math.round((yes / answered) * 100) : null,
     hiRate, loRate, insight,
   };
@@ -889,6 +894,7 @@ function renderQuiz() {
   QUIZ.forEach((item, qi) => {
     const qDiv = document.createElement('div');
     qDiv.className = 'q';
+    qDiv.dataset.q = qi;
     const title = document.createElement('div');
     title.className = 'q-title';
     title.textContent = (qi + 1) + '. ' + item.q;
@@ -937,7 +943,14 @@ function showQuizResult() {
   if (missing !== -1) {
     res.classList.remove('hidden');
     res.innerHTML = '<p>Please answer question ' + (missing + 1) + ' first — every answer shapes the result.</p>';
-    res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const qEl = document.querySelector('#quiz .q[data-q="' + missing + '"]');
+    if (qEl) {
+      qEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      qEl.classList.add('q-missing');
+      setTimeout(() => qEl.classList.remove('q-missing'), 2400);
+    } else {
+      res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     return;
   }
   const { total, max, band } = scoreRisk(quizAnswers);
@@ -1037,8 +1050,7 @@ function renderIdeasHome() {
       strong.textContent = c.overallRate + '%';
       panel.appendChild(strong);
       const txt = document.createElement('span');
-      txt.textContent = 'of your scored reviews moved for your stated reasons — your calibration across ' +
-        c.answered + (c.answered === 1 ? ' review' : ' reviews') + '.';
+      txt.textContent = 'of your scored reviews moved for your stated reasons (' + c.yesCount + ' of ' + c.answered + ') — your calibration so far.';
       panel.appendChild(txt);
       const link = document.createElement('button');
       link.className = 'linklike';
@@ -1197,7 +1209,9 @@ function renderIdeaDetail(idea) {
       const sealed = sealThesis(i);
       if (sealed !== i) Object.assign(i, sealed);
     });
-    renderIdeaDetail(getIdea(idea.id));
+    saveBtn.textContent = 'Saved ✓';
+    saveBtn.disabled = true;
+    setTimeout(() => renderIdeaDetail(getIdea(idea.id)), 900);
   });
   th.appendChild(saveBtn);
   box.appendChild(th);
@@ -1225,9 +1239,26 @@ function renderIdeaDetail(idea) {
     cvRow.appendChild(b);
   }
   cv.appendChild(cvRow);
+  const cvCap = document.createElement('p');
+  cvCap.className = 'fineprint conv-cap';
+  cvCap.textContent = '1 · just watching — 3 · real interest — 5 · highest conviction. This number gets graded at review time.';
+  cv.appendChild(cvCap);
   box.appendChild(cv);
 
   renderAnalyzeSection(box, idea);
+
+  const research = document.createElement('p');
+  research.className = 'fineprint research-links';
+  research.appendChild(document.createTextNode('Primary sources: '));
+  const q = encodeURIComponent(idea.tickers || idea.name);
+  const edgar = document.createElement('a');
+  edgar.href = 'https://www.sec.gov/edgar/search/#/q=' + q;
+  edgar.target = '_blank';
+  edgar.rel = 'noopener';
+  edgar.textContent = 'SEC filings (EDGAR)';
+  research.appendChild(edgar);
+  research.appendChild(document.createTextNode(' — read the 10-K before anyone\'s opinion of it.'));
+  box.appendChild(research);
 
   const rev = document.createElement('section');
   rev.className = 'panel';
@@ -1284,7 +1315,7 @@ function renderAnalyzeSection(box, idea) {
   sec.classList.add('analyze-sec');
   const ta = document.createElement('textarea');
   ta.className = 'analyze-prompt';
-  ta.rows = 10;
+  ta.rows = 16;
   ta.readOnly = true;
   ta.setAttribute('aria-label', 'Generated analysis prompt for this idea');
   ta.value = buildAnalyzePrompt(idea);
@@ -1581,7 +1612,14 @@ function renderTrackRecord() {
     const strong = document.createElement('strong');
     strong.textContent = c.overallRate + '%';
     p.appendChild(strong);
-    p.appendChild(document.createTextNode(' of your scored reviews moved for your stated reasons. Broken down by the conviction you held:'));
+    p.appendChild(document.createTextNode(' of your scored reviews moved for your stated reasons — ' +
+      c.yesCount + ' of ' + c.answered + '. Broken down by the conviction you held:'));
+    if (c.answered < 5) {
+      const warn = document.createElement('span');
+      warn.className = 'cal-caution';
+      warn.textContent = ' Small sample — treat this as a hint, not a verdict.';
+      p.appendChild(warn);
+    }
   }
   cal.appendChild(p);
   if (c.overallRate !== null) {
@@ -1607,6 +1645,13 @@ function renderTrackRecord() {
       bars.appendChild(row);
     }
     cal.appendChild(bars);
+    if (c.legacyAnswered > 0) {
+      const leg = document.createElement('p');
+      leg.className = 'fineprint';
+      leg.textContent = c.legacyAnswered + (c.legacyAnswered === 1 ? ' older review predates' : ' older reviews predate') +
+        ' conviction tracking — counted in the overall rate, not in the levels above.';
+      cal.appendChild(leg);
+    }
     if (c.insight) {
       const ins = document.createElement('p');
       ins.className = 'cal-insight';
@@ -1899,8 +1944,13 @@ function updateLessonScore(term, quizBox, picked, silent) {
   const answered = picked.filter(p => p !== null).length;
   const correct = picked.filter((p, i) => p === term.quiz[i].a).length;
   const line = quizBox.querySelector('.lesson-score');
+  const best = lessonProgress(term.abbr);
+  if (line && answered === 0 && best !== null) {
+    line.textContent = 'Completed — best: ' + best + ' / 3. Answer the questions to try again.';
+    return;
+  }
   if (line) line.textContent = answered + ' of 3 answered · ' + correct + ' correct' +
-    (lessonProgress(term.abbr) !== null ? ' · best: ' + lessonProgress(term.abbr) + ' / 3' : '');
+    (best !== null ? ' · best: ' + best + ' / 3' : '');
   if (answered === 3 && !silent) {
     store.glossary = store.glossary || {};
     const prev = lessonProgress(term.abbr);

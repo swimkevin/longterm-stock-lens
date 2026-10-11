@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [3.1.0] — 2026-10-11
+
+### Audit fixes — harsh external review round
+- **Calibration honesty:** every percentage now carries its count ("80% — 4 of 5"); samples under 5 get an explicit "small sample — a hint, not a verdict" caution; pre-v3 reviews without conviction snapshots are footnoted as overall-only instead of silently vanishing from the level bars; empty level tracks restyled so they no longer read as full bars.
+- **Thesis save feedback:** the Save button now confirms ("Saved ✓") — previously it saved silently with no visible state change.
+- **Conviction captions:** the 1–5 scale explains itself ("1 · just watching — 5 · highest conviction; this number gets graded at review time").
+- **AI verify prompt box:** 10 → 16 rows so the generated prompt isn't scrolled out of view.
+- **Consistent headings:** dropped the serif/green heading mix for one clean sans treatment (accent color reserved for interactive states).
+- **Research links:** idea detail now links to the company's SEC filings on EDGAR — primary sources, no data fetching.
+- **Learn quiz:** a completed lesson re-opened now says "Completed — best: N / 3" instead of the contradictory "0 of 3 answered".
+- **Profile quiz:** submitting with unanswered questions scrolls to and highlights the first missing question.
+- **Docs:** ARCHITECTURE, TESTING, and ROADMAP rewritten — they described the deleted v1.x system (scorecard/checklist/composite).
+
 ## [3.0.0] — 2026-10-11
 
 ### The calibration rework — "your judgment, measured"

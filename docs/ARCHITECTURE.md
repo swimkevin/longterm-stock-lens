@@ -17,7 +17,7 @@ computes per-conviction hit rates. The architecture exists to serve that one loo
 | `index.html` | App shell. Screens toggled by `data-nav` buttons: `ideas` (home), `idea` (detail), `reviews`, `track` (Calibration), `trends`, `profile` (investor quiz), `learn` (micro-lessons), `accounts`. Content sections are static HTML; dynamic regions are empty containers filled by `app.js`. |
 | `styles.css` | Calm research theme via CSS custom properties (dark + light themes). Responsive, `prefers-reduced-motion` support, `:focus-visible` states, 44px touch targets. |
 | `app.js` | All logic in one IIFE. DOM-free pure functions (`scoreRisk`, `makeIdea`, `convictionOf`, `sealThesis`, `applyReview`, `calibration`, `trackRecord`, `migrateStore`, `buildAnalyzePrompt`, …) are exposed on `globalThis.LongTermLens` for the Node test suite. |
-| `tests/smoke.js` | Node + jsdom suite (267 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
+| `tests/smoke.js` | Node + jsdom suite (269 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
 | `tests/edge-probe.js` | Kept harness for edge cases (XSS probes, oversized input, legacy stores). |
 
 ## Data flow

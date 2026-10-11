@@ -2,7 +2,7 @@
 
 ## What the suite is
 
-One file, `tests/smoke.js`, run by `npm test`. **267 assertions**, all
+One file, `tests/smoke.js`, run by `npm test`. **269 assertions**, all
 passing. It has two halves:
 
 1. **Pure-logic assertions** — the DOM-free core exposed on

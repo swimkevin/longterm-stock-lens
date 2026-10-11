@@ -41,9 +41,8 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 17px; line-height: 1.6; min-height: 100vh;
 }
-h1 { font-size: 2.2rem; margin: 0.6em 0 0.4em; letter-spacing: -0.5px; line-height: 1.2;
-  font-family: Georgia, 'Times New Roman', serif; }
-h2 { font-size: 1.25rem; margin: 2.2em 0 0.8em; color: var(--green); letter-spacing: -0.2px; }
+h1 { font-size: 2.2rem; margin: 0.6em 0 0.4em; letter-spacing: -0.5px; line-height: 1.2; font-weight: 700; }
+h2 { font-size: 1.25rem; margin: 2.2em 0 0.8em; letter-spacing: -0.2px; font-weight: 650; }
 h3 { font-size: 1.05rem; margin: 0 0 0.8em; }
 .subtitle { color: var(--muted); max-width: 680px; font-size: 1.02rem; }
 .accent { color: var(--green); }
@@ -108,7 +107,7 @@ button.brand:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px
   background: var(--panel); border: 1px solid var(--green-dim); border-radius: 12px;
   padding: 1.2rem; margin-top: 1.2rem;
 }
-.result h3 { color: var(--green); margin-top: 0; }
+.result h3 { margin-top: 0; }
 .alloc-bar { display: flex; height: 2.2rem; border-radius: 8px; overflow: hidden; margin: 1rem 0; border: 1px solid var(--line); }
 .alloc-index { background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
 .alloc-conv { background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: #06130a; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
@@ -200,7 +199,8 @@ button:active { transform: scale(0.96); }
 .cal-bars { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0; }
 .cal-row { display: flex; align-items: center; gap: 0.75rem; }
 .cal-lab { font-weight: 650; width: 2.6rem; flex: none; }
-.cal-track { flex: 1; height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.cal-track { flex: 1; height: 10px; background: color-mix(in srgb, var(--line) 45%, transparent); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.cal-caution { color: var(--warn, #b45309); font-weight: 600; }
 .cal-fill { display: block; height: 100%; background: var(--accent); border-radius: 5px; transition: width 0.4s ease; }
 .cal-val { color: var(--muted); font-size: 0.88rem; width: 8.5rem; flex: none; }
 .cal-insight { font-size: 1.02rem; line-height: 1.55; border-left: 3px solid var(--accent); padding-left: 0.9rem; margin-top: 1rem; }
@@ -335,7 +335,7 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
 
 .acct-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.9rem; margin-top: 1rem; }
 .acct-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem; }
-.acct-card h3 { margin-top: 0; color: var(--green); }
+.acct-card h3 { margin-top: 0; }
 .acct-card p { color: var(--muted); font-size: 0.93rem; }
 .acct-card p strong, .acct-card p em { color: var(--text); }
 .acct-q { color: var(--text); font-weight: 700; }
@@ -381,4 +381,6 @@ details.detail-sec[open] > .detail-sec-summary::after { content: "▴"; }
     right: 0.75rem;
     min-width: 0;
   }
-}
+}.q-missing { outline: 2px solid var(--warn, #b45309); outline-offset: 4px; border-radius: 8px; transition: outline-color 0.3s; }
+.conv-cap { margin-top: 0.7rem; }
+.research-links { margin-top: 1.2rem; }

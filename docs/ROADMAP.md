@@ -3,75 +3,31 @@
 Educational only. No personalized advice, no live prices, no buy/sell
 recommendations — see AGENTS.md. The roadmap respects that boundary.
 
-## v1.1 — One core feature + AI verify ✅ (shipped 2026-10-09)
+## Next
 
-AI-verify prompt generator as the final gate of the research flow
-(`buildAnalyzePrompt`, copy-to-clipboard, educational-only framing);
-quiet secondary nav (Ideas hero, everything else under "More"); inline SVG
-icons (no emoji); senior-dev README; smoke suite at 212 assertions.
+- **Screenshots in the README** — placeholders are written; needs real captures (phone + desktop).
+- **Calibration depth, only if the data earns it** — review-punctuality stats, per-trend calibration. No speculative stats before the reviews exist.
+- **Category-level allocation guidance** — from the risk profile (educational; categories, never tickers). Deliberately deferred: sits close to the personalized-advice boundary; needs a framing that stays clearly educational.
 
-## v1.2 — Trends & misses, category allocation, Learn expansion ⬅️ NEXT
+## Shipped
 
-Trends & misses log (past misses like BTC $5k become a pattern library);
-category-level allocation guidance from the risk profile (educational;
-categories, never tickers); Learn expansion (market analysis, valuation
-methods, historical case studies as labeled illustrations).
+### v3.0 — Calibration (2026-10-11)
 
-## v1.0 — Ideas → Research → Review redesign ✅ (shipped 2026-10-09)
+"Your judgment, measured." Sealed theses (first save seals a timestamped, un-editable copy); reviews record the conviction held; Calibration view with per-conviction hit-rate bars + pattern insight; home calibration strip; review form shows the sealed original. Plus the delete-idea fix with a click-through regression test.
 
-Full redesign from a 10-product research report (Stockxy, Journalytic,
-Simply Wall St, Stockopedia, Stock Rover, Morningstar, Fatebook, Metaculus,
-Zogo, Finimize). Journal → Ideas home (due-for-review queue, quick-add,
-composite scores); one-page research summaries per idea (3-field thesis
-template, assumptions with confidence %, pre-decision checklist gating
-conviction, user-weighted 0–100 scorecard, manual price timeline, attached
-notes); "did it move for your stated reason?" reviews (intact / changed /
-resolved); track-record calibration; glossary → micro-lessons with 3-question
-quizzes; accounts → "What's going on here? / Why should I care?" skeleton.
-v0.x journal data migrates automatically into the v2 schema — nothing lost,
-localStorage key unchanged.
+### v2.0 / v2.1 — Radical simplification (2026-10-09/10)
 
-## v0.4 — Compound-interest visualizer + DCA explainer (deferred — after v1.2)
+Idea page 9 sections → 4 (Thesis, Conviction, AI verify, Review); three overlapping scoring systems → one 1–5 conviction (legacy scores migrate automatically); empty-state onboarding; ⌘K quick-add; README rewritten as a 30-second pitch; CI fixed and green (Node 24).
 
-Interactive, hand-drawn canvas chart: starting amount, monthly contribution,
-years, assumed growth — with a hover crosshair showing values at each point.
-Dollar-cost averaging explainer alongside. All illustration-labeled, no live
-data. (~80 lines of canvas: DPR scaling, gradient area fill, nearest-point
-lookup on mousemove.)
+### v1.1–v1.5 — Core feature, trends, Learn (2026-10-09)
 
-## v0.3.0 — Design polish ✅ (shipped 2026-10-05)
+AI-verify prompt generator as the final gate; quiet secondary nav (Ideas hero, everything else under "More"); inline SVG icons (no emoji); Trends & misses log; Learn expanded to 13 micro-lessons with quizzes; GitHub Actions CI on every push.
 
-Visual-only pass, no behavior changes: light (paper) theme with remembered
-toggle, diverging red/amber/green conviction scale on score pills, journal
-KPI strip (theses tracked / reviews due / avg conviction), Georgia serif
-headlines + tabular numerals on all figures, press physics + view transitions
-with `prefers-reduced-motion` respected. Offline-safe: system stacks only.
-Sparkline-per-entry evaluated and skipped — no per-review score history in
-the data model; would need a storage migration (a future v0.x may add review
-snapshots, which would unlock it honestly).
+### v1.0 — Ideas → Research → Review redesign (2026-10-09)
 
-## Design polish backlog (from competitive research, 2026-10-05)
+Full redesign from a 10-product research report (Stockxy, Journalytic, Simply Wall St, Stockopedia, Stock Rover, Morningstar, Fatebook, Metaculus, Zogo, Finimize). Journal → Ideas home with due-for-review queue and quick-add; "did it move for your stated reason?" reviews; track-record calibration (the seed of v3.0); glossary → micro-lessons. v0.x journal data migrates automatically — nothing lost, localStorage key unchanged.
 
-Surveyed the best open-source/AI-built investing dashboards (Ghostfolio
-9.4k⭐, OpenTerminal 1.4k⭐, Maybe). Remaining visual upgrades not yet built,
-in priority order — fold into weekly sessions; keep the calm-research
-identity, offline-first, zero-dep:
+## Deferred
 
-1. **Empty/loading states** — skeleton shimmer while "loading", never a
-   blank panel; friendly inline notices, not modals.
-2. **Honest footers + PWA shell** — persistent disclaimer line (already in
-   footer), `manifest.json` + theme-color for installability.
-3. **Review snapshots** — store each re-check's score with its date; unlocks
-   honest per-entry SVG sparklines and a conviction-over-time view. (Requires
-   a storage migration plan per AGENTS.md.)
-4. **Flash-on-change ticks** — subtle pulse when a displayed figure updates
-   (matters once live-ish computed figures refresh).
-
-## Engineering credibility backlog (free, high resume signal)
-
-- **GitHub Actions CI** — run `npm test` on every push/PR; passing badge in
-  README. Free for public repos.
-- **No-backend decision record** — localStorage is a legitimate local-first
-  architecture for a personal journal; document the tradeoff in
-  ARCHITECTURE.md. Real backend (Supabase/Cloudflare D1 free tiers) only
-  when a feature needs it.
+- **Compound-interest visualizer + DCA explainer** — interactive canvas chart, illustration-labeled. Deferred until the calibration core is proven by real use.
+- **Review snapshots / sparklines** — per-review score history would unlock conviction-over-time views; requires a storage migration plan per AGENTS.md. Revisit only if calibration usage justifies it.
