@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [3.2.0] — 2026-10-11
+
+### Design refresh — one quiet system
+- **New design tokens:** neutral zinc surfaces (was GitHub-dark cosplay + beige light theme), hairline borders, one green accent, amber/red reserved for warnings/danger. Blue survives only as the link color; tickers are now quiet muted caps instead of blue shouts.
+- **Primary buttons** are now near-black/white (Claude/Linear pattern) instead of green-filled; accent green is for selection, conviction, and focus rings.
+- **Idea rows:** no more traffic-light score pills — conviction is five calm dots (filled = accent) with an aria label.
+- **Disclaimer banner** slimmed to a quiet hairline card with an amber tick (still present per the educational-boundary rule).
+- **Removed ~120 lines of dead CSS** left over from deleted features (scorecard, checklist, assumptions, notes, price form).
+- **Fixed undefined tokens:** `.cal-fill` and `.empty-title` referenced `--accent`/`--ink`, which were never defined — calibration fills would have rendered transparent with data.
+
 ## [3.1.0] — 2026-10-11
 
 ### Audit fixes — harsh external review round

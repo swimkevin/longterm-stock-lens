@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.2.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1010,8 +1010,18 @@ function ideaRow(idea, opts) {
     top.appendChild(tk);
   }
   const sc = document.createElement('span');
-  sc.className = 'idea-score ' + (conv === null ? 's-mid' : conv >= 4 ? 's-high' : conv >= 3 ? 's-mid' : 's-low');
-  sc.textContent = convictionDots(conv);
+  sc.className = 'idea-score';
+  if (conv === null) {
+    sc.textContent = 'Unscored';
+  } else {
+    sc.setAttribute('aria-label', 'Conviction ' + conv + ' of 5');
+    for (let d = 1; d <= 5; d++) {
+      const dot = document.createElement('span');
+      if (d <= conv) dot.className = 'on';
+      dot.textContent = d <= conv ? '●' : '○';
+      sc.appendChild(dot);
+    }
+  }
   top.appendChild(sc);
   main.appendChild(top);
   const meta = document.createElement('div');
