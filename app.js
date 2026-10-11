@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.5.1';
+const APP_VERSION = '3.6.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -854,10 +854,19 @@ function dueIdeas(today) {
 }
 
 const quizAnswers = new Array(QUIZ.length).fill(null);
+let quizFreshStart = false;
 
 function renderQuiz() {
   const box = $('quiz');
   box.innerHTML = '';
+  const savedAnswers = !quizFreshStart && store.quizProfile && Array.isArray(store.quizProfile.answers)
+    ? store.quizProfile.answers : null;
+  if (savedAnswers) {
+    QUIZ.forEach((item, qi) => {
+      const a = savedAnswers[qi];
+      quizAnswers[qi] = (typeof a === 'number' && a >= 0 && a < item.options.length) ? a : null;
+    });
+  }
   QUIZ.forEach((item, qi) => {
     const qDiv = document.createElement('div');
     qDiv.className = 'q';
@@ -894,14 +903,47 @@ function renderQuiz() {
   row.appendChild(btn);
   box.appendChild(row);
 
-  if (store.quizProfile) {
-    const saved = document.createElement('p');
-    saved.className = 'fineprint quiz-saved';
-    saved.textContent = 'Last result (' + store.quizProfile.date + '): ' +
-      store.quizProfile.bandLabel + ' — score ' + store.quizProfile.total +
-      ' / ' + store.quizProfile.max + '. Re-take anytime; the latest result is what\'s saved.';
-    box.appendChild(saved);
+  if (store.quizProfile && !quizFreshStart) {
+    const p = store.quizProfile;
+    const band = BANDS.find(b => b.label === p.bandLabel) ||
+      { label: p.bandLabel, index: p.index, conv: p.conv, why: '' };
+    renderQuizResult(band, p.total, p.max, p.date);
   }
+  quizFreshStart = false;
+}
+
+function renderQuizResult(band, total, max, savedDate) {
+  const res = $('quiz-result');
+  res.classList.remove('hidden');
+  const convText = band.conv + '%';
+  res.innerHTML =
+    '<h3>Your band: ' + esc(band.label) + '</h3>' +
+    '<p class="fineprint">' + (savedDate
+      ? 'Saved ' + esc(savedDate) + ' · Score ' + total + ' / ' + max + ' — your answers are filled in below; change any of them and see your band again to update it.'
+      : 'Score ' + total + ' / ' + max + ' — educational starting point, not advice.') + '</p>' +
+    '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent conviction stocks">' +
+      '<div class="alloc-index" style="width:' + band.index + '%">' + band.index + '% index</div>' +
+      '<div class="alloc-conv" style="width:' + band.conv + '%">' + convText + '</div>' +
+    '</div>' +
+    '<p>' + esc(band.why) + '</p>' +
+    '<p class="fineprint">Remember: a higher conviction-stock percentage always means higher risk. ' +
+    'Re-take this quiz when your life changes — a new job, a shorter timeline, or new debt all shift the math.</p>';
+  const retakeRow = document.createElement('div');
+  retakeRow.className = 'btn-row';
+  const retake = document.createElement('button');
+  retake.className = 'btn';
+  retake.textContent = 'Retake the quiz';
+  retake.addEventListener('click', () => {
+    quizFreshStart = true;
+    quizAnswers.fill(null);
+    renderQuiz();
+    res.classList.add('hidden');
+    res.innerHTML = '';
+    const q = $('quiz');
+    if (q && q.scrollIntoView) q.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  retakeRow.appendChild(retake);
+  res.appendChild(retakeRow);
 }
 
 function showQuizResult() {
@@ -921,44 +963,9 @@ function showQuizResult() {
     return;
   }
   const { total, max, band } = scoreRisk(quizAnswers);
-  store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO() };
+  store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO(), answers: quizAnswers.slice() };
   saveStore(store);
-  const quizBox = $('quiz');
-  quizBox.querySelectorAll('.quiz-saved').forEach(n => n.remove());
-  const saved = document.createElement('p');
-  saved.className = 'fineprint quiz-saved';
-  saved.textContent = 'Last result (' + store.quizProfile.date + '): ' +
-    store.quizProfile.bandLabel + ' — score ' + total +
-    ' / ' + max + '. Re-take anytime; the latest result is what\'s saved.';
-  quizBox.appendChild(saved);
-  res.classList.remove('hidden');
-
-  const convText = band.conv + '%';
-  res.innerHTML =
-    '<h3>Your band: ' + esc(band.label) + '</h3>' +
-    '<p class="fineprint">Score ' + total + ' / ' + max + ' — educational starting point, not advice.</p>' +
-    '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent conviction stocks">' +
-      '<div class="alloc-index" style="width:' + band.index + '%">' + band.index + '% index</div>' +
-      '<div class="alloc-conv" style="width:' + band.conv + '%">' + convText + '</div>' +
-    '</div>' +
-    '<p>' + esc(band.why) + '</p>' +
-    '<p class="fineprint">Remember: a higher conviction-stock percentage always means higher risk. ' +
-    'Re-take this quiz when your life changes — a new job, a shorter timeline, or new debt all shift the math.</p>';
-  const retakeRow = document.createElement('div');
-  retakeRow.className = 'btn-row';
-  const retake = document.createElement('button');
-  retake.className = 'btn';
-  retake.textContent = 'Retake the quiz';
-  retake.addEventListener('click', () => {
-    quizAnswers.fill(null);
-    renderQuiz();
-    res.classList.add('hidden');
-    res.innerHTML = '';
-    const q = $('quiz');
-    if (q && q.scrollIntoView) q.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-  retakeRow.appendChild(retake);
-  res.appendChild(retakeRow);
+  renderQuizResult(band, total, max, null);
   res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -1283,28 +1290,18 @@ function renderIdeaDetail(idea) {
 
   renderAnalyzeSection(box, idea);
 
-  const research = document.createElement('p');
-  research.className = 'fineprint research-links';
   if (idea.tickers) {
+    const research = document.createElement('p');
+    research.className = 'fineprint research-links';
     const chart = document.createElement('a');
     chart.href = 'https://www.google.com/finance/quote/' + encodeURIComponent(idea.tickers.split(/[\s,]+/)[0]);
     chart.target = '_blank';
     chart.rel = 'noopener';
     chart.textContent = 'See the chart';
     research.appendChild(chart);
-    research.appendChild(document.createTextNode(' · Primary sources: '));
-  } else {
-    research.appendChild(document.createTextNode('Primary sources: '));
+    research.appendChild(document.createTextNode(' · and read the company\u2019s own filings (the 10-K) before anyone\u2019s take on it.'));
+    box.appendChild(research);
   }
-  const q = encodeURIComponent(idea.tickers || idea.name);
-  const edgar = document.createElement('a');
-  edgar.href = 'https://www.sec.gov/edgar/search/#/q=' + q;
-  edgar.target = '_blank';
-  edgar.rel = 'noopener';
-  edgar.textContent = 'SEC filings (EDGAR)';
-  research.appendChild(edgar);
-  research.appendChild(document.createTextNode(' — read the 10-K before anyone\'s opinion of it.'));
-  box.appendChild(research);
 
   const rev = document.createElement('section');
   rev.className = 'panel';
@@ -2355,6 +2352,7 @@ function init() {
   document.querySelector('.nav-btn[data-nav="reviews"]').addEventListener('click', renderReviews);
   document.querySelector('.nav-btn[data-nav="track"]').addEventListener('click', renderTrackRecord);
   document.querySelector('.nav-btn[data-nav="trends"]').addEventListener('click', renderTrends);
+  document.querySelector('.nav-btn[data-nav="profile"]').addEventListener('click', renderQuiz);
   document.querySelector('.nav-btn[data-nav="ideas"]').addEventListener('click', renderIdeasHome);
 }
 

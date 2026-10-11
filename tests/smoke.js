@@ -353,9 +353,24 @@ async function main() {
     'aria-label carries full wording');
   const prof = readStore().quizProfile;
   assert(prof && prof.bandLabel === 'Growth-leaning' && prof.total === 18, 'quiz result persisted to store (quizProfile)');
-  const savedLine = document.querySelector('#quiz .quiz-saved');
-  assert(savedLine && savedLine.textContent.includes('Growth-leaning') && savedLine.textContent.includes('18 / 18'),
-    'Last-result line refreshes immediately to the new result (got "' + (savedLine ? savedLine.textContent : 'none') + '")');
+  assert(Array.isArray(prof.answers) && prof.answers.length === 6 && prof.answers.every(a => a === 0),
+    'quiz ANSWERS persisted with the profile (old state can be restored)');
+  // leave and return: the saved profile + answers must be right there
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const res2 = document.getElementById('quiz-result');
+  assert(!res2.classList.contains('hidden') && res2.textContent.includes('Your band: Growth-leaning'),
+    'returning to Profile shows the saved result immediately');
+  assert(res2.textContent.includes('Saved '), 'saved result carries its date');
+  assert(document.querySelectorAll('#quiz .opt-btn.selected').length === 6,
+    'previous answers are restored as selections');
+  // change one answer and re-submit: profile updates in place
+  const q1opts = document.querySelectorAll('#quiz .q')[0].querySelectorAll('.opt-btn');
+  q1opts[q1opts.length - 1].click();
+  document.querySelector('#quiz .btn.primary').click();
+  const prof2 = readStore().quizProfile;
+  assert(prof2.total === 15 && prof2.answers[0] === q1opts.length - 1,
+    'changing an answer and re-submitting updates the saved profile');
 
   // ---- migration through the real boot path ----
   console.log('migration via reloadJournal:');
@@ -858,6 +873,11 @@ async function main() {
   assert(earlyBtn, 'upcoming idea offers Check in early');
   earlyBtn.click();
   assert(document.querySelector('#idea-detail .review-form'), 'Check in early opens the idea with the form ready');
+
+  // ---- no EDGAR links anywhere (owner directive) ----
+  console.log('external links policy:');
+  assert(document.querySelectorAll('a[href*="sec.gov"]').length === 0, 'no SEC/EDGAR links anywhere in the page');
+  assert(!document.body.textContent.includes('SEC EDGAR'), 'footer and Learn no longer plug EDGAR');
 
   // ---- delete my data (two-step) + quiz retake ----
   console.log('data wipe + retake:');

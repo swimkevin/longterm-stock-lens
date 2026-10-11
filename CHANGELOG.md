@@ -1,5 +1,12 @@
 # Changelog — Long-Term Lens
 
+## [3.6.0] — 2026-10-11
+
+### Owner-reported fixes from real phone use
+- **Saved investor profile is now a real state, not a footnote.** The quiz only saved the score; answers were lost on every visit, so Profile always looked blank. Now the answers save with the profile (`quizProfile.answers`), Profile opens on your saved result (band, allocation bar, date) with your answers already filled in — change any answer and re-submit to update, or Retake for a fresh start. Profile re-renders from the store on every visit.
+- **EDGAR links removed everywhere** (footer, Learn resources, idea page) — outbound links are only for things the product itself uses (the chart). Filings guidance stays as plain text: read the company's own 10-K.
+- 320 assertions (6 new: answers persisted, state restored on return, in-place update, no sec.gov links).
+
 ## [3.5.1] — 2026-10-11
 
 ### Fixes from the full click-through audit (25/25 functional pass; these close its top findings)
