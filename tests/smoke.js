@@ -130,6 +130,25 @@ async function main() {
   assert(ar3.reviewHistory[0].outcome === 'intact' && ar3.reviewHistory[0].reasonMatch === 'na',
     'invalid outcome/reason sanitized to intact/na');
 
+  console.log('prices (spotted + check-in):');
+  assert(L.spotPriceOf({ priceLog: [] }) === null && L.spotPriceOf({}) === null, 'no price log -> no spot price');
+  assert(L.spotPriceOf({ priceLog: [{ date: '2026-10-09', price: 84.5, note: 'spotted' }] }) === 84.5, 'spot price is the first log entry');
+  const arP = L.applyReview(idea0, { outcome: 'intact', reasonMatch: 'yes', note: '', nextMonths: '3', priceNow: 97.25 }, '2026-11-01');
+  assert(arP.reviewHistory[0].priceNow === 97.25, 'check-in price stored on the entry');
+  assert(arP.priceLog.length === 1 && arP.priceLog[0].price === 97.25 && arP.priceLog[0].note === 'check-in',
+    'check-in price appended to the price log');
+  const arBad = L.applyReview(idea0, { outcome: 'intact', reasonMatch: 'na', note: '', nextMonths: '3', priceNow: -4 }, '2026-11-01');
+  assert(arBad.reviewHistory[0].priceNow === null && (arBad.priceLog || []).length === 0, 'invalid price ignored');
+  const normP = L.normalizeIdea({ name: 'P', priceLog: [{ price: '55', date: 'bogus' }, { price: -1 }, null, { price: 12, date: '2026-01-01', note: 'x'.repeat(200) }] });
+  assert(normP.priceLog.length === 2 && normP.priceLog[0].price === 55 && /^\d{4}-\d{2}-\d{2}$/.test(normP.priceLog[0].date) &&
+    normP.priceLog[1].note.length === 80, 'normalizeIdea sanitizes the price log');
+
+  console.log('discover prompt:');
+  const dp = L.buildDiscoverPrompt({ name: 'AI infrastructure', why: 'Every model needs more compute' });
+  assert(dp.includes('AI infrastructure') && dp.includes('Every model needs more compute'), 'discover prompt carries the trend + why');
+  assert(dp.includes('Categories') && dp.includes('Companies'), 'discover prompt asks for categories and companies');
+  assert(dp.includes('no buy or sell recommendations'), 'discover prompt forbids recommendations');
+
   console.log('trackRecord:');
   const trIdeas = [
     { reviewHistory: [{ outcome: 'intact', reasonMatch: 'yes' }, { outcome: 'changed', reasonMatch: 'no' }] },
@@ -756,6 +775,81 @@ async function main() {
     'footer #app-version matches APP_VERSION');
   assert(htmlSrc.includes('app.js?v=' + L.APP_VERSION) && htmlSrc.includes('styles.css?v=' + L.APP_VERSION),
     '?v= cache-busters match APP_VERSION');
+
+  // ---- v3.5 package: funnel + prices + chart + check-in-early ----
+  console.log('v3.5 package flows:');
+  document.querySelector('.nav-btn[data-nav="trends"]').click();
+  document.getElementById('trend-name').value = 'AI infrastructure';
+  document.getElementById('trend-why').value = 'Every model needs more compute';
+  document.getElementById('trend-add').click();
+  st = readStore();
+  assert(st.trends.some(t => t.name === 'AI infrastructure'), 'trend logged for funnel test');
+  const aiRow = Array.from(document.querySelectorAll('#trends-watching .note-card'))
+    .find(r => r.querySelector('.entry-name').textContent === 'AI infrastructure');
+  assert(aiRow, 'AI infrastructure trend row rendered');
+  const findBtn = Array.from(aiRow.querySelectorAll('.btn'))
+    .find(b => b.textContent === 'Find companies');
+  assert(findBtn, 'watching trend offers Find companies');
+  findBtn.click();
+  const dbox = aiRow.querySelector('.discover-box');
+  assert(dbox && dbox.querySelector('textarea').value.includes('AI infrastructure'),
+    'discover box opens with the trend prompt');
+  assert(dbox.querySelector('textarea').value.includes('no buy or sell recommendations'),
+    'discover prompt keeps the no-recommendations rule');
+  const dInputs = dbox.querySelectorAll('input[type="text"]');
+  dInputs[0].value = 'CoreWeave';
+  dInputs[1].value = 'CRWV';
+  Array.from(aiRow.querySelectorAll('.discover-box .btn')).find(b => b.textContent === 'Add as idea').click();
+  st = readStore();
+  const cwIdea = st.ideas.find(i => i.name === 'CoreWeave');
+  assert(cwIdea && cwIdea.tickers === 'CRWV', 'company added as an idea from the trend');
+  assert(cwIdea.trendId === st.trends.find(t => t.name === 'AI infrastructure').id, 'idea linked to its trend');
+  assert(st.trends.find(t => t.name === 'AI infrastructure').status === 'chased', 'trend marked chased after adding a company');
+
+  // price-at-spot: write thesis + price, save, price locks in
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(document.querySelectorAll('#ideas-list .idea-row .idea-main'))
+    .find(b => b.getAttribute('aria-label') === 'Open research for CoreWeave').click();
+  const detailText = () => document.getElementById('idea-detail').textContent;
+  assert(detailText().includes('See the chart'), 'chart link shows when a ticker exists');
+  const chartLink = Array.from(document.querySelectorAll('#idea-detail a')).find(a => a.textContent === 'See the chart');
+  assert(chartLink && chartLink.href.includes('google.com/finance/quote/CRWV'), 'chart link points at Google Finance for the ticker');
+  document.querySelector('#idea-detail textarea').value = 'Compute demand compounds for a decade.';
+  const priceIn = document.querySelector('#idea-detail input[type="number"]');
+  assert(priceIn, 'price-when-spotted input offered before any price is locked');
+  priceIn.value = '40.25';
+  Array.from(document.querySelectorAll('#idea-detail .btn')).find(b => b.textContent === 'Save').click();
+  st = readStore();
+  const cw2 = st.ideas.find(i => i.name === 'CoreWeave');
+  assert(cw2.priceLog.length === 1 && cw2.priceLog[0].price === 40.25 && cw2.priceLog[0].note === 'spotted',
+    'spotted price recorded at thesis save');
+  assert(cw2.sealed && cw2.sealed.belief.includes('Compute demand'), 'thesis sealed alongside the price');
+  // check in with a price now -> history shows the move on the Scorecard
+  Array.from(document.querySelectorAll('#idea-detail .btn')).find(b => b.textContent === 'Check in now').click();
+  const pnIn = document.querySelector('#idea-detail .review-form input[type="number"]');
+  assert(pnIn, 'check-in form offers a price-now field');
+  pnIn.value = '60.50';
+  Array.from(document.querySelectorAll('#idea-detail .review-form .btn.primary'))
+    .find(b => b.textContent === 'Save check-in').click();
+  st = readStore();
+  const cw3 = st.ideas.find(i => i.name === 'CoreWeave');
+  assert(cw3.reviewHistory.length === 1 && cw3.reviewHistory[0].priceNow === 60.5, 'check-in price saved');
+  assert(cw3.priceLog.length === 2, 'price log grows with the check-in');
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  assert(document.getElementById('track-record').textContent.includes('$40.25 when spotted'),
+    'past check-ins show spotted vs now with the move');
+
+  // check in early from the Check-ins screen (upcoming idea)
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Early Bird Co';
+  document.getElementById('qa-add').click();
+  document.getElementById('idea-back').click();
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  const earlyBtn = Array.from(document.querySelectorAll('#reviews-list .btn'))
+    .find(b => b.textContent === 'Check in early');
+  assert(earlyBtn, 'upcoming idea offers Check in early');
+  earlyBtn.click();
+  assert(document.querySelector('#idea-detail .review-form'), 'Check in early opens the idea with the form ready');
 
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');

@@ -5,7 +5,7 @@
 [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
 ![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-268%20assertions-brightgreen)
+![tests](https://img.shields.io/badge/tests-299%20assertions-brightgreen)
 
 **Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 
@@ -25,10 +25,11 @@ This is the tool that keeps score.
 A calm place for your ideas about the next big thing — AI, AI infrastructure, crypto, whatever's coming — built around one loop:
 
 1. **Spot it** — log a trend you're watching, or just name a company.
-2. **Write what you think** — two sentences: what happens, and what would change your mind. The first save **locks it in** — timestamped, and never editable again.
-3. **Say how sure you are** — one tap, 1–5.
-4. **Get a second opinion** — the app builds one prompt from everything you wrote; paste it into any AI for the numbers, the case for, the case against. It analyzes; it never says "buy."
-5. **Check in** — months later, the app shows you your own locked-in words and asks one question: *did it play out the way you said?*
+2. **Find companies** — each trend carries a ready-made prompt that maps it into categories and names the public companies in each (analysis only, never "buy this"). One tap turns a candidate into an idea, still linked to its trend.
+3. **Write what you think** — two sentences: what happens, and what would change your mind. Optionally note the **price when you spotted it**. The first save **locks it all in** — timestamped, never editable again.
+4. **Say how sure you are** — one tap, 1–5.
+5. **Get a second opinion** — the app builds one prompt from everything you wrote; paste it into any AI for the numbers, the case for, the case against. It analyzes; it never says "buy."
+6. **Check in** — any time you like (the date is just a nudge). The app shows you your own locked-in words — and the price then vs. now — and asks one question: *did it play out the way you said?*
 
 ## The interesting part: the Scorecard
 
@@ -41,7 +42,7 @@ The **Scorecard** turns that record into hit rates by how sure you were, with ho
 - **Zero runtime dependencies, no build step.** One IIFE, vanilla JS + CSS custom properties. The whole app is `index.html` + `app.js` + `styles.css`, deployable to any static host.
 - **Local-first by design.** All data lives in `localStorage` (schema-versioned, with migrations from v1 journal formats forward). No accounts, no server, nothing to leak. Export to JSON/Markdown is built in.
 - **Pure logic, tested in isolation.** Scoring, check-in scheduling, the scorecard math, sealing, and prompt building are pure functions exposed on `globalThis.LongTermLens`; rendering is a separate layer on top.
-- **268 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
+- **299 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
 - **Design system, not vibes.** Token-based theming (light/dark), one accent color, one primary action per view, hairline surfaces. The UI benchmark is Claude/Linear restraint: nothing on screen that doesn't earn its place.
 - **Accessibility basics done properly:** focus rings, aria labels/pressed states, 44px targets, `prefers-reduced-motion`, keyboard shortcut (⌘K jumps to quick-add).
 
@@ -56,7 +57,7 @@ python3 -m http.server 8000   # or any static server
 # → http://localhost:8000
 
 npm install   # dev-only: jsdom for the test suite
-npm test      # 268 assertions
+npm test      # 299 assertions
 ```
 
 ## Project layout

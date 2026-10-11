@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.4.1';
+const APP_VERSION = '3.5.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -320,6 +320,7 @@ function buildAnalyzePrompt(idea) {
     'MY THESIS: ' + belief,
     'WHAT WOULD PROVE ME WRONG: ' + falsify,
     'HOW SURE I AM: ' + (conv === null ? 'not set' : conv + ' / 5'),
+    'PRICE WHEN I SPOTTED IT: ' + (spotPriceOf(idea) !== null ? '$' + spotPriceOf(idea) : 'not noted'),
     'CHECK IN ON: ' + reviewBy,
     '',
     'Please do a full workup:',
@@ -476,12 +477,16 @@ function applyReview(idea, review, today) {
     outcome,
     reasonMatch,
     conviction: convictionOf(idea),
+    priceNow: (typeof review.priceNow === 'number' && isFinite(review.priceNow) && review.priceNow > 0) ? review.priceNow : null,
     note: (review.note || '').slice(0, 1000),
   };
   const next = Object.assign({}, idea, {
     reviewHistory: (idea.reviewHistory || []).concat([entry]),
     updatedAt: t,
   });
+  if (entry.priceNow !== null) {
+    next.priceLog = (idea.priceLog || []).concat([{ date: t, price: entry.priceNow, note: 'check-in' }]);
+  }
   if (outcome === 'resolved') next.status = 'resolved';
   const months = parseInt(review.nextMonths, 10);
   return rescheduleReview(next, months, t);
@@ -512,6 +517,29 @@ function convictionOf(idea) {
 function convictionDots(n) {
   if (n === null || n === undefined) return 'Unscored';
   return '●'.repeat(n) + '○'.repeat(5 - n);
+}
+
+function spotPriceOf(idea) {
+  const log = (idea && idea.priceLog) || [];
+  return log.length ? log[0].price : null;
+}
+
+function buildDiscoverPrompt(trend) {
+  const lines = [
+    'I\'m researching a long-term trend for buy-and-hold investing: ' + ((trend && trend.name) || ''),
+    '',
+  ];
+  if (trend && trend.why) lines.push('Why I care about it: ' + trend.why, '');
+  lines.push(
+    'Please map this trend for me:',
+    '1. Categories — break the trend into 3-5 sub-categories (for example: infrastructure, platforms, applications, picks-and-shovels suppliers).',
+    '2. Companies — for each category, list 3-5 publicly traded companies: ticker, what they do in one line, why they fit this trend, and the first thing a long-term investor should check about them.',
+    '3. Mix pure-plays with established incumbents, and say which is which.',
+    '4. End with 3 questions that would help me narrow the list down.',
+    '',
+    'Rules: analysis only — no buy or sell recommendations and no price targets. Flag anywhere your information may be out of date.'
+  );
+  return lines.join('\n');
 }
 
 function sealThesis(idea, today) {
@@ -708,6 +736,14 @@ function normalizeIdea(rawIdea) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.createdAt || '')) idea.createdAt = todayISO();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) idea.reviewAt = reviewAtOf(idea);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.updatedAt || '')) idea.updatedAt = idea.createdAt;
+  if (!Array.isArray(idea.priceLog)) idea.priceLog = [];
+  idea.priceLog = idea.priceLog
+    .filter(p => p && isFinite(+p.price) && +p.price > 0)
+    .map(p => ({
+      date: /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date : idea.createdAt,
+      price: +p.price,
+      note: (p.note || '').slice(0, 80),
+    }));
   return idea;
 }
 
@@ -1066,11 +1102,19 @@ function quickAddIdea() {
   openIdea(idea.id);
 }
 
-function openIdea(id) {
+function openIdea(id, opts) {
   const idea = getIdea(id);
   if (!idea) { showScreen('ideas'); return; }
   renderIdeaDetail(idea);
   showScreen('idea');
+  if (opts && opts.checkin) {
+    const btn = document.querySelector('#idea-detail [data-action="checkin-now"]');
+    if (btn) {
+      btn.click();
+      const form = document.querySelector('#idea-detail .review-form');
+      if (form && form.scrollIntoView) form.scrollIntoView({ block: 'center' });
+    }
+  }
 }
 
 function sectionShell(title, hint) {
@@ -1107,7 +1151,7 @@ function renderIdeaDetail(idea) {
     meta.appendChild(tk);
     meta.appendChild(document.createTextNode(' \u00b7 '));
   }
-  meta.appendChild(document.createTextNode('opened ' + idea.createdAt + ' \u00b7 ' + convictionDots(conv)));
+  meta.appendChild(document.createTextNode('opened ' + idea.createdAt + ' \u00b7 ' + convictionDots(conv) + (spotPriceOf(idea) !== null ? ' \u00b7 spotted at $' + spotPriceOf(idea) : '')));
   head.appendChild(meta);
   box.appendChild(head);
 
@@ -1136,6 +1180,25 @@ function renderIdeaDetail(idea) {
   falsify.value = (idea.thesis && idea.thesis.falsify) || '';
   falsLab.appendChild(falsify);
   th.appendChild(falsLab);
+  const spot = spotPriceOf(idea);
+  let priceInput = null;
+  if (spot !== null) {
+    const spotted = document.createElement('p');
+    spotted.className = 'fineprint';
+    spotted.textContent = 'Spotted at $' + spot + ' on ' + idea.priceLog[0].date + ' — locked in with your words.';
+    th.appendChild(spotted);
+  } else {
+    const priceLab = document.createElement('label');
+    priceLab.className = 'field';
+    priceLab.appendChild(document.createTextNode('Price when you spotted it ($) — optional'));
+    priceInput = document.createElement('input');
+    priceInput.type = 'number';
+    priceInput.min = '0';
+    priceInput.step = '0.01';
+    priceInput.placeholder = 'e.g. 84.50 — whatever it costs today';
+    priceLab.appendChild(priceInput);
+    th.appendChild(priceLab);
+  }
   const saveBtn = document.createElement('button');
   saveBtn.className = 'btn';
   saveBtn.textContent = 'Save';
@@ -1144,6 +1207,12 @@ function renderIdeaDetail(idea) {
       i.thesis = { belief: belief.value.trim(), falsify: falsify.value.trim() };
       const sealed = sealThesis(i);
       if (sealed !== i) Object.assign(i, sealed);
+      if (priceInput) {
+        const p = parseFloat(priceInput.value);
+        if (isFinite(p) && p > 0 && !(i.priceLog || []).length) {
+          i.priceLog = [{ date: todayISO(), price: p, note: 'spotted' }];
+        }
+      }
     });
     saveBtn.textContent = 'Saved ✓';
     saveBtn.disabled = true;
@@ -1185,7 +1254,17 @@ function renderIdeaDetail(idea) {
 
   const research = document.createElement('p');
   research.className = 'fineprint research-links';
-  research.appendChild(document.createTextNode('Primary sources: '));
+  if (idea.tickers) {
+    const chart = document.createElement('a');
+    chart.href = 'https://www.google.com/finance/quote/' + encodeURIComponent(idea.tickers.split(/[\s,]+/)[0]);
+    chart.target = '_blank';
+    chart.rel = 'noopener';
+    chart.textContent = 'See the chart';
+    research.appendChild(chart);
+    research.appendChild(document.createTextNode(' · Primary sources: '));
+  } else {
+    research.appendChild(document.createTextNode('Primary sources: '));
+  }
   const q = encodeURIComponent(idea.tickers || idea.name);
   const edgar = document.createElement('a');
   edgar.href = 'https://www.sec.gov/edgar/search/#/q=' + q;
@@ -1221,6 +1300,7 @@ function renderIdeaDetail(idea) {
   revRow.appendChild(revLab);
   const nowBtn = document.createElement('button');
   nowBtn.className = 'btn';
+  nowBtn.dataset.action = 'checkin-now';
   nowBtn.textContent = 'Check in now';
   nowBtn.addEventListener('click', () => {
     const wrap = document.createElement('div');
@@ -1347,7 +1427,7 @@ function renderReviews() {
     const meta = document.createElement('p');
     meta.className = 'fineprint';
     meta.textContent = 'Check in on ' + (reviewAtOf(idea) || '—') +
-      ' · ' + (idea.reviewHistory || []).length + ' past reviews';
+      ' · ' + (idea.reviewHistory || []).length + ' past check-ins';
     card.appendChild(meta);
 
     const actions = document.createElement('div');
@@ -1372,11 +1452,46 @@ function renderReviews() {
 
   if (upcoming.length) {
     const h = document.createElement('h2');
-    h.textContent = 'Upcoming';
+    h.textContent = 'Coming up';
     box.appendChild(h);
-    const list = document.createElement('div');
-    upcoming.forEach(i => list.appendChild(ideaRow(i, { today })));
-    box.appendChild(list);
+    upcoming.forEach(idea => {
+      const card = document.createElement('div');
+      card.className = 'entry';
+      const head = document.createElement('div');
+      head.className = 'entry-head';
+      const nm = document.createElement('span');
+      nm.className = 'entry-name';
+      nm.textContent = idea.name;
+      head.appendChild(nm);
+      if (idea.tickers) {
+        const tk = document.createElement('span');
+        tk.className = 'entry-tickers';
+        tk.textContent = idea.tickers;
+        head.appendChild(tk);
+      }
+      card.appendChild(head);
+      const meta = document.createElement('p');
+      meta.className = 'fineprint';
+      meta.textContent = 'Check in on ' + (reviewAtOf(idea) || '—') +
+        ' · ' + (idea.reviewHistory || []).length + ' past check-ins' +
+        (spotPriceOf(idea) !== null ? ' · spotted at $' + spotPriceOf(idea) : '');
+      card.appendChild(meta);
+      const actions = document.createElement('div');
+      actions.className = 'entry-actions';
+      const open = document.createElement('button');
+      open.className = 'btn';
+      open.textContent = 'Open';
+      open.addEventListener('click', () => openIdea(idea.id));
+      actions.appendChild(open);
+      const start = document.createElement('button');
+      start.className = 'btn';
+      start.textContent = 'Check in early';
+      start.setAttribute('aria-label', 'Check in on ' + idea.name + ' now');
+      start.addEventListener('click', () => openIdea(idea.id, { checkin: true }));
+      actions.appendChild(start);
+      card.appendChild(actions);
+      box.appendChild(card);
+    });
   }
 }
 
@@ -1487,14 +1602,29 @@ function renderReviewForm(card, idea, onDone) {
   nextLab.appendChild(sel);
   form.appendChild(nextLab);
 
+  const priceLab = document.createElement('label');
+  priceLab.className = 'field';
+  priceLab.appendChild(document.createTextNode('Price now ($) — optional'));
+  const priceNowInput = document.createElement('input');
+  priceNowInput.type = 'number';
+  priceNowInput.min = '0';
+  priceNowInput.step = '0.01';
+  priceNowInput.placeholder = spotPriceOf(idea) !== null
+    ? 'It was $' + spotPriceOf(idea) + ' when you spotted it — what is it now?'
+    : 'What does it cost today? Worth noting next to your call.';
+  priceLab.appendChild(priceNowInput);
+  form.appendChild(priceLab);
+
   const row = document.createElement('div');
   row.className = 'btn-row';
   const save = document.createElement('button');
   save.className = 'btn primary';
   save.textContent = 'Save check-in';
   save.addEventListener('click', () => {
+    const pn = parseFloat(priceNowInput.value);
     const updated = applyReview(getIdea(idea.id), {
       outcome, reasonMatch, note: ta.value.trim(), nextMonths: sel.value,
+      priceNow: isFinite(pn) && pn > 0 ? pn : null,
     }, todayISO());
     updateIdea(idea.id, () => updated);
     activeReviewId = null;
@@ -1634,8 +1764,14 @@ function renderTrackRecord() {
       card.appendChild(head);
       const meta = document.createElement('p');
       meta.className = 'fineprint';
-      const rm = { yes: 'moved for stated reasons', no: 'did not move for stated reasons', na: 'too early to tell' }[hx.r.reasonMatch] || '';
-      meta.textContent = hx.r.date + (rm ? ' · ' + rm : '');
+      const rm = { yes: 'played out like you said', no: 'moved for other reasons', na: 'too early to tell' }[hx.r.reasonMatch] || '';
+      let move = '';
+      const spot = spotPriceOf(hx.idea);
+      if (hx.r.priceNow && spot) {
+        const pct = Math.round(((hx.r.priceNow - spot) / spot) * 100);
+        move = ' · $' + spot + ' when spotted → $' + hx.r.priceNow + ' now (' + (pct >= 0 ? '+' : '') + pct + '%)';
+      }
+      meta.textContent = hx.r.date + (rm ? ' · ' + rm : '') + move;
       card.appendChild(meta);
       if (hx.r.note) {
         const np = document.createElement('p');
@@ -1744,7 +1880,102 @@ function trendRow(trend) {
     actions.appendChild(open);
   }
   row.appendChild(actions);
+  if (trend.status === 'watching' || trend.status === 'chased') {
+    const find = document.createElement('button');
+    find.className = 'btn';
+    find.textContent = 'Find companies';
+    find.setAttribute('aria-label', 'Find companies in ' + (trend.name || 'this trend'));
+    find.addEventListener('click', () => {
+      const existing = row.querySelector('.discover-box');
+      if (existing) { existing.remove(); openDiscoverTrendId = null; return; }
+      openDiscoverTrendId = trend.id;
+      row.appendChild(buildDiscoverBox(trend));
+    });
+    actions.appendChild(find);
+    if (openDiscoverTrendId === trend.id) row.appendChild(buildDiscoverBox(trend));
+  }
   return row;
+}
+
+let openDiscoverTrendId = null;
+let discoverFeedback = '';
+
+function buildDiscoverBox(trend) {
+  const box = document.createElement('div');
+  box.className = 'discover-box';
+  const intro = document.createElement('p');
+  intro.className = 'fineprint';
+  intro.textContent = 'Paste this into Muse or Claude — it maps the trend into categories and names the companies in each. Analysis only, never "buy this one".';
+  box.appendChild(intro);
+  const ta = document.createElement('textarea');
+  ta.className = 'analyze-prompt';
+  ta.readOnly = true;
+  ta.setAttribute('aria-label', 'Prompt to find companies in ' + (trend.name || 'this trend'));
+  ta.value = buildDiscoverPrompt(trend);
+  box.appendChild(ta);
+  const fit = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+  fit();
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fit);
+  const row = document.createElement('div');
+  row.className = 'btn-row';
+  const copy = document.createElement('button');
+  copy.className = 'btn primary';
+  copy.textContent = 'Copy prompt';
+  copy.addEventListener('click', () => {
+    const done = () => {
+      copy.textContent = 'Copied';
+      copy.disabled = true;
+      setTimeout(() => { copy.textContent = 'Copy prompt'; copy.disabled = false; }, 1600);
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(done, done);
+      } else { ta.select(); document.execCommand('copy'); done(); }
+    } catch (e) { ta.select(); }
+  });
+  row.appendChild(copy);
+  box.appendChild(row);
+  const addH = document.createElement('p');
+  addH.className = 'fineprint';
+  addH.textContent = 'Spot a company you like? Add it here — it stays linked to this trend:';
+  box.appendChild(addH);
+  const form = document.createElement('div');
+  form.className = 'review-row';
+  const nameIn = document.createElement('input');
+  nameIn.type = 'text';
+  nameIn.placeholder = 'Company name';
+  nameIn.setAttribute('aria-label', 'Company name for a new idea from this trend');
+  const tickIn = document.createElement('input');
+  tickIn.type = 'text';
+  tickIn.placeholder = 'Ticker (optional)';
+  tickIn.setAttribute('aria-label', 'Ticker, optional');
+  const add = document.createElement('button');
+  add.className = 'btn';
+  add.textContent = 'Add as idea';
+  add.addEventListener('click', () => {
+    const nm = nameIn.value.trim();
+    if (!nm) { nameIn.focus(); return; }
+    const idea = makeIdea(nm, tickIn.value.trim(), todayISO());
+    idea.trendId = trend.id;
+    store.ideas.push(idea);
+    saveStore(store);
+    updateTrend(trend.id, t => Object.assign({}, t, { status: 'chased', ideaId: idea.id }));
+    discoverFeedback = 'Added ' + nm + ' ✓ — find it under Ideas, linked to this trend.';
+    renderTrends();
+    renderIdeasHome();
+  });
+  form.appendChild(nameIn);
+  form.appendChild(tickIn);
+  form.appendChild(add);
+  box.appendChild(form);
+  if (discoverFeedback) {
+    const fb = document.createElement('p');
+    fb.className = 'fineprint';
+    fb.textContent = discoverFeedback;
+    discoverFeedback = '';
+    box.appendChild(fb);
+  }
+  return box;
 }
 
 function renderTrends() {
@@ -2059,7 +2290,7 @@ if (typeof globalThis !== 'undefined') {
   globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms,
     REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
-    convictionOf, convictionDots,
+    convictionOf, convictionDots, spotPriceOf, buildDiscoverPrompt,
     ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,

@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [3.5.0] — 2026-10-11
+
+### The funnel release: trend → companies → ideas, with prices in the record
+- **Find companies (Trends):** every watched/chased trend has a "Find companies" prompt — paste it into any AI to map the trend into categories with the public companies in each (no-recommendations rule built in). A mini form adds a company as an idea right there, linked to the trend (`trendId`), and marks the trend chased.
+- **Price when you spotted it:** optional price field next to your words; the first save locks it into the (previously dormant) `priceLog` alongside the sealed thesis. Idea header and rows show "spotted at $X".
+- **Price now at check-in:** optional field on the check-in form; past check-ins on the Scorecard show "$40.25 when spotted → $60.50 now (+50%)".
+- **Chart link:** idea pages link "See the chart" (Google Finance) next to the EDGAR filings link. Still no price feed — prices are journal entries you write, which is what keeps the record honest.
+- **Check in early:** upcoming ideas on the Check-ins screen get their own cards with a "Check in early" button that opens the idea with the form ready. Checking in was always allowed any time; now it's obvious.
+- The second-opinion prompt now includes the spotted price. 299 assertions (28 new).
+
 ## [3.4.1] — 2026-10-11
 
 ### Critical fix: check-in buttons silently died in real browsers
