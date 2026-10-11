@@ -505,6 +505,7 @@ async function main() {
     .find(b => b.textContent === 'Save check-in').click();
   st = readStore();
   const reviewed2 = st.ideas.find(i => i.name === 'Review Co');
+  assert(!document.querySelector('#idea-detail .review-form'), 'check-in form closes after save on the detail page');
   assert(reviewed2.reviewHistory.length === 1 && reviewed2.reviewHistory[0].note === 'Detail-page review.',
     'review saved from the detail page');
   assert(document.querySelector('#idea-detail h1').textContent === 'Review Co', 'detail re-renders after saving the review');
@@ -544,6 +545,7 @@ async function main() {
   assert(reviewed.reviewHistory.length === 1 && reviewed.reviewHistory[0].reasonMatch === 'yes',
     'review history recorded with reasonMatch');
   assert(reviewed.reviewHistory[0].note === 'Thesis played out.', 'review note saved');
+  assert(!document.querySelector('#reviews-list .review-form'), 'check-in form closes after save on the Check-ins screen');
   assert(document.getElementById('reviews-badge').classList.contains('hidden'), 'badge clears when nothing due');
   assert(document.querySelector('#due-queue .idea-row') === null, 'due queue empty after review');
 
@@ -755,6 +757,9 @@ async function main() {
   assert(htmlSrc.includes('app.js?v=' + L.APP_VERSION) && htmlSrc.includes('styles.css?v=' + L.APP_VERSION),
     '?v= cache-busters match APP_VERSION');
 
+  const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
+  assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
+  realErrors.forEach(e => console.error('    ' + e));
   console.log(failures === 0 ? '\nALL SMOKE TESTS PASSED' : '\n' + failures + ' FAILURES');
   server.close();
   process.exit(failures === 0 ? 0 : 1);

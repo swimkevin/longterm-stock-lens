@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [3.4.1] — 2026-10-11
+
+### Critical fix: check-in buttons silently died in real browsers
+- **Root cause:** `activeReviewId` was assigned in three places but never declared. In strict mode, real browsers throw on that assignment: the Check-ins screen handler died before opening the form, and the detail-page save handler died *after* writing data but before closing the form — so saves looked broken and invited duplicate check-ins. One-line fix: the variable is now declared with the app state.
+- **Why tests missed it:** jsdom's script environment silently tolerates the undeclared assignment (verified by probe). Guards added so this class can't hide again: both flows now assert the form actually closes after save, and the suite asserts zero real script errors across the whole run (jsdom's `scrollTo`/`scrollIntoView` gaps filtered as environment noise).
+
 ## [3.4.0] — 2026-10-11
 
 ### Debloat pass

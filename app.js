@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.4.0';
+const APP_VERSION = '3.4.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -786,6 +786,7 @@ function showScreen(name) {
 }
 
 let store = loadStore();
+let activeReviewId = null;
 
 function getIdea(id) {
   return (store.ideas || []).find(i => i.id === id) || null;
