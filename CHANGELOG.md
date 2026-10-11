@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [3.0.0] — 2026-10-11
+
+### The calibration rework — "your judgment, measured"
+The app now does the one thing a chat AI structurally cannot: hold your sealed beliefs over time and grade them.
+
+- **Sealed theses:** the first thesis save seals a timestamped, un-editable copy. Reviews judge you against your original words, never an edited version.
+- **Calibration engine:** every review records the conviction you held; the Calibration view (formerly Track record) shows hit rates by conviction level (1–5 bars) plus a plain-language pattern insight. Home screen shows a calibration strip once you have scored reviews.
+- **Review form shows your sealed thesis** ("What you believed on [date]") above the outcome question.
+- **Hero repositioned:** "Your judgment, measured."
+
+### Fixed
+- **Delete this idea was broken** — it called `deleteIdea()`, which no longer existed after the v2.0.0 simplification. Restored, plus a click-through regression test (the old suite only checked the link existed).
+
 ## [2.1.0] — 2026-10-10
 
 ### Added — design principles from studying successful apps

@@ -1,71 +1,71 @@
 # Long-Term Lens
 
-**I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it daily, and still didn't know *what* to invest in. This is the tool I built so it never happens again.**
+**Your judgment, measured.**
+
+I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it daily, and still didn't know *what* to invest in. The miss wasn't information. It was calibration: I didn't know how much to trust my own conviction, because I'd never scored it.
+
+This is the tool that scores it.
 
 Live demo: https://swimkevin.github.io/longterm-stock-lens/
 
-![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-250%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
+![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow) ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![tests](https://img.shields.io/badge/tests-267%20passing-brightgreen) [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 
 > **Educational only — not financial advice.** This site teaches you how to research. It never tells you what to buy.
+
+## The one thing it does
+
+**It remembers what you believed — sealed, timestamped, un-editable — and grades it when reality arrives.**
+
+Ask a chat AI "was I right about Nvidia?" and it will happily reconstruct a story. It can't tell you what you *actually* wrote on the day, what conviction you held, or whether your 5-out-of-5 calls beat your 2-out-of-5s across two years of decisions. That requires a sealed longitudinal record of *your* judgment. That's the whole app:
+
+1. **Capture** — name a company in seconds (⌘K from anywhere).
+2. **Seal a thesis** — two sentences: what you believe, and what would prove you wrong. The first save seals it forever. Later edits never touch the sealed copy.
+3. **Rate conviction** — one tap, 1–5.
+4. **Verify with AI** — the app builds a structured research prompt from your record; paste it into Muse or Claude for the metric workup.
+5. **Get scored** — on the review date, the app shows you your sealed words and asks one question: *did it move for your stated reason?* Your answer feeds the calibration engine.
+
+The **Calibration view** is the payoff: hit rates broken down by conviction level, plus a plain-language read of your pattern ("Your 4–5 calls land far more often than your 1–2s — trust the strong ones sooner" / "Caution: your strongest convictions have been your weakest calls"). No AI can generate this. It's computed from your sealed history, or it doesn't exist.
 
 ## Screenshots
 
 <!--
   SCREENSHOT INSTRUCTIONS (Kevin):
-  1. Add an idea or two on your phone, take 1 mobile screenshot (390px): ideas list → save as docs/screenshots/mobile.png
-  2. Take 1 desktop screenshot: idea detail page (thesis + conviction + AI verify) → save as docs/screenshots/desktop.png
+  1. Mobile (390px): ideas list with the calibration strip → docs/screenshots/mobile.png
+  2. Desktop: the Calibration view with per-level bars → docs/screenshots/desktop.png
   3. Uncomment the two lines below.
 -->
-<!-- ![Mobile — ideas list](docs/screenshots/mobile.png) -->
-<!-- ![Desktop — idea detail](docs/screenshots/desktop.png) -->
+<!-- ![Mobile — ideas + calibration strip](docs/screenshots/mobile.png) -->
+<!-- ![Desktop — Calibration view](docs/screenshots/desktop.png) -->
 
 ## By the numbers
 
 - **0 runtime dependencies** — vanilla HTML/CSS/JS, no framework, no bundler, no build step
-- **250 test assertions**, all passing, CI on every push
-- **4 sections per idea** — down from 9, after I learned complexity was the enemy
-- **1–5 conviction scale** — one number, replacing three overlapping scoring systems
-- **4 architecture decision records** (`docs/adr/`) explaining every major tradeoff
+- **267 test assertions**, all passing, CI on every push
+- **4 sections per idea** — Thesis, Conviction, AI verify, Review. Down from 9.
+- **1 calibration engine** — per-conviction hit rates + pattern insights from your sealed record
 - **100% local** — your data never leaves the browser
 
 ## What I learned (and what I'd do differently)
 
-**Complexity was the enemy, and I was the one adding it.** v1.x had a 5-item checklist, a 3-row scorecard, a 0–100 composite, conviction labels, assumptions with confidence percentages, and research notes — nine sections per idea. It was "thorough" and nobody would use it. v2.0.0 deleted ~290 lines and replaced three scoring systems with one 1–5 tap. The lesson: every field you add is a tax on every future idea. Delete until it hurts, then delete one more.
+**Complexity was the enemy, and I was the one adding it.** v1.x had a checklist, a scorecard, a 0–100 composite, conviction labels, assumptions, and notes — nine sections per idea. "Thorough," and nobody would use it. v2.0 deleted three scoring systems for one 1–5 tap. Lesson: every field is a tax on every future idea.
 
-**The constraint is the feature.** Wordle works because it's one puzzle a day, not because it has more puzzles. This app works because researching an idea takes minutes — thesis, conviction, AI prompt, review date. If I'd kept the scorecard, the app would be "more capable" and less used.
+**The moat is memory, not features.** Any AI can analyze a stock. None can hold your sealed beliefs for two years and grade them. When I stopped competing with AI on analysis and built the thing AI structurally can't do, the product finally had a reason to exist.
 
-**Don't build the bridge halfway.** The site can't hold data-provider API keys, so a "live analysis" tab would have been a broken half-feature. Instead it generates a structured prompt you paste into Muse/Claude — honest about what a static site can and can't do.
+**Sealed means sealed.** The review compares reality against your *original* words — the app never lets you quietly edit history. Hindsight editing is how journals become fiction.
 
-**What I'd do differently next time:** design mobile-first from day one instead of auditing for it after (I got there, but the retrofit pass cost a full version).
+**What I'd do differently:** design mobile-first from day one, and find the calibration angle in v1 instead of v3.
 
-## The idea in 30 seconds
+## Engineering highlights
 
-Most investing apps answer *"what should I buy?"* — which is financial advice, and a trap. This one answers a better question: *"how do I think clearly about an idea for ten years?"*
-
-The whole app is one loop, ruthlessly simple:
-
-**Capture an idea → write your thesis in two sentences → tap a 1–5 conviction → generate an AI verification prompt → set a review date.**
-
-That's it. Four sections per idea. No price charts, no checklists, no scorecards — I deleted all of those after realizing complexity was the enemy. The constraint *is* the feature: if researching an idea takes more than a few minutes, you won't do it, and the wave passes you by again.
-
-The killer feature is **AI verify**: the app turns your thesis into a structured research prompt (metrics to check, bull/bear cases, red flags, kill criteria) that you paste into Muse or Claude. The site can't hold data-provider keys — so instead of a broken half-feature, it builds the bridge to real analysis honestly.
-
-## Why I built it this way
-
-- **Local-first** (`localStorage`, zero backend) — your research notes are yours; nothing leaves the browser. Also means instant load and zero cost.
-- **Vanilla HTML/CSS/JS, no build step** — deploys straight to GitHub Pages from `main`. The entire app is one `app.js` IIFE; pure logic is exposed for tests.
-- **Educational boundary as repo law** — no recommendations, no live prices, no personalized advice, ever. Historical examples are labeled illustrations. [ADR 0001](docs/adr/0001-educational-only-boundary.md)
-- **Reviewed, not just written** — every idea gets a review-by date; reviews ask *"did it move for your stated reason?"* and feed a calibration score. The discipline is the product.
-
-## Verification
-
-**250 assertions, all passing** (`npm test`), plus CI on every push. The suite covers the conviction model, prompt builder, legacy-data migration (old scores auto-convert to the 1–5 scale — no data loss), review-date logic, and a jsdom boot of the real page (nav, CRUD, review flow, exports, XSS escaping).
+- **Pure-logic core, DOM-free** — calibration, sealing, prompt building, and migration live outside the UI and are unit-tested in Node (`globalThis.LongTermLens`). The same code runs in the browser.
+- **Migration without data loss** — three generations of scoring (levels → 0–100 composite → 1–5) auto-convert; a user's journal from any version still opens.
+- **XSS-safe by construction** — user strings render via `textContent`/`esc()` only; the suite includes literal injection probes.
 
 ## Honest limitations
 
-- **No live data, by design.** No prices, no fundamentals feeds — the AI-verify prompt is the bridge, not a workaround. A static educational site that fakes live data would be dishonest.
-- **One device.** localStorage means your ideas live in one browser. No sync, no accounts — that's the privacy tradeoff, stated upfront.
-- **The AI prompt is only as good as your thesis.** Garbage in, garbage out — the app makes you write the "what would prove me wrong" field precisely so the prompt has teeth.
+- **Calibration needs reviews.** With zero scored reviews the engine has nothing to say — the app is honest about that instead of inventing stats.
+- **One device.** localStorage = no sync. That's the privacy tradeoff, stated upfront.
+- **No live data, by design.** The AI-verify prompt is the bridge to live analysis; a static educational site faking prices would be dishonest.
 
 ## Project structure
 
@@ -73,20 +73,20 @@ The killer feature is **AI verify**: the app turns your thesis into a structured
 longterm-stock-lens/
 ├── index.html          # All screens
 ├── styles.css          # Calm dark/light theme, no frameworks
-├── app.js              # One IIFE; DOM-free logic on globalThis.LongTermLens
-├── tests/smoke.js      # 250 assertions: logic + jsdom UI boot
+├── app.js              # One IIFE; pure logic on globalThis.LongTermLens
+├── tests/smoke.js      # 267 assertions: logic + jsdom UI boot
 ├── docs/               # ARCHITECTURE.md, TESTING.md, adr/
 ├── CHANGELOG.md
-└── package.json        # Dev tooling only (no runtime dependencies)
+└── package.json        # Dev tooling only
 ```
 
 ## Run it
 
 ```bash
-npx http.server        # or: python3 -m http.server 8000
-npm test               # 250 assertions
+python3 -m http.server 8000
+npm test               # 267 assertions
 ```
 
 ---
 
-*Built by Kevin Song — Principal Associate Software Engineer at Capital One. I use this myself; it's the reason the loop keeps getting simpler.*
+*Built by Kevin Song — Principal Associate Software Engineer at Capital One. I use this myself; every review makes the next call better calibrated.*

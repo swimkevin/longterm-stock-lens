@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '3.0.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -475,6 +475,7 @@ function makeIdea(name, tickers, today) {
     createdAt: t,
     updatedAt: t,
     thesis: { belief: '', falsify: '' },
+    sealed: null,
     conviction: null,
     reviewMonths: DEFAULT_REVIEW_MONTHS,
     reviewAt: addMonths(t, DEFAULT_REVIEW_MONTHS),
@@ -552,6 +553,7 @@ function applyReview(idea, review, today) {
     date: t,
     outcome,
     reasonMatch,
+    conviction: convictionOf(idea),
     note: (review.note || '').slice(0, 1000),
   };
   const next = Object.assign({}, idea, {
@@ -577,6 +579,60 @@ function trackRecord(ideas) {
   });
   out.reasonAccuracy = out.reasonAnswered ? Math.round((out.reasonYes / out.reasonAnswered) * 100) : null;
   return out;
+}
+
+// Seal the thesis the first time it's written. The sealed copy is never
+// edited — reviews judge you against what you actually believed then.
+function sealThesis(idea, today) {
+  if (!idea || idea.sealed) return idea;
+  const belief = (idea.thesis && idea.thesis.belief || '').trim();
+  if (!belief) return idea;
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
+  return Object.assign({}, idea, {
+    sealed: { belief, falsify: (idea.thesis.falsify || '').trim(), date: t },
+  });
+}
+
+// Calibration: when you said N/5, how often did the idea move for your
+// stated reason? This is the one thing a chat AI cannot compute — it needs
+// your sealed, longitudinal record.
+function calibration(ideas) {
+  const levels = {};
+  for (let n = 1; n <= 5; n++) levels[n] = { n: 0, yes: 0, rate: null };
+  let answered = 0, yes = 0;
+  (ideas || []).forEach(idea => {
+    (idea.reviewHistory || []).forEach(r => {
+      if (r.reasonMatch !== 'yes' && r.reasonMatch !== 'no') return;
+      answered++;
+      if (r.reasonMatch === 'yes') yes++;
+      const c = r.conviction;
+      if (c >= 1 && c <= 5) {
+        levels[c].n++;
+        if (r.reasonMatch === 'yes') levels[c].yes++;
+      }
+    });
+  });
+  for (let n = 1; n <= 5; n++) {
+    if (levels[n].n) levels[n].rate = Math.round((levels[n].yes / levels[n].n) * 100);
+  }
+  const hi = { n: levels[4].n + levels[5].n, yes: levels[4].yes + levels[5].yes };
+  const lo = { n: levels[1].n + levels[2].n, yes: levels[1].yes + levels[2].yes };
+  const hiRate = hi.n ? Math.round((hi.yes / hi.n) * 100) : null;
+  const loRate = lo.n ? Math.round((lo.yes / lo.n) * 100) : null;
+  let insight = null;
+  if (answered >= 3 && hiRate !== null && loRate !== null) {
+    if (hiRate - loRate >= 20) insight = 'Your conviction means something — your 4–5 calls land far more often than your 1–2s. Trust the strong ones sooner.';
+    else if (loRate - hiRate >= 20) insight = 'Caution: your strongest convictions have been your weakest calls. The ideas you rated 1–2 are outperforming — interrogate the 5s.';
+    else insight = 'Your conviction barely separates hits from misses yet. Watch the gap between your 4–5s and 1–2s as reviews accumulate.';
+  } else if (answered >= 1) {
+    insight = 'Calibration builds with every review. A few more and your pattern starts to show.';
+  }
+  return {
+    levels,
+    answered,
+    overallRate: answered ? Math.round((yes / answered) * 100) : null,
+    hiRate, loRate, insight,
+  };
 }
 
 function journalToJSON(ideas) {
@@ -800,6 +856,11 @@ function getIdea(id) {
   return (store.ideas || []).find(i => i.id === id) || null;
 }
 
+function deleteIdea(id) {
+  store.ideas = (store.ideas || []).filter(i => i.id !== id);
+  saveStore(store);
+}
+
 function updateIdea(id, fn) {
   store.ideas = (store.ideas || []).map(i => {
     if (i.id !== id) return i;
@@ -965,6 +1026,29 @@ function ideaRow(idea, opts) {
 function renderIdeasHome() {
   const today = todayISO();
 
+  const strip = $('cal-strip');
+  if (strip) {
+    strip.innerHTML = '';
+    const c = calibration(store.ideas || []);
+    if (c.answered > 0) {
+      const panel = document.createElement('div');
+      panel.className = 'panel cal-strip';
+      const strong = document.createElement('strong');
+      strong.textContent = c.overallRate + '%';
+      panel.appendChild(strong);
+      const txt = document.createElement('span');
+      txt.textContent = 'of your scored reviews moved for your stated reasons — your calibration across ' +
+        c.answered + (c.answered === 1 ? ' review' : ' reviews') + '.';
+      panel.appendChild(txt);
+      const link = document.createElement('button');
+      link.className = 'linklike';
+      link.textContent = 'See your pattern →';
+      link.addEventListener('click', () => showScreen('track'));
+      panel.appendChild(link);
+      strip.appendChild(panel);
+    }
+  }
+
   const due = dueIdeas(today);
   const queue = $('due-queue');
   queue.innerHTML = '';
@@ -1110,6 +1194,8 @@ function renderIdeaDetail(idea) {
   saveBtn.addEventListener('click', () => {
     updateIdea(idea.id, i => {
       i.thesis = { belief: belief.value.trim(), falsify: falsify.value.trim() };
+      const sealed = sealThesis(i);
+      if (sealed !== i) Object.assign(i, sealed);
     });
     renderIdeaDetail(getIdea(idea.id));
   });
@@ -1330,6 +1416,25 @@ function renderReviewForm(card, idea, onDone) {
   const form = document.createElement('div');
   form.className = 'review-form panel';
 
+  if (idea.sealed) {
+    const sb = document.createElement('div');
+    sb.className = 'sealed-box';
+    const when = document.createElement('div');
+    when.className = 'sealed-when';
+    when.textContent = 'What you believed on ' + idea.sealed.date + ' (sealed — never edited):';
+    const bel = document.createElement('div');
+    bel.textContent = '"' + idea.sealed.belief + '"';
+    sb.appendChild(when);
+    sb.appendChild(bel);
+    if (idea.sealed.falsify) {
+      const f = document.createElement('div');
+      f.className = 'fineprint';
+      f.textContent = 'Your kill criteria: ' + idea.sealed.falsify;
+      sb.appendChild(f);
+    }
+    form.appendChild(sb);
+  }
+
   const q1 = document.createElement('p');
   q1.innerHTML = '';
   const q1t = document.createElement('strong');
@@ -1466,22 +1571,49 @@ function renderTrackRecord() {
   const cal = document.createElement('div');
   cal.className = 'panel';
   const h = document.createElement('h3');
-  h.textContent = 'Calibration';
+  h.textContent = 'Calibration — your judgment, measured';
   cal.appendChild(h);
+  const c = calibration(store.ideas || []);
   const p = document.createElement('p');
-  if (tr.reasonAccuracy === null) {
-    p.textContent = 'No answered "did it move for your stated reason?" reviews yet. ' +
-      'Each review asks the question — over time, this number tells you how often you were right for the right reasons.';
+  if (c.overallRate === null) {
+    p.textContent = 'No scored reviews yet. Each review asks "did it move for your stated reason?" — and records the conviction you held. Over time this view answers the question no AI can: when you\'re sure, are you right?';
   } else {
-    p.innerHTML = '';
     const strong = document.createElement('strong');
-    strong.textContent = tr.reasonAccuracy + '%';
+    strong.textContent = c.overallRate + '%';
     p.appendChild(strong);
-    p.appendChild(document.createTextNode(' of your answered reviews moved for your stated reasons (' +
-      tr.reasonYes + ' of ' + tr.reasonAnswered + '). ' +
-      'That is your honesty score — separate from whether prices went up.'));
+    p.appendChild(document.createTextNode(' of your scored reviews moved for your stated reasons. Broken down by the conviction you held:'));
   }
   cal.appendChild(p);
+  if (c.overallRate !== null) {
+    const bars = document.createElement('div');
+    bars.className = 'cal-bars';
+    for (let n = 5; n >= 1; n--) {
+      const L = c.levels[n];
+      const row = document.createElement('div');
+      row.className = 'cal-row';
+      const lab = document.createElement('span');
+      lab.className = 'cal-lab';
+      lab.textContent = n + ' / 5';
+      const track = document.createElement('span');
+      track.className = 'cal-track';
+      const fill = document.createElement('span');
+      fill.className = 'cal-fill';
+      fill.style.width = (L.rate === null ? 0 : L.rate) + '%';
+      track.appendChild(fill);
+      const val = document.createElement('span');
+      val.className = 'cal-val';
+      val.textContent = L.rate === null ? 'no reviews' : L.rate + '% · ' + L.n + (L.n === 1 ? ' review' : ' reviews');
+      row.appendChild(lab); row.appendChild(track); row.appendChild(val);
+      bars.appendChild(row);
+    }
+    cal.appendChild(bars);
+    if (c.insight) {
+      const ins = document.createElement('p');
+      ins.className = 'cal-insight';
+      ins.textContent = c.insight;
+      cal.appendChild(ins);
+    }
+  }
   const fine = document.createElement('p');
   fine.className = 'fineprint';
   fine.textContent = 'Resolved ideas never disappear — they stay in the Ideas list with a Resolved tag so the record can\'t be edited away. Hindsight editing is the enemy.';
@@ -1943,7 +2075,7 @@ if (typeof globalThis !== 'undefined') {
     ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
-    applyReview, trackRecord, buildAnalyzePrompt,
+    applyReview, trackRecord, calibration, sealThesis, buildAnalyzePrompt,
     journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
     APP_VERSION, updateReloadURL, isNewerVersion };
 }

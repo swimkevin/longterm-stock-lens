@@ -197,6 +197,17 @@ button:active { transform: scale(0.96); }
 .entry-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; flex-wrap: wrap; align-items: center; }
 .empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: 1.5rem; text-align: center; }
 .empty.rich { padding: 2.5rem 1.5rem; }
+.cal-bars { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0; }
+.cal-row { display: flex; align-items: center; gap: 0.75rem; }
+.cal-lab { font-weight: 650; width: 2.6rem; flex: none; }
+.cal-track { flex: 1; height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.cal-fill { display: block; height: 100%; background: var(--accent); border-radius: 5px; transition: width 0.4s ease; }
+.cal-val { color: var(--muted); font-size: 0.88rem; width: 8.5rem; flex: none; }
+.cal-insight { font-size: 1.02rem; line-height: 1.55; border-left: 3px solid var(--accent); padding-left: 0.9rem; margin-top: 1rem; }
+.cal-strip { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.cal-strip strong { font-size: 1.6rem; font-weight: 700; }
+.sealed-box { border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 1rem; background: var(--panel); }
+.sealed-box .sealed-when { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.35rem; }
 .empty-title { font-size: 1.15rem; font-weight: 650; color: var(--ink); margin-bottom: 0.5rem; }
 .empty-body { max-width: 34ch; margin: 0 auto 1.25rem; line-height: 1.55; }
 .empty-action { margin: 0 auto; }

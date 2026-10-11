@@ -155,6 +155,43 @@ async function main() {
   assert(L.trackRecord([{ reviewHistory: [{ outcome: 'intact', reasonMatch: 'na' }] }]).reasonAccuracy === null,
     'na-only reviews -> null accuracy');
 
+  console.log('calibration:');
+  const calIdeas = [
+    { reviewHistory: [
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 5 },
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 4 },
+      { outcome: 'changed', reasonMatch: 'no', conviction: 1 },
+    ] },
+    { reviewHistory: [
+      { outcome: 'resolved', reasonMatch: 'yes', conviction: 5 },
+      { outcome: 'intact', reasonMatch: 'na', conviction: 3 },
+      { outcome: 'intact', reasonMatch: 'yes' },  // legacy entry, no conviction
+    ] },
+  ];
+  const cal = L.calibration(calIdeas);
+  assert(cal.answered === 5, 'calibration counts answered reviews (got ' + cal.answered + ')');
+  assert(cal.overallRate === 80, 'overall rate 4/5 -> 80% (got ' + cal.overallRate + ')');
+  assert(cal.levels[5].rate === 100 && cal.levels[5].n === 2, 'level 5: 2/2 -> 100%');
+  assert(cal.levels[1].rate === 0 && cal.levels[1].n === 1, 'level 1: 0/1 -> 0%');
+  assert(cal.levels[3].rate === null, 'na review not counted at level 3');
+  assert(cal.hiRate === 100 && cal.loRate === 0, 'hi/lo rates computed');
+  assert(typeof cal.insight === 'string' && cal.insight.includes('conviction means something'),
+    'positive insight when hi >> lo (got: ' + cal.insight + ')');
+  const calEmpty = L.calibration([]);
+  assert(calEmpty.overallRate === null && calEmpty.answered === 0 && calEmpty.insight === null, 'empty -> nulls, no insight');
+  const arConv = L.applyReview(Object.assign({}, idea0, { conviction: 4 }),
+    { outcome: 'intact', reasonMatch: 'yes', nextMonths: '3' }, '2026-10-09');
+  assert(arConv.reviewHistory[0].conviction === 4, 'applyReview records conviction snapshot');
+
+  console.log('sealThesis:');
+  const unsealed = { thesis: { belief: 'AI at the edge', falsify: 'loses share' }, sealed: null };
+  const sealed1 = L.sealThesis(unsealed, '2026-10-10');
+  assert(sealed1.sealed && sealed1.sealed.belief === 'AI at the edge' && sealed1.sealed.date === '2026-10-10', 'first write seals the thesis');
+  assert(!unsealed.sealed, 'seal does not mutate the original');
+  const edited = L.sealThesis(Object.assign({}, sealed1, { thesis: { belief: 'EDITED', falsify: '' } }), '2026-11-01');
+  assert(edited.sealed.belief === 'AI at the edge', 'sealed copy never changes after first write');
+  assert(L.sealThesis({ thesis: { belief: '  ', falsify: '' }, sealed: null }).sealed === null, 'blank belief does not seal');
+
   console.log('analyze prompt builder:');
   assert(typeof L.buildAnalyzePrompt === 'function', 'buildAnalyzePrompt exported');
   const richIdea = {
@@ -695,6 +732,23 @@ async function main() {
   assert(mdText.includes('Conviction:'), 'exported markdown includes conviction');
   const jsonText = await createdURLs[0].text();
   assert(JSON.parse(jsonText).length === readStore().ideas.length, 'exported JSON contains all ideas');
+
+  console.log('delete idea (regression: deleteIdea was undefined in v2.0.0):');
+  window.confirm = () => true;
+  const delBefore = readStore().ideas.length;
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const firstRow = document.querySelector('#ideas-list .idea-main');
+  assert(!!firstRow, 'an idea row exists to open');
+  const victimName = firstRow.textContent;
+  firstRow.click();
+  const delLink = document.querySelector('#idea-detail .link-danger');
+  assert(!!delLink, 'delete link found on detail page');
+  delLink.click();
+  const afterStore = readStore();
+  assert(afterStore.ideas.length === delBefore - 1, 'delete removes exactly one idea (before ' + delBefore + ', after ' + afterStore.ideas.length + ')');
+  assert(!document.querySelector('#screen-ideas.hidden') || document.getElementById('screen-ideas').classList.contains('active') ||
+         window.getComputedStyle(document.getElementById('screen-ideas')).display !== 'none',
+    'returns to the ideas screen after delete');
 
   // ---- disclaimers ----
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
