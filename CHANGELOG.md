@@ -1,5 +1,14 @@
 # Changelog — Long-Term Lens
 
+## [3.2.1] — 2026-10-11
+
+### Design round 2 (from screenshot review)
+- **Conviction selector** no longer shouts: selected = soft green tint + accent border/text instead of a solid saturated fill.
+- **AI verify prompt** auto-sizes to its content — no internal scrollbar, no clipped top; it reads as a document.
+- **One primary per view:** Thesis Save and Review now are secondary buttons now; Copy prompt is the detail page's single dark primary. (Tests updated to find buttons by label, not by `.btn.primary`.)
+- **`color-scheme` per theme** so native controls (date picker, scrollbars) match light/dark.
+- Due-queue empty state compacted.
+
 ## [3.2.0] — 2026-10-11
 
 ### Design refresh — one quiet system
