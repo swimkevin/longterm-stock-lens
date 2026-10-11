@@ -2,29 +2,28 @@
 
 ## What the suite is
 
-One file, `tests/smoke.js`, run by `npm test`. **163 assertions**, all
+One file, `tests/smoke.js`, run by `npm test`. **267 assertions**, all
 passing. It has two halves:
 
 1. **Pure-logic assertions** — the DOM-free core exposed on
-   `globalThis.LongTermLens` (`scoreRisk`, `compositeScore`,
-   `normalizeWeights`, `convictLabel`, `checklistComplete`,
-   `canRaiseConviction`, `makeIdea`, `applyReview`, `trackRecord`,
+   `globalThis.LongTermLens` (`scoreRisk`, `makeIdea`, `convictionOf`,
+   `sealThesis`, `applyReview`, `calibration`, `trackRecord`,
    `migrateStore`, `addMonths`, `reviewAtOf`, `isReviewDue`,
    `rescheduleReview`, `journalToJSON`, `journalToMarkdown`,
-   `ideasLabel`, `GLOSSARY` with 3-question quizzes): scorecard math,
-   weight normalization, checklist-gate behavior, legacy migration,
-   month-end clamping (incl. leap years), review-date computation, export
-   content (headings, scores, dates, tags, falsify, assumptions,
-   disclaimer, empty case).
+   `ideasLabel`, `GLOSSARY` with quizzes): conviction mapping from legacy
+   shapes, sealing (first write seals; sealed copy never changes),
+   calibration math (per-level rates, hi/lo split, insight thresholds),
+   legacy migration, month-end clamping (incl. leap years), review-date
+   computation, export content.
 2. **jsdom UI boot** — loads the real `index.html` + `app.js`, asserts no
    script errors, clicks every nav tab, completes the investor-profile quiz
-   (result persisted), quick-adds an idea, fills the thesis template, runs
-   the checklist gate, scores the scorecard, adds an assumption, logs a
-   price, adds a note, completes a review (intact/changed/resolved),
-   verifies the due queue sorts oldest-first, the track record counts
-   reviews, a lesson quiz earns its badge, the export download contract
-   (Blob types, dated filenames, object-URL wiring), and verifies
-   `localStorage` round-trips including a seeded v0.x migration.
+   (result persisted), quick-adds an idea, fills the thesis, taps
+   conviction, deletes an idea end-to-end (click-through, not just
+   presence), completes a review (intact/changed/resolved), verifies the
+   due queue sorts oldest-first, the calibration view counts reviews, a
+   lesson quiz earns its badge, the export download contract (Blob types,
+   dated filenames, object-URL wiring), and verifies `localStorage`
+   round-trips including a seeded v0.x migration.
 
 ## The rules
 

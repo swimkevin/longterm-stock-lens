@@ -6,71 +6,49 @@ Single-page static site. Vanilla HTML/CSS/JS, zero runtime dependencies, no buil
 step, no backend. All user data persists in `localStorage` under one key
 (`longterm-stock-lens-v1`). Deploys to GitHub Pages from `main` as-is.
 
+The product is a **calibration journal**: it seals each investment thesis at first
+save (timestamped, un-editable), records the conviction held at every review, and
+computes per-conviction hit rates. The architecture exists to serve that one loop.
+
 ## Files
 
 | File | Role |
 |---|---|
-| `index.html` | App shell. Seven screens toggled by `data-nav` buttons: `ideas` (home), `idea` (detail), `reviews`, `track` (track record), `profile` (investor quiz), `learn` (micro-lessons), `accounts`. Content sections are static HTML; dynamic regions are empty containers filled by `app.js`. |
-| `styles.css` | Calm research theme via CSS custom properties (dark + light paper themes). Responsive (`auto-fit` grids, one mobile breakpoint at 640px), `prefers-reduced-motion` support, `:focus-visible` states, 44px touch targets. |
-| `app.js` | All logic. IIFE; DOM-free data + pure functions (`QUIZ`, `BANDS`, `scoreRisk`, `GLOSSARY`, `compositeScore`, `migrateStore`, `applyReview`, `trackRecord`, …) are exposed on `globalThis.LongTermLens` for the Node smoke test. |
-| `tests/smoke.js` | Node test: asserts pure-logic behavior, then boots the real page in jsdom, clicks through nav/quiz/idea flows, and checks `localStorage` round-trips. |
+| `index.html` | App shell. Screens toggled by `data-nav` buttons: `ideas` (home), `idea` (detail), `reviews`, `track` (Calibration), `trends`, `profile` (investor quiz), `learn` (micro-lessons), `accounts`. Content sections are static HTML; dynamic regions are empty containers filled by `app.js`. |
+| `styles.css` | Calm research theme via CSS custom properties (dark + light themes). Responsive, `prefers-reduced-motion` support, `:focus-visible` states, 44px touch targets. |
+| `app.js` | All logic in one IIFE. DOM-free pure functions (`scoreRisk`, `makeIdea`, `convictionOf`, `sealThesis`, `applyReview`, `calibration`, `trackRecord`, `migrateStore`, `buildAnalyzePrompt`, …) are exposed on `globalThis.LongTermLens` for the Node test suite. |
+| `tests/smoke.js` | Node + jsdom suite (267 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
+| `tests/edge-probe.js` | Kept harness for edge cases (XSS probes, oversized input, legacy stores). |
 
 ## Data flow
 
-```mermaid
-flowchart TD
-    subgraph browser["Browser (zero deps, offline)"]
-        HTML["index.html<br/>7 screens, static content"]
-        CSS["styles.css<br/>CSS variables, light/dark"]
-        APP["app.js (single IIFE)"]
-        LS[("localStorage<br/>longterm-stock-lens-v1")]
-    end
-    subgraph node["Node test harness (dev only)"]
-        SMOKE["tests/smoke.js<br/>163 assertions"]
-    end
-    subgraph pure["DOM-free pure core<br/>(exposed on globalThis.LongTermLens)"]
-        QUIZ["QUIZ / BANDS / scoreRisk"]
-        IDEA["makeIdea / compositeScore<br/>normalizeWeights / convictLabel"]
-        GATE["checklistComplete<br/>canRaiseConviction"]
-        REV["reviewAtOf / isReviewDue<br/>rescheduleReview / applyReview<br/>trackRecord"]
-        MIG["migrateStore"]
-        GLOSS["GLOSSARY + quizzes<br/>filterGlossaryTerms"]
-        EXP["journalToJSON<br/>journalToMarkdown / esc"]
-    end
-    HTML --> APP
-    CSS --> HTML
-    APP --> pure
-    APP <--> LS
-    pure --> SMOKE
-    APP --> SMOKE
+```
+Quick-add / ⌘K --makeIdea--> idea { thesis, sealed, conviction, reviewAt, reviewHistory }
+Thesis first save --sealThesis--> idea.sealed = { belief, falsify, date }  (never edited again)
+Review --applyReview--> entry { date, outcome, reasonMatch, conviction, note }
+All entries --calibration--> per-level hit rates + pattern insight --> Calibration view + home strip
+Idea + sealed record --buildAnalyzePrompt--> verification prompt --> user's AI tool
+Legacy stores --migrateStore--> current schema (old scores mapped to the 1–5 conviction scale)
 ```
 
-```
-QUIZ answers (0-3 each) --scoreRisk--> { total, band } --> allocation bar UI
-Idea form --makeIdea--> idea { thesis, assumptions, checklist, scores, weights }
-  --compositeScore--> 0-100 composite --> sorted ideas list
-  --applyReview--> reviewHistory --> trackRecord --> calibration summary
-Legacy { entries } --migrateStore--> { schema: 2, ideas } (saved on first load)
-```
-
-- **Investor profile quiz:** 6 questions × 4 options. Each option scores 0–3. Total 0–18 maps to the first `BANDS` entry whose `min` is satisfied. Every band keeps broad index funds as the majority holding. The latest result persists in the store (`quizProfile`).
-- **Scorecard:** three 1–5 dimensions (Quality / Value / Conviction) with user-adjustable 0–100 weights. `normalizeWeights` auto-normalizes, so 50/30/20 and 5/3/2 behave identically. `compositeScore` returns a 0–100 composite (partial scoring computes over scored dimensions only) or `null` when nothing is scored; `convictLabel` maps it to a conviction phrase (Strong conviction / Growing conviction / Watching / Early research / Unscored).
-- **Pre-decision checklist gate:** five beginner-worded items (moat, earnings, debt, valuation, circle of competence). `canRaiseConviction` blocks raising conviction above "watching" until `checklistComplete` is true.
-- **Reviews:** every idea has `reviewAt` (default ~90 days out). `applyReview` appends `{date, outcome, reasonMatch, note}` to `reviewHistory`, re-schedules the next review, and flips `status` to `resolved` on a resolved outcome. `trackRecord` counts outcomes and computes the "moved for my stated reason" calibration (excluding "too early to tell").
-- **Migration:** `loadStore` upgrades any non-v2 store via `migrateStore` and persists the upgrade. v0.x `{entries: [...]}` become ideas: thesis/falsify preserved in the 3-field template, old 5-dim scores mapped onto the 3-dim scorecard (and kept verbatim as `legacyScores`), review dates preserved.
-- **Escaping:** user-entered strings (names, tickers, tags, theses, assumptions, notes, prices) are rendered via `textContent` or the `esc()` helper — never raw `innerHTML`. (The quiz result band copy is developer-authored content.)
+- **Sealed theses:** `sealThesis` snapshots `{belief, falsify, date}` the first time a non-empty thesis is saved. Later thesis edits update the working copy only; reviews always display and judge against the sealed original. This is the product's integrity guarantee — hindsight editing is impossible by construction.
+- **Conviction:** a single 1–5 value per idea (`convictionOf` also reads legacy shapes — old level strings and 0–100 composites map onto the scale, so journals from any version still open).
+- **Reviews:** every idea has `reviewAt` (default ~90 days out). `applyReview` appends a history entry **including the conviction held at that moment**, re-schedules the next review, and flips `status` to `resolved` on a resolved outcome.
+- **Calibration:** `calibration(ideas)` groups scored reviews (`reasonMatch` yes/no) by their conviction snapshot and returns per-level rates, overall rate, high-vs-low rates, and a plain-language insight when the sample supports one. Reviews predating conviction snapshots count toward the overall rate only — the function never fabricates per-level data.
+- **Investor profile quiz:** 6 questions × 4 options, each scoring 0–3. Total maps to a risk band; every band keeps broad index funds as the majority holding. Result persists as `quizProfile`.
+- **Escaping:** user-entered strings render via `textContent` or `esc()` — never raw `innerHTML`.
 
 ## Design decisions
 
-- **No prices, no APIs, no recommendations.** Permanent compliance boundary: the app cannot fetch quotes and contains no buy/sell language. Historical examples are hard-coded prose illustrations.
-- **localStorage only.** No accounts, no sync, no tracking. Journal entries include `createdAt` so future "revisit your thesis" reminders can compute age.
-- **`<details>` for the glossary.** Zero JS needed for expand/collapse; accessible by default.
-- **Score buttons toggle.** Clicking a selected 1–5 score clears it, so "I don't know" is expressible without a fake neutral value.
+- **No prices, no APIs, no recommendations.** Permanent educational boundary (ADR 0001, 0004): the app cannot fetch quotes and contains no buy/sell language. The AI-verify prompt is the honest bridge to live analysis.
+- **localStorage only.** No accounts, no sync, no tracking (ADR 0003). The tradeoff — one device — is stated in the README's limitations.
+- **One scoring system.** v1.x had three overlapping ones (checklist-gated levels, 0–100 composite, scorecard). v2.0 deleted them for a single 1–5 conviction; v3.0 made that number meaningful by scoring it against outcomes.
+- **jsdom as a real devDependency** (since v2.1.0's CI fix) — `npm ci && npm test` runs identically locally and in GitHub Actions on Node 24.
 
 ## Testing
 
 `npm test` runs `tests/smoke.js`, which:
-1. Requires `app.js` with stubbed `document`/`localStorage`/`window` globals so the IIFE's `init()` runs harmlessly, then asserts `scoreRisk` band boundaries and `compositeScore` math.
-2. Boots `index.html` in jsdom, asserts no script errors, clicks every nav tab, completes the investor-profile quiz, quick-adds an idea (including an XSS-probe string), and verifies the idea detail renders it escaped and persists to `localStorage`.
+1. Asserts pure-logic behavior: risk bands, conviction mapping, sealing (including "sealed copy never changes"), calibration math and insights, review scheduling, migration, prompt building.
+2. Boots `index.html` in jsdom and clicks through the real UI: nav, profile quiz, quick-add (including an XSS-probe name), thesis + conviction, delete end-to-end, review flow, track record, trends, lesson quizzes, exports.
 
-jsdom is loaded from the sibling `poker-sparring` workspace install (dev-only); the shipped site has zero dependencies.
+CI (`.github/workflows/test.yml`) runs the same suite on every push.
