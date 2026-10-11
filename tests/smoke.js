@@ -466,24 +466,24 @@ async function main() {
   copyBtn.click(); // must not throw even without a clipboard API in jsdom
   assert(true, 'copy click is safe without clipboard');
 
-  console.log('quiet secondary nav:');
-  assert(document.querySelector('details.nav-more') !== null, 'secondary nav lives in a details menu');
-  ['reviews', 'track', 'trends', 'profile', 'learn', 'accounts'].forEach(t => {
-    const btn = document.querySelector('.nav-more-menu .nav-btn[data-nav="' + t + '"]');
-    assert(btn !== null, 'secondary tab "' + t + '" reachable under More');
+  console.log('dedicated tabs nav:');
+  assert(document.querySelector('details.nav-more') === null, 'no More dropdown — every section is a dedicated tab');
+  ['ideas', 'reviews', 'track', 'trends', 'profile', 'learn', 'accounts'].forEach(t => {
+    const btn = document.querySelector('.nav > .nav-btn[data-nav="' + t + '"]');
+    assert(btn !== null, 'tab "' + t + '" is a top-level nav button');
   });
-  assert(document.querySelector('.nav > .nav-btn[data-nav="ideas"]') !== null, 'Ideas stays the primary nav item');
-  document.querySelector('.nav-more-menu .nav-btn[data-nav="learn"]').click();
-  assert(!document.getElementById('screen-learn').classList.contains('hidden'), 'secondary tab still navigates');
-  assert(document.querySelector('details.nav-more').classList.contains('active'), 'More highlights while a secondary screen is active');
+  document.querySelector('.nav > .nav-btn[data-nav="learn"]').click();
+  assert(!document.getElementById('screen-learn').classList.contains('hidden'), 'tab navigates to its screen');
+  assert(document.querySelector('.nav > .nav-btn[data-nav="learn"]').classList.contains('active'), 'active tab highlights');
   document.querySelector('.nav > .nav-btn[data-nav="ideas"]').click();
-  assert(!document.querySelector('details.nav-more').classList.contains('active'), 'More unhighlights back on Ideas');
-  assert(document.getElementById('reviews-badge') !== null, 'reviews due badge still exists inside More');
+  assert(!document.querySelector('.nav > .nav-btn[data-nav="learn"]').classList.contains('active'), 'highlight moves with navigation');
+  const navBadge = document.getElementById('reviews-badge');
+  assert(navBadge !== null && navBadge.closest('.nav-btn').dataset.nav === 'reviews', 'due badge lives on the Check-ins tab');
 
   console.log('brand goes home + update check:');
   const brandBtn = document.getElementById('brand-home');
   assert(brandBtn && brandBtn.tagName === 'BUTTON', 'brand is a real button');
-  document.querySelector('.nav-more-menu .nav-btn[data-nav="learn"]').click();
+  document.querySelector('.nav > .nav-btn[data-nav="learn"]').click();
   assert(!document.getElementById('screen-learn').classList.contains('hidden'), 'on Learn screen before brand tap');
   brandBtn.click();
   assert(!document.getElementById('screen-ideas').classList.contains('hidden'), 'brand tap returns to Ideas home');
@@ -640,7 +640,7 @@ async function main() {
   console.log('trends UI:');
   document.querySelector('.nav-btn[data-nav="trends"]').click();
   assert(!document.getElementById('screen-trends').classList.contains('hidden'), 'trends screen shows');
-  assert(document.querySelector('details.nav-more').classList.contains('active'), 'More highlights on trends screen');
+  assert(document.querySelector('.nav > .nav-btn[data-nav="trends"]').classList.contains('active'), 'Trends tab highlights on trends screen');
   document.getElementById('trend-add').click();
   const trErr = document.getElementById('trend-error');
   assert(!trErr.classList.contains('hidden') && trErr.getAttribute('role') === 'alert',

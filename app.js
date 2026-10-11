@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.6.1';
+const APP_VERSION = '3.7.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -813,11 +813,6 @@ function showScreen(name) {
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.nav === name));
 
-  const SECONDARY = ['reviews', 'track', 'trends', 'profile', 'learn', 'accounts'];
-  document.querySelectorAll('details.nav-more').forEach(d => {
-    d.classList.toggle('active', SECONDARY.indexOf(name) !== -1);
-    d.removeAttribute('open');
-  });
   window.scrollTo(0, 0);
 }
 
@@ -2282,6 +2277,13 @@ function init() {
             window.location.href = updateReloadURL(window.location.pathname, v, window.location.hash);
           } else if (manual) {
             cu.textContent = 'Update available — reload';
+          } else {
+            try {
+              if (!sessionStorage.getItem('lrl-healed-' + v)) {
+                sessionStorage.setItem('lrl-healed-' + v, '1');
+                window.location.href = updateReloadURL(window.location.pathname, v, window.location.hash);
+              }
+            } catch (e) { /* sessionStorage unavailable: leave the manual path */ }
           }
         } else if (manual) {
           cu.textContent = 'Up to date ✓';

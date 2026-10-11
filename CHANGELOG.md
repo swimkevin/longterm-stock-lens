@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [3.7.0] — 2026-10-11
+
+### Navigation rebuilt (owner-reported on iPhone) + stale-cache self-heal
+- **The "More" dropdown is gone.** On the owner's phone it surfaced as an empty page: a mixed stale-cache state (new HTML, older cached script) left the menu unwired, and the Profile page appeared only after an update-check forced a reload. Navigation is now seven dedicated, always-visible tabs — Ideas, Check-ins (with the due badge), Scorecard, Trends, Profile, Learn, Accounts. On phones the tabs form their own scrollable row under the brand, always on screen; Profile is one tap, never buried. No menu state, no dropdown, nothing to break.
+- **Self-healing updates:** the silent boot-time version check now reloads the app once (session-guarded against loops) when it finds a newer version, instead of waiting for a manual check — a phone can never sit on a half-old build again. The manual Check for updates flow is unchanged.
+
 ## [3.6.1] — 2026-10-11
 
 ### Fixes from the mobile full audit (verdict: strong hire / ship; these close its findings)
