@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.5.0';
+const APP_VERSION = '3.5.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -944,6 +944,21 @@ function showQuizResult() {
     '<p>' + esc(band.why) + '</p>' +
     '<p class="fineprint">Remember: a higher conviction-stock percentage always means higher risk. ' +
     'Re-take this quiz when your life changes — a new job, a shorter timeline, or new debt all shift the math.</p>';
+  const retakeRow = document.createElement('div');
+  retakeRow.className = 'btn-row';
+  const retake = document.createElement('button');
+  retake.className = 'btn';
+  retake.textContent = 'Retake the quiz';
+  retake.addEventListener('click', () => {
+    quizAnswers.fill(null);
+    renderQuiz();
+    res.classList.add('hidden');
+    res.innerHTML = '';
+    const q = $('quiz');
+    if (q && q.scrollIntoView) q.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  retakeRow.appendChild(retake);
+  res.appendChild(retakeRow);
   res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -1152,6 +1167,17 @@ function renderIdeaDetail(idea) {
     meta.appendChild(document.createTextNode(' \u00b7 '));
   }
   meta.appendChild(document.createTextNode('opened ' + idea.createdAt + ' \u00b7 ' + convictionDots(conv) + (spotPriceOf(idea) !== null ? ' \u00b7 spotted at $' + spotPriceOf(idea) : '')));
+  if (idea.trendId) {
+    const tr = (store.trends || []).find(t => t.id === idea.trendId);
+    if (tr) {
+      meta.appendChild(document.createTextNode(' \u00b7 from trend: '));
+      const tBtn = document.createElement('button');
+      tBtn.className = 'inline-link';
+      tBtn.textContent = tr.name;
+      tBtn.addEventListener('click', () => { renderTrends(); showScreen('trends'); });
+      meta.appendChild(tBtn);
+    }
+  }
   head.appendChild(meta);
   box.appendChild(head);
 
@@ -1201,6 +1227,7 @@ function renderIdeaDetail(idea) {
   }
   const saveBtn = document.createElement('button');
   saveBtn.className = 'btn';
+  saveBtn.dataset.action = 'thesis-save';
   saveBtn.textContent = 'Save';
   saveBtn.addEventListener('click', () => {
     updateIdea(idea.id, i => {
@@ -1214,9 +1241,13 @@ function renderIdeaDetail(idea) {
         }
       }
     });
-    saveBtn.textContent = 'Saved ✓';
-    saveBtn.disabled = true;
-    setTimeout(() => renderIdeaDetail(getIdea(idea.id)), 900);
+    renderIdeaDetail(getIdea(idea.id));
+    const fresh = document.querySelector('#idea-detail [data-action="thesis-save"]');
+    if (fresh) {
+      fresh.textContent = 'Saved ✓';
+      fresh.disabled = true;
+      setTimeout(() => { fresh.textContent = 'Save'; fresh.disabled = false; }, 1200);
+    }
   });
   th.appendChild(saveBtn);
   box.appendChild(th);
@@ -1312,6 +1343,39 @@ function renderIdeaDetail(idea) {
   revRow.appendChild(nowBtn);
   rev.appendChild(revRow);
   box.appendChild(rev);
+
+  const hist = (idea.reviewHistory || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+  if (hist.length) {
+    const hs = document.createElement('section');
+    hs.className = 'panel idea-history';
+    const hh = document.createElement('h2');
+    hh.textContent = 'Past check-ins';
+    hs.appendChild(hh);
+    hist.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'note-card';
+      const meta = document.createElement('p');
+      meta.className = 'fineprint';
+      const oc = { intact: 'Still holds up', changed: 'Mind changed', resolved: 'Done' }[r.outcome] || r.outcome;
+      const rm = { yes: 'played out like you said', no: 'moved for other reasons', na: 'too early to tell' }[r.reasonMatch] || '';
+      let move = '';
+      const spot = spotPriceOf(idea);
+      if (r.priceNow && spot) {
+        const pct = Math.round(((r.priceNow - spot) / spot) * 100);
+        move = ' · $' + spot + ' when spotted → $' + r.priceNow + ' now (' + (pct >= 0 ? '+' : '') + pct + '%)';
+      }
+      meta.textContent = r.date + ' · ' + oc + (rm ? ' · ' + rm : '') + move;
+      item.appendChild(meta);
+      if (r.note) {
+        const np = document.createElement('p');
+        np.className = 'note-text';
+        np.textContent = r.note;
+        item.appendChild(np);
+      }
+      hs.appendChild(item);
+    });
+    box.appendChild(hs);
+  }
 
   const del = document.createElement('button');
   del.className = 'link-danger';
@@ -2263,6 +2327,30 @@ function init() {
   });
   $('export-json').addEventListener('click', exportJSON);
   $('export-md').addEventListener('click', exportMarkdown);
+  const delData = $('delete-data');
+  let delArmTimer = null;
+  delData.addEventListener('click', () => {
+    if (!delData.classList.contains('armed')) {
+      delData.classList.add('armed');
+      delData.textContent = 'Click again to delete everything — ideas, check-ins, trends, profile';
+      delArmTimer = setTimeout(() => {
+        delData.classList.remove('armed');
+        delData.textContent = 'Delete my data';
+      }, 4000);
+      return;
+    }
+    clearTimeout(delArmTimer);
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* storage unavailable */ }
+    store = blankStore();
+    saveStore(store);
+    lessonQuizState = {};
+    renderIdeasHome();
+    renderReviews();
+    renderTrends();
+    delData.classList.remove('armed');
+    delData.textContent = 'Deleted — everything is gone. Fresh start.';
+    setTimeout(() => { delData.textContent = 'Delete my data'; }, 3000);
+  });
 
   document.querySelector('.nav-btn[data-nav="reviews"]').addEventListener('click', renderReviews);
   document.querySelector('.nav-btn[data-nav="track"]').addEventListener('click', renderTrackRecord);

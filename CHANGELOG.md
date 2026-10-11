@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [3.5.1] — 2026-10-11
+
+### Fixes from the full click-through audit (25/25 functional pass; these close its top findings)
+- **Delete my data restored:** the "Your data" section only had exports — a local-first app with no wipe is a real gap. Two-step arm pattern (same as Delete idea): first click arms with the consequence spelled out, second click wipes the store (ideas, check-ins, trends, profile) and confirms.
+- **Thesis Save no longer leaves a stale window:** the old 900ms delayed re-render meant the second-opinion prompt (and the price field) showed pre-save content right after "Saved ✓" — copying the prompt in that window copied stale text. Save now re-renders instantly and flashes "Saved ✓" on the fresh button.
+- **Idea page shows its own past check-ins** (date, outcome, the price move, your note) — a just-saved check-in is visible where you saved it, not only on the Scorecard.
+- **Trend back-link:** ideas created from a trend say "from trend: …" in the header and link back to Trends.
+- **Profile result has a "Retake the quiz" button** (clears selections, hides the result) instead of edit-and-resubmit only.
+- 314 assertions (15 new).
+
 ## [3.5.0] — 2026-10-11
 
 ### The funnel release: trend → companies → ideas, with prices in the record

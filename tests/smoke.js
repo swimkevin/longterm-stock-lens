@@ -824,6 +824,11 @@ async function main() {
   assert(cw2.priceLog.length === 1 && cw2.priceLog[0].price === 40.25 && cw2.priceLog[0].note === 'spotted',
     'spotted price recorded at thesis save');
   assert(cw2.sealed && cw2.sealed.belief.includes('Compute demand'), 'thesis sealed alongside the price');
+  const promptNow = document.querySelector('#idea-detail .analyze-sec textarea').value;
+  assert(promptNow.includes('Compute demand compounds'), 'second-opinion prompt is fresh immediately after Save (no stale window)');
+  assert(promptNow.includes('PRICE WHEN I SPOTTED IT: $40.25'), 'prompt carries the spotted price immediately');
+  assert(detailText().includes('Spotted at $40.25'), 'locked spotted line shows immediately after Save');
+  assert(detailText().includes('from trend:'), 'idea page links back to its trend');
   // check in with a price now -> history shows the move on the Scorecard
   Array.from(document.querySelectorAll('#idea-detail .btn')).find(b => b.textContent === 'Check in now').click();
   const pnIn = document.querySelector('#idea-detail .review-form input[type="number"]');
@@ -835,6 +840,9 @@ async function main() {
   const cw3 = st.ideas.find(i => i.name === 'CoreWeave');
   assert(cw3.reviewHistory.length === 1 && cw3.reviewHistory[0].priceNow === 60.5, 'check-in price saved');
   assert(cw3.priceLog.length === 2, 'price log grows with the check-in');
+  assert(document.querySelector('#idea-detail .idea-history'), 'idea page shows its own past check-ins after saving');
+  assert(document.querySelector('#idea-detail .idea-history').textContent.includes('$40.25 when spotted'),
+    'idea-page history shows the price move');
   document.querySelector('.nav-btn[data-nav="track"]').click();
   assert(document.getElementById('track-record').textContent.includes('$40.25 when spotted'),
     'past check-ins show spotted vs now with the move');
@@ -850,6 +858,33 @@ async function main() {
   assert(earlyBtn, 'upcoming idea offers Check in early');
   earlyBtn.click();
   assert(document.querySelector('#idea-detail .review-form'), 'Check in early opens the idea with the form ready');
+
+  // ---- delete my data (two-step) + quiz retake ----
+  console.log('data wipe + retake:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const delBtn = document.getElementById('delete-data');
+  assert(delBtn, 'Delete my data button exists in Your data');
+  delBtn.click();
+  assert(delBtn.classList.contains('armed') && readStore().ideas.length > 0, 'first click only arms; data intact');
+  delBtn.click();
+  st = readStore();
+  assert(st.ideas.length === 0 && st.trends.length === 0, 'second click wipes ideas and trends');
+  assert(delBtn.textContent.includes('Deleted'), 'wipe gives feedback');
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const qBtns = document.querySelectorAll('#quiz .opt-btn');
+  assert(qBtns.length > 0, 'quiz renders for retake test');
+  // answer every question via first options, submit, then retake
+  const qCount = document.querySelectorAll('#quiz .q').length;
+  for (let qi = 0; qi < qCount; qi++) {
+    document.querySelectorAll('#quiz .q')[qi].querySelector('.opt-btn').click();
+  }
+  document.querySelector('#quiz .btn.primary').click();
+  assert(!document.getElementById('quiz-result').classList.contains('hidden'), 'quiz result shows after submit');
+  const retakeBtn = Array.from(document.querySelectorAll('#quiz-result .btn')).find(b => b.textContent === 'Retake the quiz');
+  assert(retakeBtn, 'result offers Retake the quiz');
+  retakeBtn.click();
+  assert(document.getElementById('quiz-result').classList.contains('hidden'), 'retake hides the result');
+  assert(document.querySelectorAll('#quiz .opt-btn.selected').length === 0, 'retake clears all selections');
 
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
