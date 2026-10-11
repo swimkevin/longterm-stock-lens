@@ -3,6 +3,7 @@
    12px card radius. Everything else is whitespace and type. */
 
 :root {
+  color-scheme: dark;
   --bg: #101013;
   --panel: #17171b;
   --panel-2: #1f1f25;
@@ -23,6 +24,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --bg: #fafaf8;
   --panel: #ffffff;
   --panel-2: #f3f3f0;
@@ -219,14 +221,14 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible {
   font-weight: 650; font-size: 1.05rem; transition: border-color 0.12s ease, background 0.12s ease;
 }
 .conv-btn:hover { border-color: var(--muted); }
-.conv-btn.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.conv-btn.selected { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .conv-cap { margin-top: 0.7rem; }
 
 .analyze-sec .analyze-prompt {
   width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.82rem; line-height: 1.55; color: var(--text);
   background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-  padding: 0.9rem; white-space: pre-wrap; resize: vertical; margin: 0.8rem 0;
+  padding: 0.9rem; white-space: pre-wrap; resize: none; overflow: hidden; margin: 0.8rem 0;
 }
 .analyze-sec .btn-row { margin-top: 0.2rem; }
 .research-links { margin-top: 1.2rem; }

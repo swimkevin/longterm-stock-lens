@@ -386,7 +386,7 @@ async function main() {
   beliefTa.value = 'I believe this company wins.';
   const falsifyInput = document.querySelector('#idea-detail input[type="text"]');
   falsifyInput.value = 'If growth stalls 2 years.';
-  Array.from(document.querySelectorAll('#idea-detail .btn.primary'))
+  Array.from(document.querySelectorAll('#idea-detail .btn'))
     .find(b => b.textContent === 'Save').click();
   st = readStore();
   assert(st.ideas[0].thesis.belief === 'I believe this company wins.', 'thesis belief saved');
@@ -480,7 +480,7 @@ async function main() {
   st = readStore();
   const reviewCo = st.ideas.find(i => i.name === 'Review Co');
   assert(revInput && revInput.value === L.reviewAtOf(reviewCo), 'review-by date input shows the current date');
-  const nowBtn = Array.from(document.querySelectorAll('#idea-detail .review-row .btn.primary'))
+  const nowBtn = Array.from(document.querySelectorAll('#idea-detail .review-row .btn'))
     .find(b => b.textContent === 'Review now');
   assert(nowBtn, 'detail page offers Review now');
   // Invalid date is rejected and the input resets to the stored date.
@@ -503,7 +503,7 @@ async function main() {
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   Array.from(document.querySelectorAll('#ideas-list .idea-row .idea-main'))
     .find(b => b.getAttribute('aria-label') === 'Open research for Review Co').click();
-  const nowBtn2 = Array.from(document.querySelectorAll('#idea-detail .review-row .btn.primary'))
+  const nowBtn2 = Array.from(document.querySelectorAll('#idea-detail .review-row .btn'))
     .find(b => b.textContent === 'Review now');
   nowBtn2.click();
   assert(document.querySelector('#idea-detail .detail-review-wrap .review-form'),

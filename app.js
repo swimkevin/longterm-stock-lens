@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.2.0';
+const APP_VERSION = '3.2.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1076,7 +1076,7 @@ function renderIdeasHome() {
   queue.innerHTML = '';
   if (!due.length) {
     const d = document.createElement('div');
-    d.className = 'empty';
+    d.className = 'empty mini';
     d.textContent = 'Nothing due. Every idea gets a review-by date — open an idea to set or change it.';
     queue.appendChild(d);
   } else {
@@ -1211,7 +1211,7 @@ function renderIdeaDetail(idea) {
   falsLab.appendChild(falsify);
   th.appendChild(falsLab);
   const saveBtn = document.createElement('button');
-  saveBtn.className = 'btn primary';
+  saveBtn.className = 'btn';
   saveBtn.textContent = 'Save';
   saveBtn.addEventListener('click', () => {
     updateIdea(idea.id, i => {
@@ -1294,7 +1294,7 @@ function renderIdeaDetail(idea) {
   revLab.appendChild(revDate);
   revRow.appendChild(revLab);
   const nowBtn = document.createElement('button');
-  nowBtn.className = 'btn primary';
+  nowBtn.className = 'btn';
   nowBtn.textContent = 'Review now';
   nowBtn.addEventListener('click', () => {
     const wrap = document.createElement('div');
@@ -1330,6 +1330,10 @@ function renderAnalyzeSection(box, idea) {
   ta.setAttribute('aria-label', 'Generated analysis prompt for this idea');
   ta.value = buildAnalyzePrompt(idea);
   sec.appendChild(ta);
+  // Auto-size to content: the prompt reads as a document, never a scroll box.
+  const fitPrompt = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+  fitPrompt();
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fitPrompt);
   const row = document.createElement('div');
   row.className = 'btn-row';
   const copyBtn = document.createElement('button');
