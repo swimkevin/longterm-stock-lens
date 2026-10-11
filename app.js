@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.2.1';
+const APP_VERSION = '3.3.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -397,12 +397,12 @@ function buildAnalyzePrompt(idea) {
     '',
     'MY THESIS: ' + belief,
     'WHAT WOULD PROVE ME WRONG: ' + falsify,
-    'MY CONVICTION: ' + (conv === null ? 'unscored' : conv + ' / 5'),
-    'REVIEW BY: ' + reviewBy,
+    'HOW SURE I AM: ' + (conv === null ? 'not set' : conv + ' / 5'),
+    'CHECK IN ON: ' + reviewBy,
     '',
     'Please do a full workup:',
     '1. Metrics check \u2014 for the ticker above, report the key long-term metrics (P/E or forward P/E, 3-5y revenue growth, operating margin, free cash flow, debt-to-equity, dividend yield if any). Cite the source and date of each number.',
-    '2. Bull case \u2014 the 2-3 strongest arguments FOR a decade-long hold, mapped to my thesis where they overlap.',
+    '2. Bull case \u2014 the 2-3 strongest arguments FOR a decade-long hold, mapped to what I think where they overlap.',
     '3. Bear case \u2014 the strongest arguments AGAINST, especially any evidence that would trigger my stated kill criteria.',
     '4. Red flags \u2014 accounting, governance, or business-model concerns I should investigate before deciding anything.',
     '5. Similar companies \u2014 3-5 public companies in the same broad category I could research as alternatives or comparisons, with one line each on why they are comparable.',
@@ -412,7 +412,7 @@ function buildAnalyzePrompt(idea) {
 }
 function thesesLabel(n) {
   if (!n) return '';
-  return '(' + n + (n === 1 ? ' thesis)' : ' theses)');
+  return '(' + n + (n === 1 ? ' idea)' : ' ideas)');
 }
 
 function ideasLabel(n) {
@@ -624,11 +624,11 @@ function calibration(ideas) {
   const loRate = lo.n ? Math.round((lo.yes / lo.n) * 100) : null;
   let insight = null;
   if (answered >= 3 && hiRate !== null && loRate !== null) {
-    if (hiRate - loRate >= 20) insight = 'Your conviction means something — your 4–5 calls land far more often than your 1–2s. Trust the strong ones sooner.';
-    else if (loRate - hiRate >= 20) insight = 'Caution: your strongest convictions have been your weakest calls. The ideas you rated 1–2 are outperforming — interrogate the 5s.';
-    else insight = 'Your conviction barely separates hits from misses yet. Watch the gap between your 4–5s and 1–2s as reviews accumulate.';
+    if (hiRate - loRate >= 20) insight = 'When you\'re sure (4–5), you\'re usually right — your gut means something. Trust the strong calls sooner.';
+    else if (loRate - hiRate >= 20) insight = 'Heads up: your surest calls (4–5) have been your weakest, and your maybes (1–2) are doing better. Worth a second look before the next big one.';
+    else insight = 'So far, your sure calls and your maybes land about the same. The gap between them is the thing to watch as you check in more.';
   } else if (answered >= 1) {
-    insight = 'Calibration builds with every review. A few more and your pattern starts to show.';
+    insight = 'Your scorecard builds with every check-in. A few more and your pattern starts to show.';
   }
   return {
     levels,
@@ -658,7 +658,7 @@ function journalToMarkdown(ideas, stamp, trends) {
     const conv = convictionOf(e);
     lines.push('## ' + e.name + (e.tickers ? ' (' + e.tickers + ')' : ''));
     lines.push('');
-    lines.push('- Conviction: ' + (conv === null ? 'unscored' : conv + ' / 5'));
+    lines.push('- How sure I am: ' + (conv === null ? 'not set' : conv + ' / 5'));
     lines.push('- Status: ' + (e.status || 'open') + ' · Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
     if (e.tags && e.tags.length) lines.push('- Tags: ' + e.tags.join(', '));
     lines.push('');
@@ -1014,7 +1014,7 @@ function ideaRow(idea, opts) {
   if (conv === null) {
     sc.textContent = 'Unscored';
   } else {
-    sc.setAttribute('aria-label', 'Conviction ' + conv + ' of 5');
+    sc.setAttribute('aria-label', 'How sure you are: ' + conv + ' of 5');
     for (let d = 1; d <= 5; d++) {
       const dot = document.createElement('span');
       if (d <= conv) dot.className = 'on';
@@ -1026,11 +1026,11 @@ function ideaRow(idea, opts) {
   main.appendChild(top);
   const meta = document.createElement('div');
   meta.className = 'idea-meta';
-  meta.appendChild(document.createTextNode('review by ' + (reviewAtOf(idea) || '—')));
+  meta.appendChild(document.createTextNode('check in on ' + (reviewAtOf(idea) || '—')));
   if (isReviewDue(idea, today) && idea.status !== 'resolved') {
     const badge = document.createElement('span');
     badge.className = 'due-badge';
-    badge.textContent = 'Review due';
+    badge.textContent = 'Time to check in';
     meta.appendChild(document.createTextNode(' '));
     meta.appendChild(badge);
   }
@@ -1060,11 +1060,11 @@ function renderIdeasHome() {
       strong.textContent = c.overallRate + '%';
       panel.appendChild(strong);
       const txt = document.createElement('span');
-      txt.textContent = 'of your scored reviews moved for your stated reasons (' + c.yesCount + ' of ' + c.answered + ') — your calibration so far.';
+      txt.textContent = 'of your check-ins played out the way you said (' + c.yesCount + ' of ' + c.answered + ') — your scorecard so far.';
       panel.appendChild(txt);
       const link = document.createElement('button');
       link.className = 'linklike';
-      link.textContent = 'See your pattern →';
+      link.textContent = 'See your scorecard →';
       link.addEventListener('click', () => showScreen('track'));
       panel.appendChild(link);
       strip.appendChild(panel);
@@ -1077,7 +1077,7 @@ function renderIdeasHome() {
   if (!due.length) {
     const d = document.createElement('div');
     d.className = 'empty mini';
-    d.textContent = 'Nothing due. Every idea gets a review-by date — open an idea to set or change it.';
+    d.textContent = 'Nothing to check in on right now. Every idea gets a check-in date — open an idea to set or change it.';
     queue.appendChild(d);
   } else {
     due.forEach(i => queue.appendChild(ideaRow(i, { today })));
@@ -1097,7 +1097,7 @@ function renderIdeasHome() {
   if (!all.length) {
     list.appendChild(emptyState({
       title: 'Your next ten-bagger starts here',
-      body: 'Spot a trend, name a company, write two sentences about why. The app handles the rest — conviction, AI verification, review reminders.',
+      body: 'Spot a trend, name a company, write two sentences about why. The app handles the rest — how sure you are, a second opinion from AI, and a nudge when it\'s time to check in.',
       actionId: 'qa-name',
       actionLabel: 'Add your first idea'
     }));
@@ -1188,15 +1188,15 @@ function renderIdeaDetail(idea) {
   const th = document.createElement('section');
   th.className = 'panel';
   const thH = document.createElement('h2');
-  thH.textContent = 'Thesis';
+  thH.textContent = 'What you think';
   th.appendChild(thH);
   const beliefLab = document.createElement('label');
   beliefLab.className = 'field';
-  beliefLab.appendChild(document.createTextNode('What I believe and why'));
+  beliefLab.appendChild(document.createTextNode('What you think happens, and why'));
   const belief = document.createElement('textarea');
   belief.rows = 3;
   belief.maxLength = 2000;
-  belief.placeholder = 'One or two sentences: the core claim and the reasons.';
+  belief.placeholder = 'One or two sentences: what you think happens, and the reasons.';
   belief.value = (idea.thesis && idea.thesis.belief) || '';
   beliefLab.appendChild(belief);
   th.appendChild(beliefLab);
@@ -1206,7 +1206,7 @@ function renderIdeaDetail(idea) {
   const falsify = document.createElement('input');
   falsify.type = 'text';
   falsify.maxLength = 500;
-  falsify.placeholder = 'The kill criteria \u2014 write it while you\u2019re honest.';
+  falsify.placeholder = 'Be specific \u2014 write it while you\u2019re being honest with yourself.';
   falsify.value = (idea.thesis && idea.thesis.falsify) || '';
   falsLab.appendChild(falsify);
   th.appendChild(falsLab);
@@ -1229,12 +1229,12 @@ function renderIdeaDetail(idea) {
   const cv = document.createElement('section');
   cv.className = 'panel';
   const cvH = document.createElement('h2');
-  cvH.textContent = 'Conviction';
+  cvH.textContent = 'How sure are you?';
   cv.appendChild(cvH);
   const cvRow = document.createElement('div');
   cvRow.className = 'conv-row';
   cvRow.setAttribute('role', 'radiogroup');
-  cvRow.setAttribute('aria-label', 'Conviction, 1 to 5');
+  cvRow.setAttribute('aria-label', 'How sure you are, 1 to 5');
   for (let n = 1; n <= 5; n++) {
     const b = document.createElement('button');
     b.className = 'conv-btn' + (conv === n ? ' selected' : '');
@@ -1251,7 +1251,7 @@ function renderIdeaDetail(idea) {
   cv.appendChild(cvRow);
   const cvCap = document.createElement('p');
   cvCap.className = 'fineprint conv-cap';
-  cvCap.textContent = '1 · just watching — 3 · real interest — 5 · highest conviction. This number gets graded at review time.';
+  cvCap.textContent = '1 · just watching — 3 · real interest — 5 · as sure as it gets. When you check in later, this is the number we look back at.';
   cv.appendChild(cvCap);
   box.appendChild(cv);
 
@@ -1273,17 +1273,17 @@ function renderIdeaDetail(idea) {
   const rev = document.createElement('section');
   rev.className = 'panel';
   const revH = document.createElement('h2');
-  revH.textContent = 'Review';
+  revH.textContent = 'Check in';
   rev.appendChild(revH);
   const revRow = document.createElement('div');
   revRow.className = 'review-row';
   const revLab = document.createElement('label');
   revLab.className = 'field inline-field';
-  revLab.appendChild(document.createTextNode('Review by'));
+  revLab.appendChild(document.createTextNode('Check in on'));
   const revDate = document.createElement('input');
   revDate.type = 'date';
   revDate.value = reviewAtOf(idea) || '';
-  revDate.setAttribute('aria-label', 'Review-by date for this idea');
+  revDate.setAttribute('aria-label', 'Check-in date for this idea');
   revDate.addEventListener('change', () => {
     const next = setReviewAt(idea, revDate.value);
     if (!next) { revDate.value = reviewAtOf(idea) || ''; return; }
@@ -1295,7 +1295,7 @@ function renderIdeaDetail(idea) {
   revRow.appendChild(revLab);
   const nowBtn = document.createElement('button');
   nowBtn.className = 'btn';
-  nowBtn.textContent = 'Review now';
+  nowBtn.textContent = 'Check in now';
   nowBtn.addEventListener('click', () => {
     const wrap = document.createElement('div');
     wrap.className = 'detail-review-wrap';
@@ -1320,8 +1320,8 @@ function renderIdeaDetail(idea) {
 }
 
 function renderAnalyzeSection(box, idea) {
-  const sec = sectionShell('AI verify',
-    'The final gate: turn everything above into a verification prompt. Paste it into Muse or Claude for the metric workup, bull/bear cases, red flags, and similar companies. It asks for analysis — never "should I buy".');
+  const sec = sectionShell('Second opinion',
+    'Turn everything above into one prompt. Paste it into Muse or Claude and let it stress-test your thinking — the numbers, the case for, the case against, the red flags. It analyzes; it never says "buy".');
   sec.classList.add('analyze-sec');
   const ta = document.createElement('textarea');
   ta.className = 'analyze-prompt';
@@ -1366,7 +1366,7 @@ function renderAnalyzeSection(box, idea) {
   sec.appendChild(row);
   const fp = document.createElement('p');
   fp.className = 'fineprint';
-  fp.textContent = 'Tip: paste it here in chat with me and I\u2019ll do the full workup against your thesis.';
+  fp.textContent = 'Tip: paste it here in chat with me and I\u2019ll do the full workup against what you wrote.';
   sec.appendChild(fp);
   box.appendChild(sec);
 }
@@ -1382,7 +1382,7 @@ function renderReviews() {
   if (!due.length) {
     const d = document.createElement('div');
     d.className = 'empty';
-    d.textContent = 'Nothing due for review. The loop is quiet — check back after your ideas\' review-by dates pass.';
+    d.textContent = 'Nothing waiting on you. It\'s quiet here — come back after your check-in dates pass.';
     box.appendChild(d);
   }
   due.forEach(idea => {
@@ -1402,13 +1402,13 @@ function renderReviews() {
     }
     const badge = document.createElement('span');
     badge.className = 'due-badge';
-    badge.textContent = 'Review due';
+    badge.textContent = 'Time to check in';
     head.appendChild(badge);
     card.appendChild(head);
 
     const thesis = document.createElement('p');
     thesis.className = 'entry-thesis';
-    thesis.textContent = idea.thesis.belief || '(no thesis written yet)';
+    thesis.textContent = idea.thesis.belief || '(nothing written yet)';
     card.appendChild(thesis);
     if (idea.thesis.falsify) {
       const f = document.createElement('p');
@@ -1421,7 +1421,7 @@ function renderReviews() {
     }
     const meta = document.createElement('p');
     meta.className = 'fineprint';
-    meta.textContent = 'Review by ' + (reviewAtOf(idea) || '—') +
+    meta.textContent = 'Check in on ' + (reviewAtOf(idea) || '—') +
       ' · ' + (idea.reviewHistory || []).length + ' past reviews';
     card.appendChild(meta);
 
@@ -1434,8 +1434,8 @@ function renderReviews() {
     actions.appendChild(open);
     const start = document.createElement('button');
     start.className = 'btn primary';
-    start.textContent = 'Start review';
-    start.setAttribute('aria-label', 'Start review of ' + idea.name);
+    start.textContent = 'Check in';
+    start.setAttribute('aria-label', 'Check in on ' + idea.name);
     start.addEventListener('click', () => {
       activeReviewId = idea.id;
       renderReviewForm(card, idea);
@@ -1466,7 +1466,7 @@ function renderReviewForm(card, idea, onDone) {
     sb.className = 'sealed-box';
     const when = document.createElement('div');
     when.className = 'sealed-when';
-    when.textContent = 'What you believed on ' + idea.sealed.date + ' (sealed — never edited):';
+    when.textContent = 'What you wrote on ' + idea.sealed.date + ' — locked in, exactly as you left it:';
     const bel = document.createElement('div');
     bel.textContent = '"' + idea.sealed.belief + '"';
     sb.appendChild(when);
@@ -1474,7 +1474,7 @@ function renderReviewForm(card, idea, onDone) {
     if (idea.sealed.falsify) {
       const f = document.createElement('div');
       f.className = 'fineprint';
-      f.textContent = 'Your kill criteria: ' + idea.sealed.falsify;
+      f.textContent = 'What would change your mind: ' + idea.sealed.falsify;
       sb.appendChild(f);
     }
     form.appendChild(sb);
@@ -1483,16 +1483,16 @@ function renderReviewForm(card, idea, onDone) {
   const q1 = document.createElement('p');
   q1.innerHTML = '';
   const q1t = document.createElement('strong');
-  q1t.textContent = 'Did it move for your stated reason?';
+  q1t.textContent = 'Did it play out the way you said?';
   q1.appendChild(q1t);
   const q1h = document.createElement('span');
   q1h.className = 'hint';
-  q1h.textContent = ' Compare what happened to the reasons you wrote — this separates luck from skill.';
+  q1h.textContent = ' Compare what actually happened to the reasons you wrote down — that\'s how you tell a good eye from a lucky guess.';
   q1.appendChild(q1h);
   form.appendChild(q1);
   const reasonChips = document.createElement('div');
   reasonChips.className = 'chips';
-  const reasonOpts = [['yes', 'Yes, for my reasons'], ['no', 'No — or for other reasons'], ['na', 'Too early to tell']];
+  const reasonOpts = [['yes', 'Yes — for my reasons'], ['no', 'It moved, but for other reasons'], ['na', 'Too early to tell']];
   let reasonMatch = 'na';
   reasonOpts.forEach(opt => {
     const b = document.createElement('button');
@@ -1511,15 +1511,15 @@ function renderReviewForm(card, idea, onDone) {
 
   const q2 = document.createElement('p');
   const q2t = document.createElement('strong');
-  q2t.textContent = 'Outcome';
+  q2t.textContent = 'So where does it stand?';
   q2.appendChild(q2t);
   form.appendChild(q2);
   const outcomeChips = document.createElement('div');
   outcomeChips.className = 'chips';
   const outcomeOpts = [
-    ['intact', 'Thesis intact', 'The story still holds — keep watching.'],
-    ['changed', 'Thesis changed', 'New evidence moved the story — update the research.'],
-    ['resolved', 'Resolved', 'The question is answered — this feeds your track record.'],
+    ['intact', 'Still holds up', 'The story still holds — keep watching.'],
+    ['changed', 'My thinking changed', 'New facts changed the picture — worth another look.'],
+    ['resolved', 'Done with this one', 'Question answered — it goes on your scorecard.'],
   ];
   let outcome = 'intact';
   outcomeOpts.forEach(opt => {
@@ -1540,7 +1540,7 @@ function renderReviewForm(card, idea, onDone) {
 
   const lab = document.createElement('label');
   lab.className = 'field';
-  lab.appendChild(document.createTextNode('Review note (optional)'));
+  lab.appendChild(document.createTextNode('Note (optional)'));
   const ta = document.createElement('textarea');
   ta.rows = 2;
   ta.maxLength = 1000;
@@ -1550,7 +1550,7 @@ function renderReviewForm(card, idea, onDone) {
 
   const nextLab = document.createElement('label');
   nextLab.className = 'field inline-field';
-  nextLab.appendChild(document.createTextNode('Review again in'));
+  nextLab.appendChild(document.createTextNode('Check in again in'));
   const sel = document.createElement('select');
   REVIEW_INTERVALS.forEach(n => {
     const o = document.createElement('option');
@@ -1566,7 +1566,7 @@ function renderReviewForm(card, idea, onDone) {
   row.className = 'btn-row';
   const save = document.createElement('button');
   save.className = 'btn primary';
-  save.textContent = 'Save review';
+  save.textContent = 'Save check-in';
   save.addEventListener('click', () => {
     const updated = applyReview(getIdea(idea.id), {
       outcome, reasonMatch, note: ta.value.trim(), nextMonths: sel.value,
@@ -1594,10 +1594,10 @@ function renderTrackRecord() {
   const kpis = document.createElement('div');
   kpis.className = 'kpi-strip';
   [
-    ['Reviews logged', String(tr.reviews)],
-    ['Thesis intact', String(tr.intact)],
-    ['Thesis changed', String(tr.changed)],
-    ['Resolved', String(tr.resolved)],
+    ['Check-ins', String(tr.reviews)],
+    ['Still holds up', String(tr.intact)],
+    ['Mind changed', String(tr.changed)],
+    ['Done', String(tr.resolved)],
   ].forEach(pair => {
     const card = document.createElement('div');
     card.className = 'kpi-card';
@@ -1616,22 +1616,22 @@ function renderTrackRecord() {
   const cal = document.createElement('div');
   cal.className = 'panel';
   const h = document.createElement('h3');
-  h.textContent = 'Calibration — your judgment, measured';
+  h.textContent = 'Your scorecard';
   cal.appendChild(h);
   const c = calibration(store.ideas || []);
   const p = document.createElement('p');
   if (c.overallRate === null) {
-    p.textContent = 'No scored reviews yet. Each review asks "did it move for your stated reason?" — and records the conviction you held. Over time this view answers the question no AI can: when you\'re sure, are you right?';
+    p.textContent = 'No check-ins yet. Each one asks "did it play out the way you said?" and remembers how sure you were. Give it a few months and this page answers a question no AI can: when you\'re sure about something, are you usually right?';
   } else {
     const strong = document.createElement('strong');
     strong.textContent = c.overallRate + '%';
     p.appendChild(strong);
-    p.appendChild(document.createTextNode(' of your scored reviews moved for your stated reasons — ' +
-      c.yesCount + ' of ' + c.answered + '. Broken down by the conviction you held:'));
+    p.appendChild(document.createTextNode(' of your check-ins played out for the reason you gave — ' +
+      c.yesCount + ' of ' + c.answered + '. Broken down by how sure you were:'));
     if (c.answered < 5) {
       const warn = document.createElement('span');
       warn.className = 'cal-caution';
-      warn.textContent = ' Small sample — treat this as a hint, not a verdict.';
+      warn.textContent = ' Only a few check-ins so far — a hint, not the full picture.';
       p.appendChild(warn);
     }
   }
@@ -1654,7 +1654,7 @@ function renderTrackRecord() {
       track.appendChild(fill);
       const val = document.createElement('span');
       val.className = 'cal-val';
-      val.textContent = L.rate === null ? 'no reviews' : L.rate + '% · ' + L.n + (L.n === 1 ? ' review' : ' reviews');
+      val.textContent = L.rate === null ? 'no check-ins yet' : L.rate + '% · ' + L.n + (L.n === 1 ? ' check-in' : ' check-ins');
       row.appendChild(lab); row.appendChild(track); row.appendChild(val);
       bars.appendChild(row);
     }
@@ -1662,8 +1662,8 @@ function renderTrackRecord() {
     if (c.legacyAnswered > 0) {
       const leg = document.createElement('p');
       leg.className = 'fineprint';
-      leg.textContent = c.legacyAnswered + (c.legacyAnswered === 1 ? ' older review predates' : ' older reviews predate') +
-        ' conviction tracking — counted in the overall rate, not in the levels above.';
+      leg.textContent = c.legacyAnswered + (c.legacyAnswered === 1 ? ' older check-in predates' : ' older check-ins predate') +
+        ' keeping track of how sure you were — counted in the overall number, not in the levels above.';
       cal.appendChild(leg);
     }
     if (c.insight) {
@@ -1675,7 +1675,7 @@ function renderTrackRecord() {
   }
   const fine = document.createElement('p');
   fine.className = 'fineprint';
-  fine.textContent = 'Resolved ideas never disappear — they stay in the Ideas list with a Resolved tag so the record can\'t be edited away. Hindsight editing is the enemy.';
+  fine.textContent = 'Ideas you wrap up never disappear — they stay in your list, marked Resolved, so the record can\'t be quietly edited later. Hindsight is the enemy.';
   cal.appendChild(fine);
   box.appendChild(cal);
 
@@ -1685,12 +1685,12 @@ function renderTrackRecord() {
   });
   hist.sort((a, b) => b.r.date.localeCompare(a.r.date));
   const h2 = document.createElement('h2');
-  h2.textContent = 'Review history';
+  h2.textContent = 'Past check-ins';
   box.appendChild(h2);
   if (!hist.length) {
     const d = document.createElement('div');
     d.className = 'empty';
-    d.textContent = 'No reviews yet. When an idea\'s review-by date arrives, it appears under Reviews.';
+    d.textContent = 'No check-ins yet. When an idea\'s check-in date arrives, it shows up under Check-ins.';
     box.appendChild(d);
   } else {
     hist.forEach(hx => {
@@ -1704,7 +1704,7 @@ function renderTrackRecord() {
       head.appendChild(nm);
       const oc = document.createElement('span');
       oc.className = 'tag';
-      oc.textContent = { intact: 'Thesis intact', changed: 'Thesis changed', resolved: 'Resolved' }[hx.r.outcome] || hx.r.outcome;
+      oc.textContent = { intact: 'Still holds up', changed: 'Mind changed', resolved: 'Done' }[hx.r.outcome] || hx.r.outcome;
       head.appendChild(oc);
       card.appendChild(head);
       const meta = document.createElement('p');

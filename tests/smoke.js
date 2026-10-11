@@ -177,7 +177,7 @@ async function main() {
   assert(cal.hiRate === 100 && cal.loRate === 0, 'hi/lo rates computed');
   assert(cal.yesCount === 4, 'yesCount exposed for honest n-of-m display (got ' + cal.yesCount + ')');
   assert(cal.legacyAnswered === 1, 'legacy review without conviction counted separately (got ' + cal.legacyAnswered + ')');
-  assert(typeof cal.insight === 'string' && cal.insight.includes('conviction means something'),
+  assert(typeof cal.insight === 'string' && cal.insight.includes('your gut means something'),
     'positive insight when hi >> lo (got: ' + cal.insight + ')');
   const calEmpty = L.calibration([]);
   assert(calEmpty.overallRate === null && calEmpty.answered === 0 && calEmpty.insight === null, 'empty -> nulls, no insight');
@@ -205,7 +205,7 @@ async function main() {
   assert(typeof prompt === 'string' && prompt.length > 400, 'prompt is a substantial string');
   assert(prompt.includes('Acme Semiconductor') && prompt.includes('ACME'), 'prompt carries name + ticker');
   assert(prompt.includes('AI inference at the edge') && prompt.includes('loses top-3 share'), 'prompt carries thesis fields');
-  assert(prompt.includes('MY CONVICTION: 4 / 5'), 'prompt carries the conviction score');
+  assert(prompt.includes('HOW SURE I AM: 4 / 5'), 'prompt carries how sure you are');
   assert(!prompt.includes('checklist') && !prompt.includes('scorecard'), 'prompt dropped the old complexity');
   assert(prompt.includes('never tell me whether to buy or sell'), 'prompt keeps the educational-only boundary');
   assert(prompt.includes('Similar companies'), 'prompt asks for similar companies');
@@ -301,7 +301,7 @@ async function main() {
   console.log('export builders:');
   const md = L.journalToMarkdown(mig.ideas, '2026-10-04');
   assert(md.includes('## Acme (ACME)'), 'markdown has name + ticker heading');
-  assert(md.includes('Conviction: 4 / 5'), 'markdown shows conviction');
+  assert(md.includes('How sure I am: 4 / 5'), 'markdown shows how sure you are');
   assert(md.includes('Would prove me wrong: If not.'), 'markdown includes falsify text');
   assert(md.includes('not financial advice'), 'markdown carries disclaimer');
   assert(L.journalToMarkdown([], '2026-10-04').includes('No ideas yet'), 'empty markdown export handled');
@@ -405,14 +405,14 @@ async function main() {
   assert(document.querySelectorAll('#idea-detail .check-item').length === 0, 'no checklist items');
   assert(!document.querySelector('#idea-detail details'), 'no collapsed assumption sections');
   assert(document.querySelectorAll('#idea-detail .panel').length >= 3, 'thesis, conviction, review panels');
-  assert(document.querySelector('#idea-detail .analyze-sec'), 'AI verify section present');
+  assert(document.querySelector('#idea-detail .analyze-sec'), 'second opinion section present');
   assert(document.querySelector('#idea-detail .link-danger'), 'subtle delete link present');
 
-  console.log('streamlined page: thesis, conviction, AI verify, review');
+  console.log('streamlined page: what you think, how sure, second opinion, check in');
   const secTitles = [...document.querySelectorAll('#idea-detail .panel h2, #idea-detail .analyze-sec h3')]
     .map(el => el.textContent);
-  assert(JSON.stringify(secTitles) === JSON.stringify(['Thesis', 'Conviction', 'AI verify', 'Review']),
-    'page order: thesis -> conviction -> AI verify -> review (got ' + JSON.stringify(secTitles) + ')');
+  assert(JSON.stringify(secTitles) === JSON.stringify(['What you think', 'How sure are you?', 'Second opinion', 'Check in']),
+    'page order: what-you-think -> how-sure -> second-opinion -> check-in (got ' + JSON.stringify(secTitles) + ')');
 
   console.log('AI verify section:');
   const analyzeSec = document.querySelector('#idea-detail .analyze-sec');
@@ -481,8 +481,8 @@ async function main() {
   const reviewCo = st.ideas.find(i => i.name === 'Review Co');
   assert(revInput && revInput.value === L.reviewAtOf(reviewCo), 'review-by date input shows the current date');
   const nowBtn = Array.from(document.querySelectorAll('#idea-detail .review-row .btn'))
-    .find(b => b.textContent === 'Review now');
-  assert(nowBtn, 'detail page offers Review now');
+    .find(b => b.textContent === 'Check in now');
+  assert(nowBtn, 'detail page offers Check in now');
   // Invalid date is rejected and the input resets to the stored date.
   revInput.value = 'not-a-date';
   revInput.dispatchEvent(new window.Event('change', { bubbles: true }));
@@ -504,17 +504,17 @@ async function main() {
   Array.from(document.querySelectorAll('#ideas-list .idea-row .idea-main'))
     .find(b => b.getAttribute('aria-label') === 'Open research for Review Co').click();
   const nowBtn2 = Array.from(document.querySelectorAll('#idea-detail .review-row .btn'))
-    .find(b => b.textContent === 'Review now');
+    .find(b => b.textContent === 'Check in now');
   nowBtn2.click();
   assert(document.querySelector('#idea-detail .detail-review-wrap .review-form'),
     'review form opens inline on the detail page');
-  assert(document.querySelector('#idea-detail .detail-review-wrap .review-form').textContent.includes('Did it move for your stated reason?'),
-    'detail review asks the thesis-audit question');
+  assert(document.querySelector('#idea-detail .detail-review-wrap .review-form').textContent.includes('Did it play out the way you said?'),
+    'detail check-in asks the play-out question');
   Array.from(document.querySelectorAll('#idea-detail .detail-review-wrap .review-form .chip'))
-    .find(b => b.textContent === 'Thesis intact').click();
+    .find(b => b.textContent === 'Still holds up').click();
   document.querySelector('#idea-detail .detail-review-wrap .review-form textarea').value = 'Detail-page review.';
   Array.from(document.querySelectorAll('#idea-detail .detail-review-wrap .review-form .btn.primary'))
-    .find(b => b.textContent === 'Save review').click();
+    .find(b => b.textContent === 'Save check-in').click();
   st = readStore();
   const reviewed2 = st.ideas.find(i => i.name === 'Review Co');
   assert(reviewed2.reviewHistory.length === 1 && reviewed2.reviewHistory[0].note === 'Detail-page review.',
@@ -537,19 +537,19 @@ async function main() {
   assert(!badge.classList.contains('hidden') && badge.textContent === '1', 'Reviews nav badge shows 1 due');
   document.querySelector('.nav-btn[data-nav="reviews"]').click();
   const startBtn = Array.from(document.querySelectorAll('#reviews-list .btn.primary'))
-    .find(b => b.textContent === 'Start review');
-  assert(startBtn, 'due card offers Start review');
+    .find(b => b.textContent === 'Check in');
+  assert(startBtn, 'due card offers Check in');
   startBtn.click();
   assert(document.querySelector('#reviews-list .review-form'), 'review form renders inline');
-  assert(document.querySelector('#reviews-list .review-form').textContent.includes('Did it move for your stated reason?'),
-    'review asks the thesis-audit question');
+  assert(document.querySelector('#reviews-list .review-form').textContent.includes('Did it play out the way you said?'),
+    'check-in asks the play-out question');
   Array.from(document.querySelectorAll('#reviews-list .review-form .chip'))
-    .find(b => b.textContent === 'Yes, for my reasons').click();
+    .find(b => b.textContent === 'Yes — for my reasons').click();
   Array.from(document.querySelectorAll('#reviews-list .review-form .chip'))
-    .find(b => b.textContent === 'Resolved').click();
+    .find(b => b.textContent === 'Done with this one').click();
   document.querySelector('#reviews-list .review-form textarea').value = 'Thesis played out.';
   Array.from(document.querySelectorAll('#reviews-list .review-form .btn.primary'))
-    .find(b => b.textContent === 'Save review').click();
+    .find(b => b.textContent === 'Save check-in').click();
   st = readStore();
   const reviewed = st.ideas.find(i => i.id === firstId);
   assert(reviewed.status === 'resolved', 'resolved outcome flips idea status');
@@ -731,7 +731,7 @@ async function main() {
   assert(clickedAnchors[1].download === 'longterm-lens-ideas-' + stamp + '.md', 'Markdown download filename dated');
   const mdText = await createdURLs[1].text();
   assert(mdText.includes('## Test Co (TST)') && mdText.includes('## Second Co'), 'exported markdown contains ideas');
-  assert(mdText.includes('Conviction:'), 'exported markdown includes conviction');
+  assert(mdText.includes('How sure I am:'), 'exported markdown includes how sure you are');
   const jsonText = await createdURLs[0].text();
   assert(JSON.parse(jsonText).length === readStore().ideas.length, 'exported JSON contains all ideas');
 

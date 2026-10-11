@@ -2,7 +2,7 @@
 
 **Your judgment, measured.**
 
-I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it daily, and still didn't know *what* to invest in. The miss wasn't information. It was calibration: I didn't know how much to trust my own conviction, because I'd never scored it.
+I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it daily, and still didn't know *what* to invest in. The miss wasn't information. It was trust: I didn't know how much to trust my own gut, because I'd never kept score.
 
 This is the tool that scores it.
 
@@ -16,38 +16,38 @@ Live demo: https://swimkevin.github.io/longterm-stock-lens/
 
 **It remembers what you believed — sealed, timestamped, un-editable — and grades it when reality arrives.**
 
-Ask a chat AI "was I right about Nvidia?" and it will happily reconstruct a story. It can't tell you what you *actually* wrote on the day, what conviction you held, or whether your 5-out-of-5 calls beat your 2-out-of-5s across two years of decisions. That requires a sealed longitudinal record of *your* judgment. That's the whole app:
+Ask a chat AI "was I right about Nvidia?" and it will happily reconstruct a story. It can't tell you what you *actually* wrote on the day, how sure you were, or whether your 5-out-of-5 calls beat your 2-out-of-5s across two years of decisions. That requires a sealed longitudinal record of *your* judgment. That's the whole app:
 
 1. **Capture** — name a company in seconds (⌘K from anywhere).
 2. **Seal a thesis** — two sentences: what you believe, and what would prove you wrong. The first save seals it forever. Later edits never touch the sealed copy.
-3. **Rate conviction** — one tap, 1–5.
+3. **Say how sure you are** — one tap, 1–5.
 4. **Verify with AI** — the app builds a structured research prompt from your record; paste it into Muse or Claude for the metric workup.
-5. **Get scored** — on the review date, the app shows you your sealed words and asks one question: *did it move for your stated reason?* Your answer feeds the calibration engine.
+5. **Check in** — on the date you picked, the app shows you your own locked-in words and asks one question: *did it play out the way you said?* Your answers build your scorecard.
 
-The **Calibration view** is the payoff: hit rates broken down by conviction level, plus a plain-language read of your pattern ("Your 4–5 calls land far more often than your 1–2s — trust the strong ones sooner" / "Caution: your strongest convictions have been your weakest calls"). No AI can generate this. It's computed from your sealed history, or it doesn't exist.
+The **Scorecard** is the payoff: how your calls did, broken down by how sure you were, plus a plain-language read of your pattern ("When you're sure (4–5), you're usually right — trust the strong calls sooner"). No AI can generate this. It's computed from your locked-in history, or it doesn't exist.
 
 ## Screenshots
 
 <!--
   SCREENSHOT INSTRUCTIONS (Kevin):
-  1. Mobile (390px): ideas list with the calibration strip → docs/screenshots/mobile.png
-  2. Desktop: the Calibration view with per-level bars → docs/screenshots/desktop.png
+  1. Mobile (390px): ideas list with the scorecard strip → docs/screenshots/mobile.png
+  2. Desktop: the Scorecard with per-level bars → docs/screenshots/desktop.png
   3. Uncomment the two lines below.
 -->
-<!-- ![Mobile — ideas + calibration strip](docs/screenshots/mobile.png) -->
-<!-- ![Desktop — Calibration view](docs/screenshots/desktop.png) -->
+<!-- ![Mobile — ideas + scorecard strip](docs/screenshots/mobile.png) -->
+<!-- ![Desktop — Scorecard](docs/screenshots/desktop.png) -->
 
 ## By the numbers
 
 - **0 runtime dependencies** — vanilla HTML/CSS/JS, no framework, no bundler, no build step
 - **269 test assertions**, all passing, CI on every push
 - **4 sections per idea** — Thesis, Conviction, AI verify, Review. Down from 9.
-- **1 calibration engine** — per-conviction hit rates + pattern insights from your sealed record
+- **1 scorecard engine** — hit rates by how sure you were + pattern insights from your locked-in record
 - **100% local** — your data never leaves the browser
 
 ## What I learned (and what I'd do differently)
 
-**Complexity was the enemy, and I was the one adding it.** v1.x had a checklist, a scorecard, a 0–100 composite, conviction labels, assumptions, and notes — nine sections per idea. "Thorough," and nobody would use it. v2.0 deleted three scoring systems for one 1–5 tap. Lesson: every field is a tax on every future idea.
+**Complexity was the enemy, and I was the one adding it.** v1.x had a checklist, a weighted scorecard, a 0–100 composite, conviction labels, assumptions, and notes — nine sections per idea. "Thorough," and nobody would use it. v2.0 deleted three scoring systems for one 1–5 tap. Lesson: every field is a tax on every future idea.
 
 **The moat is memory, not features.** Any AI can analyze a stock. None can hold your sealed beliefs for two years and grade them. When I stopped competing with AI on analysis and built the thing AI structurally can't do, the product finally had a reason to exist.
 

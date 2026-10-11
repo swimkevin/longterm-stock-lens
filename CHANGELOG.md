@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [3.3.0] — 2026-10-11
+
+### Plain-language pass — no work words
+- **Reviews → Check-ins**, **Calibration → Scorecard** (nav, headings, buttons, badges).
+- **Thesis → "What you think"**; the sealed box now reads "What you wrote on [date] — locked in, exactly as you left it."
+- **Conviction → "How sure are you?"** everywhere user-facing (detail, dots aria label, AI prompt's "HOW SURE I AM", exports).
+- **"Due" is gone:** "Time to check in", "Check in on [date]", "Nothing to check in on right now."
+- Check-in form: "Did it play out the way you said?" with answers "Yes — for my reasons / It moved, but for other reasons / Too early to tell"; outcomes "Still holds up / My thinking changed / Done with this one."
+- Hero reframed: **"Spot what's next."** — a calm place for ideas about the next big thing (AI, AI infrastructure, crypto), per the product's purpose. Internal data model unchanged (no migration).
+
 ## [3.2.1] — 2026-10-11
 
 ### Design round 2 (from screenshot review)
