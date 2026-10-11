@@ -1,5 +1,13 @@
 # Changelog — Long-Term Lens
 
+## [3.6.1] — 2026-10-11
+
+### Fixes from the mobile full audit (verdict: strong hire / ship; these close its findings)
+- **Legacy saved profiles are honest now.** A result saved before answers were kept (e.g. from v3.5) rendered with copy claiming "your answers are filled in below" when none were. It now says the result predates answer-saving and invites a fresh pass; the form also starts blank instead of leaking in-session selections.
+- **Save confirmation at submit time:** the quiz result shows "Saved <date>" the moment you submit, not only after a reload.
+- **Copy:** two prompt hints read "Paste it into Muse or Claude" — now "ChatGPT or Claude".
+- 325 assertions (5 new).
+
 ## [3.6.0] — 2026-10-11
 
 ### Owner-reported fixes from real phone use

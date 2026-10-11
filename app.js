@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.6.0';
+const APP_VERSION = '3.6.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -866,6 +866,8 @@ function renderQuiz() {
       const a = savedAnswers[qi];
       quizAnswers[qi] = (typeof a === 'number' && a >= 0 && a < item.options.length) ? a : null;
     });
+  } else if (store.quizProfile && !quizFreshStart) {
+    quizAnswers.fill(null);
   }
   QUIZ.forEach((item, qi) => {
     const qDiv = document.createElement('div');
@@ -907,19 +909,21 @@ function renderQuiz() {
     const p = store.quizProfile;
     const band = BANDS.find(b => b.label === p.bandLabel) ||
       { label: p.bandLabel, index: p.index, conv: p.conv, why: '' };
-    renderQuizResult(band, p.total, p.max, p.date);
+    renderQuizResult(band, p.total, p.max, p.date, !!savedAnswers);
   }
   quizFreshStart = false;
 }
 
-function renderQuizResult(band, total, max, savedDate) {
+function renderQuizResult(band, total, max, savedDate, answersRestored) {
   const res = $('quiz-result');
   res.classList.remove('hidden');
   const convText = band.conv + '%';
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
     '<p class="fineprint">' + (savedDate
-      ? 'Saved ' + esc(savedDate) + ' · Score ' + total + ' / ' + max + ' — your answers are filled in below; change any of them and see your band again to update it.'
+      ? 'Saved ' + esc(savedDate) + ' · Score ' + total + ' / ' + max + (answersRestored
+        ? ' — your answers are filled in below; change any of them and see your band again to update it.'
+        : ' — this result was saved before answers were kept; answer the questions below to save your picks with it.')
       : 'Score ' + total + ' / ' + max + ' — educational starting point, not advice.') + '</p>' +
     '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent conviction stocks">' +
       '<div class="alloc-index" style="width:' + band.index + '%">' + band.index + '% index</div>' +
@@ -965,7 +969,7 @@ function showQuizResult() {
   const { total, max, band } = scoreRisk(quizAnswers);
   store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO(), answers: quizAnswers.slice() };
   saveStore(store);
-  renderQuizResult(band, total, max, null);
+  renderQuizResult(band, total, max, todayISO(), true);
   res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -1388,7 +1392,7 @@ function renderIdeaDetail(idea) {
 
 function renderAnalyzeSection(box, idea) {
   const sec = sectionShell('Second opinion',
-    'Turn everything above into one prompt. Paste it into Muse or Claude and let it stress-test your thinking — the numbers, the case for, the case against, the red flags. It analyzes; it never says "buy".');
+    'Turn everything above into one prompt. Paste it into ChatGPT or Claude and let it stress-test your thinking — the numbers, the case for, the case against, the red flags. It analyzes; it never says "buy".');
   sec.classList.add('analyze-sec');
   const ta = document.createElement('textarea');
   ta.className = 'analyze-prompt';
@@ -1966,7 +1970,7 @@ function buildDiscoverBox(trend) {
   box.className = 'discover-box';
   const intro = document.createElement('p');
   intro.className = 'fineprint';
-  intro.textContent = 'Paste this into Muse or Claude — it maps the trend into categories and names the companies in each. Analysis only, never "buy this one".';
+  intro.textContent = 'Paste this into ChatGPT or Claude — it maps the trend into categories and names the companies in each. Analysis only, never "buy this one".';
   box.appendChild(intro);
   const ta = document.createElement('textarea');
   ta.className = 'analyze-prompt';

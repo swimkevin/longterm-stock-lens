@@ -346,6 +346,7 @@ async function main() {
   document.querySelector('#quiz .btn.primary').click();
   const res = document.getElementById('quiz-result');
   assert(!res.classList.contains('hidden'), 'result appears after answering all questions');
+  assert(res.textContent.includes('Saved '), 'result confirms the save immediately (Saved <date> line, no reload needed)');
   assert(res.textContent.includes('80% index'), 'result shows 80% index allocation');
   assert(res.querySelector('.alloc-conv').textContent === '20%', 'conv segment uses short label');
   assert(res.getAttribute('role') === 'status', 'quiz result announced via role=status');
@@ -371,6 +372,21 @@ async function main() {
   const prof2 = readStore().quizProfile;
   assert(prof2.total === 15 && prof2.answers[0] === q1opts.length - 1,
     'changing an answer and re-submitting updates the saved profile');
+
+  // ---- legacy saved profile (score only, no answers — pre-3.6 saves) ----
+  console.log('legacy profile restore:');
+  window.localStorage.setItem(KEY, JSON.stringify({
+    schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { total: 13, max: 18, bandLabel: 'Balanced', index: 87, conv: 13, date: '2026-09-01' }
+  }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const lres = document.getElementById('quiz-result');
+  assert(!lres.classList.contains('hidden') && lres.textContent.includes('Your band: Balanced'),
+    'legacy profile result still renders');
+  assert(lres.textContent.includes('before answers were kept'), 'legacy result is honest that answers were not kept');
+  assert(document.querySelectorAll('#quiz .opt-btn.selected').length === 0,
+    'legacy profile restores no selections (nothing was stored)');
 
   // ---- migration through the real boot path ----
   console.log('migration via reloadJournal:');
@@ -878,6 +894,7 @@ async function main() {
   console.log('external links policy:');
   assert(document.querySelectorAll('a[href*="sec.gov"]').length === 0, 'no SEC/EDGAR links anywhere in the page');
   assert(!document.body.textContent.includes('SEC EDGAR'), 'footer and Learn no longer plug EDGAR');
+  assert(!document.body.textContent.includes('Muse or Claude'), 'prompt hints name ChatGPT or Claude, never the same tool twice');
 
   // ---- delete my data (two-step) + quiz retake ----
   console.log('data wipe + retake:');

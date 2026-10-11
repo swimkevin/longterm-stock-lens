@@ -5,7 +5,7 @@
 [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
 ![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-320%20assertions-brightgreen)
+![tests](https://img.shields.io/badge/tests-325%20assertions-brightgreen)
 
 **Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 
@@ -42,7 +42,7 @@ The **Scorecard** turns that record into hit rates by how sure you were, with ho
 - **Zero runtime dependencies, no build step.** One IIFE, vanilla JS + CSS custom properties. The whole app is `index.html` + `app.js` + `styles.css`, deployable to any static host.
 - **Local-first by design.** All data lives in `localStorage` (schema-versioned, with migrations from v1 journal formats forward). No accounts, no server, nothing to leak. Export to JSON/Markdown is built in.
 - **Pure logic, tested in isolation.** Scoring, check-in scheduling, the scorecard math, sealing, and prompt building are pure functions exposed on `globalThis.LongTermLens`; rendering is a separate layer on top.
-- **320 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
+- **325 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
 - **Design system, not vibes.** Token-based theming (light/dark), one accent color, one primary action per view, hairline surfaces. The UI benchmark is Claude/Linear restraint: nothing on screen that doesn't earn its place.
 - **Accessibility basics done properly:** focus rings, aria labels/pressed states, 44px targets, `prefers-reduced-motion`, keyboard shortcut (⌘K jumps to quick-add).
 
@@ -57,7 +57,7 @@ python3 -m http.server 8000   # or any static server
 # → http://localhost:8000
 
 npm install   # dev-only: jsdom for the test suite
-npm test      # 320 assertions
+npm test      # 325 assertions
 ```
 
 ## Project layout
