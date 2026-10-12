@@ -5,7 +5,7 @@
 [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
 ![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-354%20assertions-brightgreen)
+![tests](https://img.shields.io/badge/tests-367%20assertions-brightgreen)
 
 **Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 

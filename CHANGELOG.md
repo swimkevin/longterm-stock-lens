@@ -1,5 +1,12 @@
 # Changelog — Long-Term Lens
 
+## [4.2.0] — 2026-10-12
+
+### Profile explains itself (owner-directed)
+- The Profile tab — the first thing a new visitor sees — was the least explained page in the app. Its three-line disclaimer subtitle is now one line: "Six questions, one honest answer: how much of your money belongs in index funds — and how much in your own picks?"
+- Three dropdowns under it, the first open: **How this works** (6 questions → score 0–18 → one of four bands → index core + conviction slice, with a link onward to Learn's accounts section), **The four bands** (each band's split and a one-line gloss), **What this isn't** (not advice, nothing buys/sells/moves, retake when life changes).
+- Result-panel copy tightened to match (saved-date lines and the risk reminder are half their former length). A test pins the explainer's band figures to the live BANDS data so the two can never drift apart.
+
 ## [4.1.0] — 2026-10-11
 
 ### Dual-persona audit fixes (professional investor + FANG hiring manager)

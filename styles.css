@@ -320,3 +320,16 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible {
 .sealed-words { border-left: 3px solid var(--accent); padding: 0.15rem 0 0.15rem 0.9rem; margin: 0.6rem 0; }
 .sealed-words .note-text { font-size: 1.02rem; }
 .idea-filter { width: 100%; margin: 0 0 0.8rem; }
+
+/* Explainer accordions (Profile) */
+.explainer { margin: 0.4rem 0 1.2rem; }
+.explainer details { border-top: 1px solid var(--line); }
+.explainer details:last-child { border-bottom: 1px solid var(--line); }
+.explainer summary { cursor: pointer; list-style: none; padding: 0.75rem 0.1rem; font-weight: 600; font-size: 0.98rem; display: flex; justify-content: space-between; align-items: center; }
+.explainer summary::-webkit-details-marker { display: none; }
+.explainer summary::after { content: "›"; color: var(--muted); font-size: 1.25rem; line-height: 1; transform: rotate(90deg); transition: transform 0.18s ease; }
+.explainer details[open ] summary::after { transform: rotate(-90deg); }
+.explainer-body { padding: 0 0.1rem 0.9rem; color: var(--ink-2); }
+.explainer-body p { margin: 0.35rem 0; }
+.band-list { margin: 0.2rem 0; padding-left: 1.1rem; }
+.band-list li { margin: 0.3rem 0; }

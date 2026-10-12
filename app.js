@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.1.0';
+const APP_VERSION = '4.2.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -921,16 +921,15 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
     '<p class="fineprint">' + (savedDate
       ? 'Saved ' + esc(savedDate) + ' · Score ' + total + ' / ' + max + (answersRestored
-        ? ' — your answers are filled in below; change any of them and see your band again to update it.'
-        : ' — this result was saved before answers were kept; answer the questions below to save your picks with it.')
+        ? ' — answers filled in below; change any and resubmit to update.'
+        : ' — saved before answers were kept; answer below to store them with your result.')
       : 'Score ' + total + ' / ' + max + ' — educational starting point, not advice.') + '</p>' +
     '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent conviction stocks">' +
       '<div class="alloc-index" style="width:' + band.index + '%">' + band.index + '% index</div>' +
       '<div class="alloc-conv" style="width:' + band.conv + '%">' + convText + '</div>' +
     '</div>' +
     '<p>' + esc(band.why) + '</p>' +
-    '<p class="fineprint">Remember: a higher conviction-stock percentage always means higher risk. ' +
-    'Re-take this quiz when your life changes — a new job, a shorter timeline, or new debt all shift the math.</p>';
+    '<p class="fineprint">Higher conviction % = higher risk, always. Retake this when life changes.</p>';
   const retakeRow = document.createElement('div');
   retakeRow.className = 'btn-row';
   const retake = document.createElement('button');

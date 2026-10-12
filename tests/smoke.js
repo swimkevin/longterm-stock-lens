@@ -1023,6 +1023,32 @@ async function main() {
   assert(document.getElementById('accounts-part') !== null && document.getElementById('learn-checklist') !== null,
     'Learn jump targets exist');
 
+
+  // ---- v4.2: profile explainer ----
+  console.log('profile explainer:');
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const sub = document.querySelector('#screen-profile .subtitle');
+  assert(sub && sub.textContent.trim().length < 140 && !sub.textContent.includes('starting point for thinking'),
+    'profile subtitle is one concise line');
+  const expl = document.getElementById('profile-explainer');
+  assert(!!expl, 'profile explainer exists');
+  const dets = expl.querySelectorAll('details');
+  assert(dets.length === 3, 'explainer has three dropdowns');
+  assert(dets[0].open === true, 'first dropdown starts open (how it works)');
+  assert(dets[0].querySelector('summary').textContent === 'How this works', 'dropdown 1: how this works');
+  assert(dets[1].querySelector('summary').textContent === 'The four bands', 'dropdown 2: the four bands');
+  assert(dets[2].querySelector('summary').textContent === "What this isn't", 'dropdown 3: what this isn\'t');
+  const bandText = dets[1].textContent;
+  L.BANDS.forEach(b => {
+    assert(bandText.includes(b.label) && bandText.includes(b.index + '% index') && bandText.includes(b.conv + '%'),
+      'explainer band matches quiz data: ' + b.label + ' ' + b.index + '/' + b.conv);
+  });
+  const learnLink = expl.querySelector('[data-goto="learn"]');
+  assert(!!learnLink, 'explainer links onward to Learn');
+  learnLink.click();
+  assert(!document.getElementById('screen-learn').classList.contains('hidden'), 'explainer link lands on Learn');
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
   realErrors.forEach(e => console.error('    ' + e));
