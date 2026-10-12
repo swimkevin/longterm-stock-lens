@@ -317,3 +317,6 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.sealed-words { border-left: 3px solid var(--accent); padding: 0.15rem 0 0.15rem 0.9rem; margin: 0.6rem 0; }
+.sealed-words .note-text { font-size: 1.02rem; }
+.idea-filter { width: 100%; margin: 0 0 0.8rem; }

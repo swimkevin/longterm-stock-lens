@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.1.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -307,8 +307,9 @@ function buildAnalyzePrompt(idea) {
   const name = (idea && idea.name) || 'Unnamed idea';
   const tickers = (idea && idea.tickers) ? idea.tickers : 'no ticker';
   const th = (idea && idea.thesis) || {};
-  const belief = th.belief || notYet;
-  const falsify = th.falsify || notYet;
+  const sealedTh = (idea && idea.sealed) || {};
+  const belief = sealedTh.belief || th.belief || notYet;
+  const falsify = sealedTh.falsify || th.falsify || notYet;
   const conv = convictionOf(idea);
   const reviewBy = (idea && idea.reviewAt) || '(none set)';
 
@@ -356,7 +357,10 @@ function addMonths(dateStr, n) {
 }
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + day;
 }
 
 const REVIEW_INTERVALS = [1, 3, 6, 12];
@@ -1043,7 +1047,10 @@ function renderIdeasHome() {
       strong.textContent = c.overallRate + '%';
       panel.appendChild(strong);
       const txt = document.createElement('span');
-      txt.textContent = 'of your check-ins played out the way you said (' + c.yesCount + ' of ' + c.answered + ') — your scorecard so far.';
+      const totalCI = (store.ideas || []).reduce((n, i) => n + (i.reviewHistory || []).length, 0);
+      const earlyCI = totalCI - c.answered;
+      txt.textContent = 'of your check-ins with a verdict played out the way you said (' + c.yesCount + ' of ' + c.answered + ')' +
+        (earlyCI > 0 ? ' — plus ' + earlyCI + ' too early to tell.' : ' — your scorecard so far.');
       panel.appendChild(txt);
       const link = document.createElement('button');
       link.className = 'linklike';
@@ -1077,7 +1084,14 @@ function renderIdeasHome() {
   const list = $('ideas-list');
   list.innerHTML = '';
   const all = open.concat(resolved);
-  if (!all.length) {
+  const q = ideaFilterQuery;
+  const shown = q ? all.filter(i => (i.name + ' ' + (i.tickers || '')).toLowerCase().includes(q)) : all;
+  if (q && !shown.length) {
+    const none = document.createElement('p');
+    none.className = 'empty';
+    none.textContent = 'No ideas match "' + q + '" — clear the filter to see all ' + all.length + '.';
+    list.appendChild(none);
+  } else if (!all.length) {
     list.appendChild(emptyState({
       title: 'Your next ten-bagger starts here',
       body: 'Spot a trend, name a company, write two sentences about why. The app handles the rest — how sure you are, a second opinion from AI, and a nudge when it\'s time to check in.',
@@ -1085,9 +1099,9 @@ function renderIdeasHome() {
       actionLabel: 'Add your first idea'
     }));
   } else {
-    all.forEach(i => list.appendChild(ideaRow(i, { today })));
+    shown.forEach(i => list.appendChild(ideaRow(i, { today })));
   }
-  $('ideas-count').textContent = ideasLabel(all.length);
+  $('ideas-count').textContent = q ? shown.length + ' of ' + all.length + ' shown' : ideasLabel(all.length);
 
   $('export-json').disabled = !all.length;
   $('export-md').disabled = !all.length;
@@ -1196,6 +1210,32 @@ function renderIdeaDetail(idea) {
   const thH = document.createElement('h2');
   thH.textContent = 'What you think';
   th.appendChild(thH);
+  if (idea.sealed) {
+    const lockNote = document.createElement('p');
+    lockNote.className = 'fineprint';
+    lockNote.textContent = 'Locked in on ' + idea.sealed.date + ' — this is your record, exactly as you wrote it. It never changes; check-ins are where your thinking updates.';
+    th.appendChild(lockNote);
+    const words = document.createElement('div');
+    words.className = 'sealed-words';
+    const bq = document.createElement('p');
+    bq.className = 'note-text';
+    bq.textContent = idea.sealed.belief;
+    words.appendChild(bq);
+    if (idea.sealed.falsify) {
+      const fq = document.createElement('p');
+      fq.className = 'fineprint';
+      fq.textContent = 'What would prove me wrong: ' + idea.sealed.falsify;
+      words.appendChild(fq);
+    }
+    th.appendChild(words);
+    const spotS = spotPriceOf(idea);
+    if (spotS !== null) {
+      const spotted = document.createElement('p');
+      spotted.className = 'fineprint';
+      spotted.textContent = 'Spotted at $' + spotS + ' on ' + idea.priceLog[0].date + ' — locked in with your words.';
+      th.appendChild(spotted);
+    }
+  } else {
   const beliefLab = document.createElement('label');
   beliefLab.className = 'field';
   beliefLab.appendChild(document.createTextNode('What you think happens, and why'));
@@ -1260,6 +1300,7 @@ function renderIdeaDetail(idea) {
     }
   });
   th.appendChild(saveBtn);
+  }
   box.appendChild(th);
 
   const cv = document.createElement('section');
@@ -1678,6 +1719,21 @@ function renderReviewForm(card, idea, onDone) {
     : 'What does it cost today? Worth noting next to your call.';
   priceLab.appendChild(priceNowInput);
   form.appendChild(priceLab);
+  const spotForPreview = spotPriceOf(idea);
+  if (spotForPreview !== null) {
+    const preview = document.createElement('p');
+    preview.className = 'fineprint price-preview';
+    form.appendChild(preview);
+    priceNowInput.addEventListener('input', () => {
+      const v = parseFloat(priceNowInput.value);
+      if (isFinite(v) && v > 0) {
+        const pct = Math.round(((v - spotForPreview) / spotForPreview) * 100);
+        preview.textContent = 'That\u2019s ' + (pct >= 0 ? '+' : '') + pct + '% vs $' + spotForPreview + ' when you spotted it.';
+      } else {
+        preview.textContent = '';
+      }
+    });
+  }
 
   const row = document.createElement('div');
   row.className = 'btn-row';
@@ -1745,8 +1801,10 @@ function renderTrackRecord() {
     const strong = document.createElement('strong');
     strong.textContent = c.overallRate + '%';
     p.appendChild(strong);
-    p.appendChild(document.createTextNode(' of your check-ins played out for the reason you gave — ' +
-      c.yesCount + ' of ' + c.answered + '. Broken down by how sure you were:'));
+    const earlyTR = tr.reviews - c.answered;
+    p.appendChild(document.createTextNode(' of your check-ins with a verdict played out for the reason you gave — ' +
+      c.yesCount + ' of ' + c.answered + (earlyTR > 0 ? ' (the other ' + earlyTR + ' were too early to tell and don\'t count in this rate)' : '') +
+      '. Broken down by how sure you were:'));
     if (c.answered < 5) {
       const warn = document.createElement('span');
       warn.className = 'cal-caution';
@@ -1797,6 +1855,28 @@ function renderTrackRecord() {
   fine.textContent = 'Ideas you wrap up never disappear — they stay in your list, marked Resolved, so the record can\'t be quietly edited later. Hindsight is the enemy.';
   cal.appendChild(fine);
   box.appendChild(cal);
+
+  const moves = [];
+  (store.ideas || []).forEach(i => {
+    const sp = spotPriceOf(i);
+    if (sp) (i.reviewHistory || []).forEach(r => {
+      if (r.priceNow) moves.push(((r.priceNow - sp) / sp) * 100);
+    });
+  });
+  if (moves.length) {
+    const avg = Math.round(moves.reduce((a, b) => a + b, 0) / moves.length);
+    const mp = document.createElement('div');
+    mp.className = 'panel';
+    const mh = document.createElement('h3');
+    mh.textContent = 'The price side of your record';
+    mp.appendChild(mh);
+    const mt = document.createElement('p');
+    mt.textContent = 'Across the ' + moves.length + ' check-in' + (moves.length === 1 ? '' : 's') +
+      ' where you noted prices, the things you spotted moved ' + (avg >= 0 ? '+' : '') + avg +
+      '% on average between spotting them and checking in. That\u2019s your own journal math — no benchmark, no live feed — just what your record says.';
+    mp.appendChild(mt);
+    box.appendChild(mp);
+  }
 
   const hist = [];
   (store.ideas || []).forEach(idea => {
@@ -1962,6 +2042,7 @@ function trendRow(trend) {
 }
 
 let openDiscoverTrendId = null;
+let ideaFilterQuery = '';
 let discoverFeedback = '';
 
 function buildDiscoverBox(trend) {
@@ -2317,6 +2398,11 @@ function init() {
   renderTrackRecord();
   renderTrends();
   showScreen(store.quizProfile ? 'ideas' : 'profile');
+  const ideaFilterEl = $('idea-filter');
+  if (ideaFilterEl) ideaFilterEl.addEventListener('input', () => {
+    ideaFilterQuery = ideaFilterEl.value.trim().toLowerCase();
+    renderIdeasHome();
+  });
   $('qa-add').addEventListener('click', quickAddIdea);
   ['qa-name', 'qa-tickers'].forEach(id => {
     $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddIdea(); });

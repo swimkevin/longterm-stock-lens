@@ -771,7 +771,7 @@ async function main() {
   document.getElementById('export-json').click();
   document.getElementById('export-md').click();
   window.HTMLAnchorElement.prototype.click = origClick;
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = L.todayISO();
   assert(createdURLs.length === 2, 'two blobs created');
   assert(createdURLs[0].type === 'application/json', 'JSON blob has right type');
   assert(createdURLs[1].type === 'text/markdown', 'Markdown blob has right type');
@@ -941,6 +941,87 @@ async function main() {
   retakeBtn.click();
   assert(document.getElementById('quiz-result').classList.contains('hidden'), 'retake hides the result');
   assert(document.querySelectorAll('#quiz .opt-btn.selected').length === 0, 'retake clears all selections');
+
+
+  // ---- v4.1: dates are local, sealing is real, denominators are labeled ----
+  console.log('local dates + hard seal:');
+  const appSrc = require('fs').readFileSync(__dirname + '/../app.js', 'utf-8');
+  const tioBody = appSrc.slice(appSrc.indexOf('function todayISO()'), appSrc.indexOf('function todayISO()') + 260);
+  assert(tioBody.includes('getFullYear') && tioBody.includes('getMonth'), 'todayISO builds the LOCAL date');
+  assert(!appSrc.includes('toISOString'), 'no UTC stamps anywhere in app.js');
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(L.todayISO()), 'todayISO format');
+  const sealedPrompt = L.buildAnalyzePrompt({ name: 'SealTest', tickers: 'ST',
+    thesis: { belief: 'EDITED WORDS', falsify: 'EDITED FALSIFY' },
+    sealed: { belief: 'ORIGINAL WORDS', falsify: 'ORIGINAL FALSIFY', date: '2026-10-01' }, conviction: 3 });
+  assert(sealedPrompt.includes('MY THESIS: ORIGINAL WORDS'), 'second-opinion prompt uses the SEALED words, not later edits');
+  assert(sealedPrompt.includes('WHAT WOULD PROVE ME WRONG: ORIGINAL FALSIFY'), 'prompt uses the sealed falsify line');
+  // Build a fresh fixture on the wiped store: add + seal Seal Corp at $84
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Seal Corp';
+  document.getElementById('qa-tickers').value = 'SC';
+  document.getElementById('qa-add').click();
+  const scAreas = document.querySelectorAll('#idea-detail textarea');
+  scAreas[0].value = 'Sealed words stay sealed.';
+  scAreas[1].value = 'It ships.';
+  const scInputs = document.querySelectorAll('#idea-detail input');
+  scInputs[0].value = 'If it slips.';
+  Array.from(scInputs).find(i => i.type === 'number').value = '84';
+  document.querySelector('#idea-detail [data-action="thesis-save"]').click();
+  assert(document.querySelector('#idea-detail .sealed-words') !== null, 'sealed idea shows the locked-words view');
+  assert(document.querySelector('#idea-detail [data-action="thesis-save"]') === null, 'no thesis Save button after sealing');
+  assert(!Array.from(document.querySelectorAll('#idea-detail textarea:not(.analyze-prompt)')).some(t => t.value.includes('Sealed words')),
+    'no editable field carries the sealed belief (the read-only prompt box aside)');
+  assert(document.querySelector('#idea-detail .sealed-words').textContent.includes('Sealed words stay sealed.'),
+    'locked view quotes the sealed words');
+
+  console.log('check-in live preview + price stats:');
+  document.querySelector('#idea-detail [data-action="checkin-now"]').click();
+  const rfA = document.querySelector('#idea-detail .review-form');
+  const pnA = Array.from(rfA.querySelectorAll('input')).find(i => i.type === 'number');
+  pnA.value = '105';
+  pnA.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(rfA.querySelector('.price-preview').textContent.includes('+25%'), 'typing a price previews the move vs spotted (+25%)');
+  Array.from(rfA.querySelectorAll('.chip')).find(c => c.textContent.includes('Yes — for my reasons')).click();
+  rfA.querySelector('textarea').value = 'On track.';
+  Array.from(rfA.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
+  // a second, too-early check-in for the denominator line
+  const ciBtn2 = document.querySelector('#idea-detail [data-action="checkin-now"]');
+  assert(!!ciBtn2, 'check-in button returns after the first save');
+  ciBtn2.click();
+  const rfB = document.querySelector('#idea-detail .review-form');
+  rfB.querySelector('textarea').value = 'Too soon.';
+  Array.from(rfB.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
+  const scHist = readStore().ideas.find(i => i.name === 'Seal Corp').reviewHistory;
+  assert(scHist.length === 2 && scHist[0].priceNow === 105, 'both check-ins saved on the fixture');
+
+  console.log('denominator honesty + scorecard price side:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const stripTxt2 = document.getElementById('cal-strip').textContent;
+  assert(stripTxt2.includes('with a verdict'), 'strip labels its denominator as verdicts only');
+  assert(stripTxt2.includes('too early to tell'), 'strip names the too-early check-ins it excludes');
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  const trackTxt2 = document.getElementById('track-record').textContent;
+  assert(trackTxt2.includes('The price side of your record'), 'scorecard shows the price-side summary');
+  assert(trackTxt2.includes('+25% on average'), 'scorecard averages the priced moves (+25% on the single sample)');
+
+  console.log('ideas filter + learn anchors:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const filterEl = document.getElementById('idea-filter');
+  filterEl.value = 'seal';
+  filterEl.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(document.querySelectorAll('#ideas-list .idea-row').length === 1, 'filter narrows the ideas list');
+  assert(document.getElementById('ideas-count').textContent.includes('of'), 'count shows filtered share');
+  filterEl.value = 'zzz-nothing';
+  filterEl.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(document.getElementById('ideas-list').textContent.includes('No ideas match'), 'empty filter state explains itself');
+  filterEl.value = '';
+  filterEl.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(document.querySelectorAll('#ideas-list .idea-row').length === 1, 'clearing the filter restores the list');
+  document.querySelector('.nav-btn[data-nav="learn"]').click();
+  assert(document.querySelectorAll('#screen-learn a[href^="#learn-"], #screen-learn a[href="#accounts-part"]').length === 4,
+    'Learn carries four jump links');
+  assert(document.getElementById('accounts-part') !== null && document.getElementById('learn-checklist') !== null,
+    'Learn jump targets exist');
 
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');

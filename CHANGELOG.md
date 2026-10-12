@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [4.1.0] — 2026-10-11
+
+### Dual-persona audit fixes (professional investor + FANG hiring manager)
+- **Sealing is now real in the UI.** The audit caught that a sealed thesis stayed editable and the second-opinion prompt read the editable copy — three surfaces claimed "locked" while the page allowed edits. Now: once saved, "What you think" is a read-only locked view (your exact words + the date), and the prompt is built from the sealed record. Check-ins remain the place where thinking updates.
+- **Dates are local, not UTC.** todayISO() used toISOString(), so anything stamped after ~8pm Eastern landed on tomorrow — fatal for a timestamped journal. It now builds the local date; every stamp (opened, sealed, check-ins, quiz, exports) heals through the one function.
+- **Scorecard denominators labeled.** Headline rates now say "of your check-ins with a verdict" and name the too-early check-ins they exclude — on the Ideas strip and the Scorecard.
+- **Price context.** Check-in form previews the move live as you type a price ("+25% vs $84 when you spotted it"); the Scorecard gains "The price side of your record" — the average move across priced check-ins, labeled as journal math, not a benchmark.
+- **Scale + findability.** Ideas tab gets a name/ticker filter; Learn gets an "On this page" jump row so the Accounts/Roth section is no longer buried.
+- Audit verdicts: hiring manager — INTERVIEW; investor — all 2026 figures verified against the brief, both AI prompts called paste-worthy. 354 assertions.
+
 ## [4.0.0] — 2026-10-11
 
 ### Five tabs: the structure now matches the funnel (owner-directed)
