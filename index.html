@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Long-Term Lens — Your ideas about what's next</title>
 <meta name="description" content="An educational hub for beginner long-term investors: investor profile, ideas research loop, fundamentals micro-lessons, and account explainers. Educational only — not financial advice.">
-<link rel="stylesheet" href="styles.css?v=3.8.0">
+<link rel="stylesheet" href="styles.css?v=4.0.0">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1117">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -14,13 +14,11 @@
 <header class="topbar">
   <button class="brand" id="brand-home" aria-label="Go to Ideas home"><svg class="brand-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><circle cx="11" cy="11" r="2.5" fill="currentColor" stroke="none"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke-linecap="round"/></svg> Long-Term Lens</button>
   <nav class="nav" aria-label="Main sections">
+    <button class="nav-btn" data-nav="profile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke-linecap="round"/></svg>Profile</button>
     <button class="nav-btn active" data-nav="ideas"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.7 1 1.5 1 2.5h6c0-1 .2-1.8 1-2.5A6 6 0 0 0 12 3Z" stroke-linejoin="round"/></svg>Ideas</button>
     <button class="nav-btn" data-nav="reviews"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Check-ins <span id="reviews-badge" class="nav-badge hidden" aria-label="check-ins waiting"></span></button>
     <button class="nav-btn" data-nav="track"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20h16" stroke-linecap="round"/><path d="M7 20v-6M12 20V8M17 20v-9" stroke-linecap="round"/></svg>Scorecard</button>
-    <button class="nav-btn" data-nav="trends"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h6v6" stroke-linecap="round" stroke-linejoin="round"/></svg>Trends</button>
-    <button class="nav-btn" data-nav="profile"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke-linecap="round"/></svg>Profile</button>
     <button class="nav-btn" data-nav="learn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z" stroke-linejoin="round"/><path d="M5 17a3 3 0 0 1 3-3h11" stroke-linecap="round"/></svg>Learn</button>
-    <button class="nav-btn" data-nav="accounts"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18" stroke-linecap="round"/></svg>Accounts</button>
   </nav>
   <button id="theme-toggle" class="theme-toggle" aria-label="Toggle light and dark theme" title="Toggle theme"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 13.5A8.5 8.5 0 0 1 10.5 4 8.5 8.5 0 1 0 20 13.5Z" stroke-linejoin="round"/></svg></button>
 </header>
@@ -56,6 +54,40 @@
           <button id="qa-add" class="btn primary">Add idea</button>
         </div>
         <p class="fineprint">Just a name is enough — the idea opens as a draft you research one section at a time. Tip: press <kbd>⌘K</kbd> anywhere to jump here.</p>
+      </div>
+
+      <div id="trends-part">
+      <h2>Trends &amp; misses</h2>
+      <p class="subtitle">Catch the wave before you know the companies. Log a trend while it's
+        early — the shift you can see but can't invest in yet. Turn the promising ones into
+        research ideas with one tap. Mark the ones that got away and write down what they taught
+        you: your misses are the pattern library for the next wave.</p>
+
+      <h3>Spot a trend</h3>
+      <div class="panel quick-add">
+        <label class="field">Trend name
+          <input type="text" id="trend-name" maxlength="80" placeholder="e.g. AI coding agents">
+        </label>
+        <label class="field">Why this could matter — optional
+          <textarea id="trend-why" rows="2" maxlength="1000" placeholder="What are you actually seeing? Who's using it?"></textarea>
+        </label>
+        <p class="form-error hidden" id="trend-error" role="alert"></p>
+        <div class="btn-row">
+          <button id="trend-add" class="btn primary">Log trend</button>
+        </div>
+        <p class="fineprint">No company needed — that's the point. When a candidate emerges, one tap turns the trend into a research idea.</p>
+      </div>
+
+      <h3>Watching <span class="hint" id="trends-count"></span></h3>
+      <div id="trends-watching"></div>
+
+      <h3>Missed waves — the pattern library</h3>
+      <p class="fineprint">Re-read these before the next wave. What did your misses have in common?</p>
+      <div id="trends-missed"></div>
+
+      <h3>Became ideas</h3>
+      <div id="trends-chased"></div>
+    
       </div>
 
       <h2>All ideas <span class="hint" id="ideas-count"></span></h2>
@@ -104,40 +136,7 @@
   </section>
 
 
-  <section id="screen-trends" class="screen hidden">
-    <div class="wrap">
-      <h1>Trends &amp; misses</h1>
-      <p class="subtitle">Catch the wave before you know the companies. Log a trend while it's
-        early — the shift you can see but can't invest in yet. Turn the promising ones into
-        research ideas with one tap. Mark the ones that got away and write down what they taught
-        you: your misses are the pattern library for the next wave.</p>
-
-      <h2>Spot a trend</h2>
-      <div class="panel quick-add">
-        <label class="field">Trend name
-          <input type="text" id="trend-name" maxlength="80" placeholder="e.g. AI coding agents">
-        </label>
-        <label class="field">Why this could matter — optional
-          <textarea id="trend-why" rows="2" maxlength="1000" placeholder="What are you actually seeing? Who's using it?"></textarea>
-        </label>
-        <p class="form-error hidden" id="trend-error" role="alert"></p>
-        <div class="btn-row">
-          <button id="trend-add" class="btn primary">Log trend</button>
-        </div>
-        <p class="fineprint">No company needed — that's the point. When a candidate emerges, one tap turns the trend into a research idea.</p>
-      </div>
-
-      <h2>Watching <span class="hint" id="trends-count"></span></h2>
-      <div id="trends-watching"></div>
-
-      <h2>Missed waves — the pattern library</h2>
-      <p class="fineprint">Re-read these before the next wave. What did your misses have in common?</p>
-      <div id="trends-missed"></div>
-
-      <h2>Became ideas</h2>
-      <div id="trends-chased"></div>
-    </div>
-  </section>
+  
 
 
   <section id="screen-profile" class="screen hidden">
@@ -191,17 +190,12 @@
         <li><strong><em>A Random Walk Down Wall Street</em> — Burton Malkiel.</strong> The honest counter-argument: why beating the market is so hard, and why index funds are the default for most people.</li>
       </ul>
       <p class="fineprint">Read all three and you'll hold both sides of the argument in your head — which is exactly where a good investor lives.</p>
-    </div>
-  </section>
-
-
-  <section id="screen-accounts" class="screen hidden">
-    <div class="wrap">
-      <h1>Roth IRA &amp; account basics</h1>
+      <div id="accounts-part">
+      <h2>Accounts &amp; the Roth IRA</h2>
       <p class="subtitle"><strong>Where</strong> you invest matters almost as much as <strong>what</strong> you buy, because taxes
         compound too. This is general education, not tax advice — check <a href="https://www.irs.gov" target="_blank" rel="noopener">irs.gov</a> for current-year figures.</p>
 
-      <h2>The three account types</h2>
+      <h3>The three account types</h3>
       <div class="acct-cards">
         <div class="acct-card">
           <h3>Roth IRA</h3>
@@ -229,14 +223,14 @@
         </div>
       </div>
 
-      <h2>2026 contribution limits (verify at irs.gov)</h2>
+      <h3>2026 contribution limits (verify at irs.gov)</h3>
       <ul class="checklist">
         <li><strong>IRA (Roth or Traditional combined):</strong> $7,500 if under 50; $8,600 if 50+ (includes catch-up). Confirm the current year's figure at irs.gov before contributing.</li>
         <li><strong>401(k) employee contribution:</strong> $24,500 if under 50; higher with catch-up if 50+. Employer plans vary — check your plan documents.</li>
         <li><strong>Roth IRA income limits:</strong> direct contributions phase out above certain incomes — the full window is in the next section.</li>
       </ul>
 
-      <h2>The Roth income window — and how to get under it (2026, verify at irs.gov)</h2>
+      <h3>The Roth income window — and how to get under it (2026, verify at irs.gov)</h3>
       <p>Whether you can put money <em>directly</em> into a Roth IRA depends on your <strong>modified adjusted
         gross income (MAGI)</strong> — for most people, that's roughly your adjusted gross income. The 2026 windows:</p>
       <ul class="checklist">
@@ -264,23 +258,29 @@
         Roth IRA contribution can be made until April 15, 2027. Figures above are the IRS's 2026 numbers
         (Notice 2025-67) — verify at irs.gov before acting. General education, not tax advice.</p>
 
-      <h2>Why index funds fit tax-advantaged accounts so well</h2>
+      <h3>Why index funds fit tax-advantaged accounts so well</h3>
       <ol class="checklist">
         <li><strong>They rarely force taxable events on you.</strong> Broad index funds trade infrequently, so little of your return leaks to taxes each year — and inside a Roth/Traditional account, it wouldn't matter anyway.</li>
         <li><strong>Your conviction stocks can live anywhere,</strong> but long holds (1+ year) in a taxable account get favorable long-term capital-gains rates — another reason to buy and <em>hold</em>.</li>
         <li><strong>Common beginner structure:</strong> max out tax-advantaged accounts with index funds first, then hold a smaller conviction-stock slice wherever fits your plan. This mirrors the allocation bands on the <button class="inline-link" data-goto="profile">Profile</button> tab.</li>
       </ol>
       <p class="fineprint">Tip: many employers match 401(k) contributions — that's an instant return no stock can promise. Contribute at least enough to capture the full match before investing elsewhere.</p>
+    
+      </div>
+
     </div>
   </section>
+
+
+  
 </main>
 
 <footer class="footer">
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v3.8.0</span> · Your data stays in this browser. · <button id="btn-check-update" class="linklike">Check for updates</button></p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v4.0.0</span> · Your data stays in this browser. · <button id="btn-check-update" class="linklike">Check for updates</button></p>
 </footer>
 
-<script src="app.js?v=3.8.0"></script>
+<script src="app.js?v=4.0.0"></script>
 </body>
 </html>

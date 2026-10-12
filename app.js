@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '3.8.0';
+const APP_VERSION = '4.0.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1180,7 +1180,11 @@ function renderIdeaDetail(idea) {
       const tBtn = document.createElement('button');
       tBtn.className = 'inline-link';
       tBtn.textContent = tr.name;
-      tBtn.addEventListener('click', () => { renderTrends(); showScreen('trends'); });
+      tBtn.addEventListener('click', () => {
+        renderIdeasHome(); renderTrends(); showScreen('ideas');
+        const tp = document.getElementById('trends-part');
+        if (tp && tp.scrollIntoView) tp.scrollIntoView({ block: 'start' });
+      });
       meta.appendChild(tBtn);
     }
   }
@@ -2312,6 +2316,7 @@ function init() {
   renderReviews();
   renderTrackRecord();
   renderTrends();
+  showScreen(store.quizProfile ? 'ideas' : 'profile');
   $('qa-add').addEventListener('click', quickAddIdea);
   ['qa-name', 'qa-tickers'].forEach(id => {
     $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddIdea(); });
@@ -2357,9 +2362,8 @@ function init() {
 
   document.querySelector('.nav-btn[data-nav="reviews"]').addEventListener('click', renderReviews);
   document.querySelector('.nav-btn[data-nav="track"]').addEventListener('click', renderTrackRecord);
-  document.querySelector('.nav-btn[data-nav="trends"]').addEventListener('click', renderTrends);
   document.querySelector('.nav-btn[data-nav="profile"]').addEventListener('click', renderQuiz);
-  document.querySelector('.nav-btn[data-nav="ideas"]').addEventListener('click', renderIdeasHome);
+  document.querySelector('.nav-btn[data-nav="ideas"]').addEventListener('click', () => { renderIdeasHome(); renderTrends(); });
 }
 
 function reloadJournal() {

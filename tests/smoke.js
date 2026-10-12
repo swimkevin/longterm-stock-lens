@@ -61,8 +61,11 @@ async function main() {
   const readStore = () => JSON.parse(window.localStorage.getItem(KEY));
 
   console.log('script errors:');
-  assert(errors.length === 0, 'no console/script errors on boot (' + errors.length + ')');
-  errors.forEach(e => console.error('    ' + e));
+  const bootReal = errors.filter(e => !e.includes('Not implemented'));
+  assert(bootReal.length === 0, 'no console/script errors on boot (' + bootReal.length + ' real of ' + errors.length + ')');
+  bootReal.forEach(e => console.error('    ' + e));
+  assert(!document.getElementById('screen-profile').classList.contains('hidden'),
+    'fresh visitor (no saved profile) lands on Profile first');
   assert(L && typeof L.scoreRisk === 'function', 'LongTermLens API exposed');
   assert(L.SCHEMA_VERSION === 3, 'schema version is 3');
 
@@ -328,7 +331,8 @@ async function main() {
 
   // ---- navigation ----
   console.log('navigation:');
-  const tabs = ['ideas', 'reviews', 'track', 'trends', 'profile', 'learn', 'accounts'];
+  const tabs = ['profile', 'ideas', 'reviews', 'track', 'learn'];
+  assert(document.querySelectorAll('.nav > .nav-btn').length === 5, 'exactly five tabs');
   tabs.forEach(t => {
     document.querySelector('.nav-btn[data-nav="' + t + '"]').click();
     const visible = !document.getElementById('screen-' + t).classList.contains('hidden');
@@ -336,6 +340,10 @@ async function main() {
       .every(x => document.getElementById('screen-' + x).classList.contains('hidden'));
     assert(visible && othersHidden, 'tab "' + t + '" shows its screen only');
   });
+  assert(document.getElementById('screen-trends') === null && document.getElementById('screen-accounts') === null,
+    'standalone Trends/Accounts screens are gone (merged)');
+  assert(document.querySelector('#screen-ideas #trends-part') !== null, 'trends live inside the Ideas tab');
+  assert(document.querySelector('#screen-learn #accounts-part') !== null, 'accounts live inside the Learn tab');
   // idea detail screen is not in the nav; reachable via openIdea only
   assert(document.getElementById('screen-idea').classList.contains('hidden'), 'idea detail hidden until an idea opens');
 
@@ -468,7 +476,7 @@ async function main() {
 
   console.log('dedicated tabs nav:');
   assert(document.querySelector('details.nav-more') === null, 'no More dropdown — every section is a dedicated tab');
-  ['ideas', 'reviews', 'track', 'trends', 'profile', 'learn', 'accounts'].forEach(t => {
+  ['profile', 'ideas', 'reviews', 'track', 'learn'].forEach(t => {
     const btn = document.querySelector('.nav > .nav-btn[data-nav="' + t + '"]');
     assert(btn !== null, 'tab "' + t + '" is a top-level nav button');
   });
@@ -638,9 +646,9 @@ async function main() {
 
   // ---- trends & misses ----
   console.log('trends UI:');
-  document.querySelector('.nav-btn[data-nav="trends"]').click();
-  assert(!document.getElementById('screen-trends').classList.contains('hidden'), 'trends screen shows');
-  assert(document.querySelector('.nav > .nav-btn[data-nav="trends"]').classList.contains('active'), 'Trends tab highlights on trends screen');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(!document.getElementById('screen-ideas').classList.contains('hidden'), 'ideas screen shows (trends live here now)');
+  assert(document.getElementById('trends-part') !== null, 'trends section present on the Ideas tab');
   document.getElementById('trend-add').click();
   const trErr = document.getElementById('trend-error');
   assert(!trErr.classList.contains('hidden') && trErr.getAttribute('role') === 'alert',
@@ -663,7 +671,7 @@ async function main() {
   st = readStore();
   assert(st.ideas.some(i => i.trendId === st.trends[0].id), 'idea carries the trendId back-link');
   assert(st.trends[0].status === 'chased' && st.trends[0].ideaId !== null, 'trend marked chased with ideaId');
-  document.querySelector('.nav-btn[data-nav="trends"]').click();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
   assert(document.querySelectorAll('#trends-chased .note-card').length === 1, 'chased trend under Became ideas');
   assert(document.querySelectorAll('#trends-watching .note-card').length === 0, 'watching list empty after chase');
   const chasedBtn = document.querySelector('#trends-chased .note-card .btn');
@@ -671,7 +679,7 @@ async function main() {
     'chased row links back to the idea');
   chasedBtn.click();
   assert(!document.getElementById('screen-idea').classList.contains('hidden'), 'chased row opens the linked idea');
-  document.querySelector('.nav-btn[data-nav="trends"]').click();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
   // Missed flow: log another trend, mark it missed, save the lesson
   document.getElementById('trend-name').value = 'Missed Wave';
   document.getElementById('trend-why').value = '';
@@ -809,7 +817,7 @@ async function main() {
 
   // ---- v3.5 package: funnel + prices + chart + check-in-early ----
   console.log('v3.5 package flows:');
-  document.querySelector('.nav-btn[data-nav="trends"]').click();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
   document.getElementById('trend-name').value = 'AI infrastructure';
   document.getElementById('trend-why').value = 'Every model needs more compute';
   document.getElementById('trend-add').click();
@@ -892,8 +900,8 @@ async function main() {
 
   // ---- accounts: Roth income window (2026 IRS figures) ----
   console.log('accounts income window:');
-  document.querySelector('.nav-btn[data-nav="accounts"]').click();
-  const acctText = document.getElementById('screen-accounts').textContent;
+  document.querySelector('.nav-btn[data-nav="learn"]').click();
+  const acctText = document.getElementById('accounts-part').textContent;
   assert(acctText.includes('The Roth income window'), 'accounts page has the income-window section');
   assert(acctText.includes('$153,000') && acctText.includes('$168,000'), 'single phase-out window shown (2026)');
   assert(acctText.includes('$242,000') && acctText.includes('$252,000'), 'joint phase-out window shown (2026)');

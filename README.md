@@ -5,7 +5,7 @@
 [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
 ![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-331%20assertions-brightgreen)
+![tests](https://img.shields.io/badge/tests-332%20assertions-brightgreen)
 
 **Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 
@@ -22,7 +22,7 @@ This is the tool that keeps score.
 
 ## What it does
 
-A calm place for your ideas about the next big thing — AI, AI infrastructure, crypto, whatever's coming — built around one loop:
+A calm place for your ideas about the next big thing — AI, AI infrastructure, crypto, whatever's coming — in **five tabs: Profile · Ideas · Check-ins · Scorecard · Learn.** New visitors land on Profile first (your investor profile frames everything else); after that, the app opens on Ideas. Built around one loop:
 
 1. **Spot it** — log a trend you're watching, or just name a company.
 2. **Find companies** — each trend carries a ready-made prompt that maps it into categories and names the public companies in each (analysis only, never "buy this"). One tap turns a candidate into an idea, still linked to its trend.
@@ -30,6 +30,8 @@ A calm place for your ideas about the next big thing — AI, AI infrastructure, 
 4. **Say how sure you are** — one tap, 1–5.
 5. **Get a second opinion** — the app builds one prompt from everything you wrote; paste it into any AI for the numbers, the case for, the case against. It analyzes; it never says "buy."
 6. **Check in** — any time you like (the date is just a nudge). The app shows you your own locked-in words — and the price then vs. now — and asks one question: *did it play out the way you said?*
+
+Trends and ideas share the Ideas tab on purpose — a trend is just an idea before it has a company. Missed a wave? It goes in the same place, under **Missed waves**, with the lesson it taught you: your pattern library for the next one. The Learn tab carries the 13 micro-lessons plus the account basics — including the **2026 Roth IRA income window** ($153k–$168k single) and how pre-tax 401(k) contributions can legitimately bring you under it.
 
 ## The interesting part: the Scorecard
 
@@ -40,9 +42,10 @@ The **Scorecard** turns that record into hit rates by how sure you were, with ho
 ## Engineering notes
 
 - **Zero runtime dependencies, no build step.** One IIFE, vanilla JS + CSS custom properties. The whole app is `index.html` + `app.js` + `styles.css`, deployable to any static host.
+- **Structure follows the funnel.** No dropdown menus, no buried pages: five always-visible tabs, trends merged into Ideas, accounts merged into Learn. A boot-time version check reloads the app once when a newer build exists, so a phone can never run a half-stale mix of old script and new page.
 - **Local-first by design.** All data lives in `localStorage` (schema-versioned, with migrations from v1 journal formats forward). No accounts, no server, nothing to leak. Export to JSON/Markdown is built in.
 - **Pure logic, tested in isolation.** Scoring, check-in scheduling, the scorecard math, sealing, and prompt building are pure functions exposed on `globalThis.LongTermLens`; rendering is a separate layer on top.
-- **331 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
+- **332 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
 - **Design system, not vibes.** Token-based theming (light/dark), one accent color, one primary action per view, hairline surfaces. The UI benchmark is Claude/Linear restraint: nothing on screen that doesn't earn its place.
 - **Accessibility basics done properly:** focus rings, aria labels/pressed states, 44px targets, `prefers-reduced-motion`, keyboard shortcut (⌘K jumps to quick-add).
 
@@ -57,7 +60,7 @@ python3 -m http.server 8000   # or any static server
 # → http://localhost:8000
 
 npm install   # dev-only: jsdom for the test suite
-npm test      # 331 assertions
+npm test      # 332 assertions
 ```
 
 ## Project layout

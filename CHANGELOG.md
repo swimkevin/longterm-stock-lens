@@ -1,5 +1,13 @@
 # Changelog — Long-Term Lens
 
+## [4.0.0] — 2026-10-11
+
+### Five tabs: the structure now matches the funnel (owner-directed)
+- **Trends merged into Ideas.** They were two halves of one funnel on separate pages — a trend is an idea before it has a company. The Ideas tab now runs: quick-add → Trends & misses (spot/find companies/became ideas/missed waves) → all ideas → your data. Idea pages keep their "from trend:" link, which now jumps to the trends section of the same tab.
+- **Accounts merged into Learn.** Lessons and account/tax reference are both "understand it" content; the Roth window section from 3.8.0 sits at the end of Learn under "Accounts & the Roth IRA".
+- **Profile first.** Tab order is Profile · Ideas · Check-ins · Scorecard · Learn, and a first-time visitor (no saved profile) lands on Profile — the profile frames everything else. Returning users open on Ideas.
+- 332 assertions, updated for the new structure (landing rule, merged sections, tab integrity).
+
 ## [3.8.0] — 2026-10-11
 
 ### Accounts: the Roth income window, with the real 2026 IRS numbers
