@@ -890,6 +890,17 @@ async function main() {
   earlyBtn.click();
   assert(document.querySelector('#idea-detail .review-form'), 'Check in early opens the idea with the form ready');
 
+  // ---- accounts: Roth income window (2026 IRS figures) ----
+  console.log('accounts income window:');
+  document.querySelector('.nav-btn[data-nav="accounts"]').click();
+  const acctText = document.getElementById('screen-accounts').textContent;
+  assert(acctText.includes('The Roth income window'), 'accounts page has the income-window section');
+  assert(acctText.includes('$153,000') && acctText.includes('$168,000'), 'single phase-out window shown (2026)');
+  assert(acctText.includes('$242,000') && acctText.includes('$252,000'), 'joint phase-out window shown (2026)');
+  assert(acctText.includes('$24,500'), 'pre-tax 401(k) lever quantified');
+  assert(acctText.includes('backdoor Roth') && acctText.includes('pro-rata'), 'backdoor path + its caution included');
+  assert(acctText.includes('verify at irs.gov'), 'figures carry the verify-at-irs.gov label');
+
   // ---- no EDGAR links anywhere (owner directive) ----
   console.log('external links policy:');
   assert(document.querySelectorAll('a[href*="sec.gov"]').length === 0, 'no SEC/EDGAR links anywhere in the page');

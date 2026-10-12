@@ -1,5 +1,12 @@
 # Changelog — Long-Term Lens
 
+## [3.8.0] — 2026-10-11
+
+### Accounts: the Roth income window, with the real 2026 IRS numbers
+- New section **"The Roth income window — and how to get under it"** on the Accounts tab, verified against IRS Notice 2025-67 (IR-2025-111): contribution $7,500/$8,600; single phase-out $153,000–$168,000 MAGI; joint $242,000–$252,000; the ramp (not a cliff) explained.
+- **How to qualify:** pre-tax 401(k) contributions (up to $24,500) lower MAGI dollar-for-dollar — with a worked example ($172k salary → ~$147.5k counting → full Roth unlocked); HSA via payroll ($4,400/$8,750, Rev. Proc. 2025-19); pre-tax premiums/FSA. What does NOT work: Roth 401(k), itemized deductions, and the deductible traditional IRA (added back by design).
+- **Backdoor Roth** explained with its two real cautions (pro-rata rule, Form 8606), plus the timing asymmetry (401(k) moves through that year's paychecks; IRA contributions run to April 15, 2027). Verify-at-irs.gov labels throughout; 331 assertions.
+
 ## [3.7.0] — 2026-10-11
 
 ### Navigation rebuilt (owner-reported on iPhone) + stale-cache self-heal
