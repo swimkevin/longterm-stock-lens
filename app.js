@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.0';
+const APP_VERSION = '4.3.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -2458,6 +2458,10 @@ function init() {
     store = blankStore();
     saveStore(store);
     lessonQuizState = {};
+    quizAnswers.fill(null);
+    const qr = $('quiz-result');
+    if (qr) { qr.classList.add('hidden'); qr.innerHTML = ''; }
+    renderQuiz();
     renderIdeasHome();
     renderReviews();
     renderTrends();

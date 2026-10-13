@@ -930,6 +930,8 @@ async function main() {
   assert(st.ideas.length === 0 && st.trends.length === 0, 'second click wipes ideas and trends');
   assert(delBtn.textContent.includes('Deleted'), 'wipe gives feedback');
   document.querySelector('.nav-btn[data-nav="profile"]').click();
+  assert(document.getElementById('quiz-result').classList.contains('hidden'), 'wipe hides the saved quiz result');
+  assert(document.querySelectorAll('#quiz .opt-btn.selected').length === 0, 'wipe clears pressed quiz answers');
   const qBtns = document.querySelectorAll('#quiz .opt-btn');
   assert(qBtns.length > 0, 'quiz renders for retake test');
   // answer every question via first options, submit, then retake

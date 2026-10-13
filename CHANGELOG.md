@@ -1,5 +1,10 @@
 # Changelog — Long-Term Lens
 
+## [4.3.1] — 2026-10-13
+
+### "Delete my data" also clears the quiz (live-regression follow-up)
+- Deleting all data cleared the stored profile but left the in-memory quiz answers pressed and the old "Saved … Score 18/18" result panel on screen. The wipe now resets the quiz answers, hides the result, and re-renders the quiz, so the Profile tab is genuinely fresh after a delete. 2 new assertions; 377 assertions green.
+
 ## [4.3.0] — 2026-10-13
 
 ### Thesis draft survives re-renders (live-regression fix, owner-visible)
