@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.3.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -554,6 +554,23 @@ function sealThesis(idea, today) {
   return Object.assign({}, idea, {
     sealed: { belief, falsify: (idea.thesis.falsify || '').trim(), date: t },
   });
+}
+
+// Copies whatever the user has typed into the (still unsealed) thesis form into
+// the idea's thesis draft, so a detail re-render (conviction tap, check-in
+// save, review-by change) can't silently wipe it. Sealed ideas have no form,
+// so this is a no-op for them.
+function captureThesisDraft(i) {
+  const det = document.getElementById('idea-detail');
+  if (!det) return;
+  const b = det.querySelector('.thesis-belief');
+  const f = det.querySelector('.thesis-falsify');
+  const p = det.querySelector('.thesis-price');
+  if (!b && !f && !p) return;
+  i.thesis = i.thesis || {};
+  if (b) i.thesis.belief = b.value;
+  if (f) i.thesis.falsify = f.value;
+  if (p) { if (p.value) i.thesis.priceDraft = p.value; else delete i.thesis.priceDraft; }
 }
 
 function calibration(ideas) {
@@ -1109,7 +1126,7 @@ function renderIdeasHome() {
   if (due.length) {
     badge.textContent = due.length;
     badge.classList.remove('hidden');
-    badge.setAttribute('aria-label', due.length + (due.length === 1 ? ' review due' : ' reviews due'));
+    badge.setAttribute('aria-label', due.length + (due.length === 1 ? ' check-in ready' : ' check-ins ready'));
   } else {
     badge.textContent = '';
     badge.classList.add('hidden');
@@ -1241,6 +1258,7 @@ function renderIdeaDetail(idea) {
   const belief = document.createElement('textarea');
   belief.rows = 3;
   belief.maxLength = 2000;
+  belief.classList.add('thesis-belief');
   belief.placeholder = 'One or two sentences: what you think happens, and the reasons.';
   belief.value = (idea.thesis && idea.thesis.belief) || '';
   beliefLab.appendChild(belief);
@@ -1251,6 +1269,7 @@ function renderIdeaDetail(idea) {
   const falsify = document.createElement('input');
   falsify.type = 'text';
   falsify.maxLength = 500;
+  falsify.classList.add('thesis-falsify');
   falsify.placeholder = 'Be specific \u2014 write it while you\u2019re being honest with yourself.';
   falsify.value = (idea.thesis && idea.thesis.falsify) || '';
   falsLab.appendChild(falsify);
@@ -1270,7 +1289,9 @@ function renderIdeaDetail(idea) {
     priceInput.type = 'number';
     priceInput.min = '0';
     priceInput.step = '0.01';
+    priceInput.classList.add('thesis-price');
     priceInput.placeholder = 'e.g. 84.50 — whatever it costs today';
+    if (idea.thesis && idea.thesis.priceDraft) priceInput.value = idea.thesis.priceDraft;
     priceLab.appendChild(priceInput);
     th.appendChild(priceLab);
   }
@@ -1319,7 +1340,7 @@ function renderIdeaDetail(idea) {
     b.setAttribute('aria-checked', conv === n ? 'true' : 'false');
     b.setAttribute('aria-label', n + ' out of 5');
     b.addEventListener('click', () => {
-      updateIdea(idea.id, i => { i.conviction = n; });
+      updateIdea(idea.id, i => { i.conviction = n; captureThesisDraft(i); });
       renderIdeaDetail(getIdea(idea.id));
     });
     cvRow.appendChild(b);
@@ -1363,7 +1384,7 @@ function renderIdeaDetail(idea) {
   revDate.addEventListener('change', () => {
     const next = setReviewAt(idea, revDate.value);
     if (!next) { revDate.value = reviewAtOf(idea) || ''; return; }
-    updateIdea(idea.id, () => next);
+    updateIdea(idea.id, i => { captureThesisDraft(i); return Object.assign(i, next); });
     renderIdeasHome();
     openIdea(idea.id);
   });
@@ -1745,7 +1766,7 @@ function renderReviewForm(card, idea, onDone) {
       outcome, reasonMatch, note: ta.value.trim(), nextMonths: sel.value,
       priceNow: isFinite(pn) && pn > 0 ? pn : null,
     }, todayISO());
-    updateIdea(idea.id, () => updated);
+    updateIdea(idea.id, () => { captureThesisDraft(updated); return updated; });
     activeReviewId = null;
     renderIdeasHome();
     renderReviews();
@@ -1755,7 +1776,7 @@ function renderReviewForm(card, idea, onDone) {
   const cancel = document.createElement('button');
   cancel.className = 'btn';
   cancel.textContent = 'Cancel';
-  cancel.addEventListener('click', () => { activeReviewId = null; if (onDone) { onDone(); } else { renderReviews(); } });
+  cancel.addEventListener('click', () => { activeReviewId = null; captureThesisDraft(getIdea(idea.id)); saveStore(store); if (onDone) { onDone(); } else { renderReviews(); } });
   row.appendChild(cancel);
   form.appendChild(row);
   card.appendChild(form);

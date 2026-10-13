@@ -543,6 +543,8 @@ async function main() {
   assert(st.ideas.find(i => i.name === 'Review Co').reviewAt === todayStr, 'review-by date saved to the store');
   assert(!document.getElementById('reviews-badge').classList.contains('hidden') &&
     document.getElementById('reviews-badge').textContent === '1', 'Reviews badge appears when due today');
+  assert(document.getElementById('reviews-badge').getAttribute('aria-label') === '1 check-in ready',
+    'badge aria-label uses plain language');
   document.querySelector('.nav-btn[data-nav="reviews"]').click();
   assert(document.querySelectorAll('#reviews-list .entry.due').length === 1, 'due-today idea surfaces in Reviews');
   // Review now from the detail page, without waiting for the date.
@@ -803,6 +805,7 @@ async function main() {
   // ---- disclaimers ----
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   assert(document.querySelector('.disclaimer-banner').textContent.includes('not financial advice'), 'hero disclaimer present');
+  assert(document.querySelector('#screen-profile .disclaimer-banner').textContent.includes('not financial advice'), 'profile hero carries the disclaimer');
   assert(document.querySelector('.footer').textContent.includes('Educational only, not financial advice'), 'footer disclaimer present');
 
   // ---- version consistency (partial bumps caused a false update prompt in v1.4.2) ----
@@ -1048,6 +1051,30 @@ async function main() {
   learnLink.click();
   assert(!document.getElementById('screen-learn').classList.contains('hidden'), 'explainer link lands on Learn');
   document.querySelector('.nav-btn[data-nav="profile"]').click();
+
+  // ---- v4.3: typing a thesis then tapping conviction must not wipe the draft ----
+  console.log('thesis draft survives re-renders:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Draft Corp';
+  document.getElementById('qa-tickers').value = 'DC';
+  document.getElementById('qa-add').click();
+  document.querySelector('#idea-detail .thesis-belief').value = 'Draft survives conviction taps.';
+  document.querySelector('#idea-detail .thesis-falsify').value = 'Only if the code regresses.';
+  document.querySelector('#idea-detail .thesis-price').value = '120';
+  // tap "How sure are you?" BEFORE saving — the reported bug wiped the typed text here
+  Array.from(document.querySelectorAll('#idea-detail .conv-btn')).find(b => b.textContent === '4').click();
+  assert(document.querySelector('#idea-detail .thesis-belief').value === 'Draft survives conviction taps.',
+    'belief text survives a conviction tap');
+  assert(document.querySelector('#idea-detail .thesis-falsify').value === 'Only if the code regresses.',
+    'falsify text survives a conviction tap');
+  assert(document.querySelector('#idea-detail .thesis-price').value === '120',
+    'price draft survives a conviction tap');
+  document.querySelector('#idea-detail [data-action="thesis-save"]').click();
+  assert(document.querySelector('#idea-detail .sealed-words') !== null, 'drafted idea shows the locked view after Save');
+  assert(document.querySelector('#idea-detail .sealed-words').textContent.includes('Draft survives conviction taps.'),
+    'locked view quotes the drafted words');
+  assert(document.getElementById('idea-detail').textContent.includes('Spotted at $120'),
+    'drafted price logged at seal');
 
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');

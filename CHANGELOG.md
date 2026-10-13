@@ -1,5 +1,13 @@
 # Changelog — Long-Term Lens
 
+## [4.3.0] — 2026-10-13
+
+### Thesis draft survives re-renders (live-regression fix, owner-visible)
+- The live regression check caught that tapping "How sure are you?" rebuilt the idea page and silently discarded anything typed into the not-yet-saved thesis form — a Save after that sealed nothing, and the typed "What would prove me wrong" text was gone for good. Conviction taps, review-by date changes, and check-in save/cancel on the idea page now capture the thesis draft (words, prove-me-wrong, spotted-price) into the store before any re-render; the form reopens with the draft intact.
+- Profile hero now carries the educational-use disclaimer banner (it is the first screen new visitors see; previously only the Ideas hero had it).
+- The Check-ins due-count badge's screen-reader label now says "N check-in(s) ready" instead of the work-sounding "review(s) due".
+- 8 new assertions pin the fix: draft survives a conviction tap (words + price), seals cleanly on Save, profile hero carries the disclaimer, badge label uses plain language. 375 assertions green.
+
 ## [4.2.0] — 2026-10-12
 
 ### Profile explains itself (owner-directed)

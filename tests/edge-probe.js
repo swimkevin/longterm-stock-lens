@@ -1,5 +1,8 @@
 /* Edge-case probe for the lens daily loop: rapid clicks, long/emoji names,
- * migration, export contents. Reuses the smoke harness pattern. */
+ * migration, export contents. Reuses the smoke harness pattern.
+ * jsdom quirks baked in: window.location.reload() does NOT navigate (use
+ * L.reloadJournal() for the boot path), window.scrollTo is stubbed, and
+ * journalToJSON returns a string (JSON.parse it). */
 'use strict';
 const fs = require('fs');
 const http = require('http');
@@ -31,14 +34,14 @@ async function main() {
   const errors = [];
   vc.on('jsdomError', e => errors.push('jsdomError: ' + e.message));
   vc.on('error', (...a) => errors.push('console.error: ' + a.join(' ')));
-  const dom = new JSDOM(html, { url: 'http://127.0.0.1:' + port + '/index.html', resources: 'usable', runScripts: 'dangerously', virtualConsole: vc });
+  const dom = new JSDOM(html, { url: 'http://127.0.0.1:' + port + '/index.html', resources: 'usable', runScripts: 'dangerously', virtualConsole: vc, beforeParse(window) { window.scrollTo = () => {}; } });
   await new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('load timeout')), 15000);
     dom.window.addEventListener('load', () => { clearTimeout(t); resolve(); });
   });
   const { window } = dom;
   const { document } = window;
-  window.scrollTo = () => {}; // jsdom doesn't implement it; silence the noise
+  // (scrollTo stubbed in beforeParse — app calls it at boot)
   const L = window.LongTermLens;
   const KEY = 'longterm-stock-lens-v1';
 
