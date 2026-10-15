@@ -503,6 +503,11 @@ async function main() {
   assert(L.isNewerVersion('1.4.1', '1.4.0') === true, 'newer patch detected');
   assert(L.isNewerVersion('1.4.0', '1.4.0') === false, 'same version is not newer');
   assert(L.isNewerVersion('1.3.1', '1.4.0') === false, 'stale cached version.txt never triggers a false update');
+  const appSrcUpdate = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
+  assert(/fetch\('version\.txt\?v=' \+ Date\.now\(\)\)/.test(appSrcUpdate),
+    'boot version check fetch is cache-busted (no stale version.txt phantom notice)');
+  assert(appSrcUpdate.includes("sessionStorage.getItem('lrl-healed-'"),
+    'self-heal loop guard intact');
 
   console.log('idea detail back + XSS in name:');
   document.getElementById('idea-back').click();
