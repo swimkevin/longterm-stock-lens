@@ -2,7 +2,7 @@
 
 ## What the suite is
 
-One file, `tests/smoke.js`, run by `npm test`. **269 assertions**, all
+One file, `tests/smoke.js`, run by `npm test`. **377 assertions**, all
 passing. It has two halves:
 
 1. **Pure-logic assertions** — the DOM-free core exposed on
@@ -19,11 +19,13 @@ passing. It has two halves:
    script errors, clicks every nav tab, completes the investor-profile quiz
    (result persisted), quick-adds an idea, fills the thesis, taps
    conviction, deletes an idea end-to-end (click-through, not just
-   presence), completes a review (intact/changed/resolved), verifies the
-   due queue sorts oldest-first, the calibration view counts reviews, a
-   lesson quiz earns its badge, the export download contract (Blob types,
-   dated filenames, object-URL wiring), and verifies `localStorage`
-   round-trips including a seeded v0.x migration.
+   presence), completes a check-in (verdict: played out for my reasons /
+   moved for other reasons / too early to tell; thesis still holds /
+   changed / done), verifies the check-ins queue sorts oldest-first,
+   the Scorecard labels its denominator, a lesson quiz earns its badge,
+   the export download contract (Blob types, dated filenames, object-URL
+   wiring), and verifies `localStorage` round-trips including a seeded
+   v0.x migration.
 
 ## The rules
 
@@ -49,9 +51,9 @@ leave no `onerror` handlers anywhere in the idea detail.
 - **No integration tests for price feeds — because there are no price
   feeds.** By design (see ADR 0004): the app fetches nothing, so there
   is nothing to mock, stub, or contract-test.
-- jsdom is a dev-only dependency loaded from the sibling
-  `poker-sparring` workspace install; the shipped site has zero
-  dependencies, so the test harness can never leak into production.
+- jsdom is a dev-only dependency declared in `package.json`; the
+  shipped site has zero dependencies, so the test harness can never leak
+  into production.
 
 ## Verification notes
 

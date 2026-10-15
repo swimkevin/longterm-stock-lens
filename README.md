@@ -81,7 +81,7 @@ Every field is a tax on every future idea. The feature set stays small on purpos
 
 ## Roadmap
 
-Honest version: the Scorecard gets more valuable with every real check-in, and that takes calendar time, not code. Next up is in [docs/ROADMAP.md](docs/ROADMAP.md) — trends pattern library, optional cloud backup, and richer scorecard cuts once there's real data to cut.
+Honest version: the Scorecard gets more valuable with every real check-in, and that takes calendar time, not code. Next up is in [docs/ROADMAP.md](docs/ROADMAP.md) — README screenshots (real captures only) and deeper calibration stats once real check-ins earn them. What it will *not* add: cloud sync (local-first is the point), live prices, or stock recommendations. Those are deliberate trade-offs, not gaps.
 
 ---
 

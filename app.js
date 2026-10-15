@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.1';
+const APP_VERSION = '4.3.2';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');

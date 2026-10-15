@@ -1,5 +1,13 @@
 # Changelog — Long-Term Lens
 
+## [4.3.2] — 2026-10-14
+
+### Debloat + docs brought current with the v4.x reality
+- Removed dead CSS (`.review-controls` — two rules with no call sites anywhere; verified by sweep, not by eye).
+- `docs/ARCHITECTURE.md` corrected: the screen table listed `trends` and `accounts` as separate tabs (gone since v4.0.0), and the sealed-thesis note described a working-copy edit path (gone since v4.1.0). Now documents the five tabs, read-only-after-sealing, local-date stamps, and the real 377-assertion count. `docs/TESTING.md` updated the same (377 count, check-in flow wording, jsdom as a declared local devDependency).
+- `docs/ROADMAP.md`: category-level allocation guidance moved from Next to Deferred per the owner's explicit deprioritization; a compact v3.1 → v4.3.1 shipped entry now points to the changelog instead of stopping at v3.0.
+- README Roadmap section now says what the app will *not* add — cloud sync (local-first is the point), live prices, stock recommendations — as deliberate trade-offs, not gaps.
+
 ## [4.3.1] — 2026-10-13
 
 ### "Delete my data" also clears the quiz (live-regression follow-up)

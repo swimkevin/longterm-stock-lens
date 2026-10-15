@@ -14,10 +14,10 @@ computes per-conviction hit rates. The architecture exists to serve that one loo
 
 | File | Role |
 |---|---|
-| `index.html` | App shell. Screens toggled by `data-nav` buttons: `ideas` (home), `idea` (detail), `reviews`, `track` (Calibration), `trends`, `profile` (investor quiz), `learn` (micro-lessons), `accounts`. Content sections are static HTML; dynamic regions are empty containers filled by `app.js`. |
+| `index.html` | App shell. Five always-visible tabs toggled by `data-nav` buttons: `profile` (investor quiz — first screen for new visitors), `ideas` (home; Trends live here inside the Ideas tab), `idea` (detail), `reviews` (Check-ins), `track` (Scorecard), `learn` (micro-lessons; Accounts closes out this tab). No More menu, no separate Trends/Accounts screens. Content sections are static HTML; dynamic regions are empty containers filled by `app.js`. |
 | `styles.css` | Calm research theme via CSS custom properties (dark + light themes). Responsive, `prefers-reduced-motion` support, `:focus-visible` states, 44px touch targets. |
 | `app.js` | All logic in one IIFE. DOM-free pure functions (`scoreRisk`, `makeIdea`, `convictionOf`, `sealThesis`, `applyReview`, `calibration`, `trackRecord`, `migrateStore`, `buildAnalyzePrompt`, …) are exposed on `globalThis.LongTermLens` for the Node test suite. |
-| `tests/smoke.js` | Node + jsdom suite (269 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
+| `tests/smoke.js` | Node + jsdom suite (377 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
 | `tests/edge-probe.js` | Kept harness for edge cases (XSS probes, oversized input, legacy stores). |
 
 ## Data flow
@@ -26,12 +26,13 @@ computes per-conviction hit rates. The architecture exists to serve that one loo
 Quick-add / ⌘K --makeIdea--> idea { thesis, sealed, conviction, reviewAt, reviewHistory }
 Thesis first save --sealThesis--> idea.sealed = { belief, falsify, date }  (never edited again)
 Review --applyReview--> entry { date, outcome, reasonMatch, conviction, note }
-All entries --calibration--> per-level hit rates + pattern insight --> Calibration view + home strip
+All entries --calibration--> per-level hit rates + pattern insight --> Scorecard view + home strip
 Idea + sealed record --buildAnalyzePrompt--> verification prompt --> user's AI tool
 Legacy stores --migrateStore--> current schema (old scores mapped to the 1–5 conviction scale)
 ```
 
-- **Sealed theses:** `sealThesis` snapshots `{belief, falsify, date}` the first time a non-empty thesis is saved. Later thesis edits update the working copy only; reviews always display and judge against the sealed original. This is the product's integrity guarantee — hindsight editing is impossible by construction.
+- **Local dates:** every stamp (`todayISO`) is the user's local date, never UTC — a regression test forbids the UTC pattern from returning.
+- **Sealed theses:** `sealThesis` snapshots `{belief, falsify, date}` the first time a non-empty thesis is saved. After sealing, the idea page shows the thesis as read-only locked text — there is no edit path for a sealed thesis (check-ins are where thinking updates), and `buildAnalyzePrompt` reads the sealed record itself, so the second-opinion prompt always quotes the original words. This is the product's integrity guarantee — hindsight editing is impossible by construction.
 - **Conviction:** a single 1–5 value per idea (`convictionOf` also reads legacy shapes — old level strings and 0–100 composites map onto the scale, so journals from any version still open).
 - **Reviews:** every idea has `reviewAt` (default ~90 days out). `applyReview` appends a history entry **including the conviction held at that moment**, re-schedules the next review, and flips `status` to `resolved` on a resolved outcome.
 - **Calibration:** `calibration(ideas)` groups scored reviews (`reasonMatch` yes/no) by their conviction snapshot and returns per-level rates, overall rate, high-vs-low rates, and a plain-language insight when the sample supports one. Reviews predating conviction snapshots count toward the overall rate only — the function never fabricates per-level data.

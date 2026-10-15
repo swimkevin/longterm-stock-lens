@@ -232,8 +232,6 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible {
 .due-badge { background: var(--amber-soft); border: 1px solid var(--amber); color: var(--amber); font-weight: 700; padding: 0.22rem 0.65rem; border-radius: 999px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
 .review-form { margin-top: 1rem; }
 .review-form > p:first-child { margin-top: 0; }
-.review-controls { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: end; margin: 0 0 1.2rem; }
-.review-controls .field { margin-bottom: 0; }
 .note-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.6rem; }
 .note-text { margin: 0.4rem 0 0.6rem; white-space: pre-wrap; font-size: 0.95rem; }
 

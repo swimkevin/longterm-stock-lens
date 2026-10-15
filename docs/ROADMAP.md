@@ -7,7 +7,6 @@ recommendations — see AGENTS.md. The roadmap respects that boundary.
 
 - **Screenshots in the README** — placeholders are written; needs real captures (phone + desktop).
 - **Calibration depth, only if the data earns it** — review-punctuality stats, per-trend calibration. No speculative stats before the reviews exist.
-- **Category-level allocation guidance** — from the risk profile (educational; categories, never tickers). Deliberately deferred: sits close to the personalized-advice boundary; needs a framing that stays clearly educational.
 
 ## Shipped
 
@@ -27,7 +26,14 @@ AI-verify prompt generator as the final gate; quiet secondary nav (Ideas hero, e
 
 Full redesign from a 10-product research report (Stockxy, Journalytic, Simply Wall St, Stockopedia, Stock Rover, Morningstar, Fatebook, Metaculus, Zogo, Finimize). Journal → Ideas home with due-for-review queue and quick-add; "did it move for your stated reason?" reviews; track-record calibration (the seed of v3.0); glossary → micro-lessons. v0.x journal data migrates automatically — nothing lost, localStorage key unchanged.
 
+## Shipped
+
+### v3.1 → v4.3.1 — Loop hardening, consolidation, audits (2026-10-11/13)
+
+Seven tabs → five (Profile · Ideas · Check-ins · Scorecard · Learn; Trends merged into Ideas, Accounts into Learn, Profile first for new visitors, stale-cache self-heal). Sealed theses are read-only once saved; second-opinion prompt built from the sealed record. Local-date stamps everywhere. Scorecard rates label their denominators; Ideas filter; Learn jump links. Dual-persona audit (pro investor + FANG hiring manager): INTERVIEW verdict, every 2026 figure verified. Profile hero disclaimer; thesis drafts survive re-renders. Full story in CHANGELOG.md.
+
 ## Deferred
 
+- **Category-level allocation guidance** — deliberately deprioritized: sits close to the personalized-advice boundary. Not planned.
 - **Compound-interest visualizer + DCA explainer** — interactive canvas chart, illustration-labeled. Deferred until the calibration core is proven by real use.
 - **Review snapshots / sparklines** — per-review score history would unlock conviction-over-time views; requires a storage migration plan per AGENTS.md. Revisit only if calibration usage justifies it.
