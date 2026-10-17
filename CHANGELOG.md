@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.3.3] — 2026-10-17
+
+### Scorecard empty-state copy fix (live-regression follow-up)
+- When check-ins existed but none had a verdict yet (all "too early to tell"), the Scorecard's verdict card read "No check-ins yet." — wrong, and confusing next to the check-in count. It now reads "No verdicts yet …" when verdict-less check-ins exist, keeping the original "No check-ins yet." copy for the true zero state. 3 new assertions; 391 assertions green.
+- Test harness: `tests/edge-probe.js` (rapid-click idempotency, oversized/emoji names, legacy-store migration, export contents) is now part of `npm test` and CI instead of a kept-aside script; its jsdom import no longer points at another project's node_modules.
+
 ## [4.3.2] — 2026-10-14
 
 ### Debloat + docs brought current with the v4.x reality

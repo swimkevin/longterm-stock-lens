@@ -1014,6 +1014,28 @@ async function main() {
   assert(trackTxt2.includes('The price side of your record'), 'scorecard shows the price-side summary');
   assert(trackTxt2.includes('+25% on average'), 'scorecard averages the priced moves (+25% on the single sample)');
 
+  console.log('scorecard empty states:');
+  // check-ins with no verdicts must not claim "No check-ins yet."
+  const savedStore = readStore();
+  const nvStore = { schema: 3, ideas: [{ id: 'nv1', name: 'No Verdict Co', tickers: 'NV', reviewHistory: [
+    { at: '2026-10-17', outcome: 'intact', reasonMatch: 'na', note: 'Too soon.' },
+  ] }], trends: [], glossary: {}, quizProfile: null };
+  window.localStorage.setItem(KEY, JSON.stringify(nvStore));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  const scEmpty1 = document.getElementById('track-record').textContent;
+  assert(scEmpty1.includes('No verdicts yet'), 'scorecard with verdict-less check-ins says "No verdicts yet"');
+  assert(!scEmpty1.includes('No check-ins yet'), 'scorecard with check-ins never claims "No check-ins yet"');
+  // zero check-ins keeps the original empty state
+  nvStore.ideas[0].reviewHistory = [];
+  window.localStorage.setItem(KEY, JSON.stringify(nvStore));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  const scEmpty2 = document.getElementById('track-record').textContent;
+  assert(scEmpty2.includes('No check-ins yet'), 'scorecard with zero check-ins keeps the original empty state');
+  window.localStorage.setItem(KEY, JSON.stringify(savedStore));
+  L.reloadJournal();
+
   console.log('ideas filter + learn anchors:');
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   const filterEl = document.getElementById('idea-filter');

@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.2';
+const APP_VERSION = '4.3.3';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1816,7 +1816,11 @@ function renderTrackRecord() {
   const c = calibration(store.ideas || []);
   const p = document.createElement('p');
   if (c.overallRate === null) {
-    p.textContent = 'No check-ins yet. Each one asks "did it play out the way you said?" and remembers how sure you were. Give it a few months and this page answers a question no AI can: when you\'re sure about something, are you usually right?';
+    if (tr.reviews > 0) {
+      p.textContent = 'No verdicts yet — your check-ins so far were all "too early to tell". Once you record whether a call played out the way you said, this page scores how often you were right.';
+    } else {
+      p.textContent = 'No check-ins yet. Each one asks "did it play out the way you said?" and remembers how sure you were. Give it a few months and this page answers a question no AI can: when you\'re sure about something, are you usually right?';
+    }
   } else {
     const strong = document.createElement('strong');
     strong.textContent = c.overallRate + '%';
