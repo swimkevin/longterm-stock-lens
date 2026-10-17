@@ -17,8 +17,8 @@ computes per-conviction hit rates. The architecture exists to serve that one loo
 | `index.html` | App shell. Five always-visible tabs toggled by `data-nav` buttons: `profile` (investor quiz — first screen for new visitors), `ideas` (home; Trends live here inside the Ideas tab), `idea` (detail), `reviews` (Check-ins), `track` (Scorecard), `learn` (micro-lessons; Accounts closes out this tab). No More menu, no separate Trends/Accounts screens. Content sections are static HTML; dynamic regions are empty containers filled by `app.js`. |
 | `styles.css` | Calm research theme via CSS custom properties (dark + light themes). Responsive, `prefers-reduced-motion` support, `:focus-visible` states, 44px touch targets. |
 | `app.js` | All logic in one IIFE. DOM-free pure functions (`scoreRisk`, `makeIdea`, `convictionOf`, `sealThesis`, `applyReview`, `calibration`, `trackRecord`, `migrateStore`, `buildAnalyzePrompt`, …) are exposed on `globalThis.LongTermLens` for the Node test suite. |
-| `tests/smoke.js` | Node + jsdom suite (377 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
-| `tests/edge-probe.js` | Kept harness for edge cases (XSS probes, oversized input, legacy stores). |
+| `tests/smoke.js` | Node + jsdom suite (379 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
+| `tests/edge-probe.js` | Edge-case harness (9 assertions, also run by `npm test`): rapid-click idempotency, oversized/emoji names, legacy-store migration, export contents. |
 
 ## Data flow
 

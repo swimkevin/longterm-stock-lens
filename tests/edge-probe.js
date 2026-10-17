@@ -8,8 +8,13 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
-const JSDOM_PATH = path.resolve('/home/hatch/workspace/poker-sparring/node_modules/jsdom');
-const { JSDOM, VirtualConsole } = require(JSDOM_PATH);
+let JSDOM, VirtualConsole;
+try {
+  ({ JSDOM, VirtualConsole } = require('jsdom'));
+} catch (e) {
+  console.error('SKIP: jsdom not found — run `npm install` to run UI checks.');
+  process.exit(2);
+}
 
 let failures = 0;
 function assert(cond, msg) {

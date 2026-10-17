@@ -1,6 +1,6 @@
 {
   "author": "Kevin Song",
-  "description": "Educational long-term investing research hub \u2014 vanilla JS, zero runtime dependencies. Risk profiler, fundamentals glossary, conviction journal, account explainers.",
+  "description": "Educational long-term investing research hub — vanilla JS, zero runtime dependencies. Risk profiler, fundamentals glossary, conviction journal, account explainers.",
   "engines": {
     "node": ">=16"
   },
@@ -14,7 +14,7 @@
   "name": "longterm-stock-lens",
   "scripts": {
     "serve": "python3 -m http.server 8000",
-    "test": "node tests/smoke.js"
+    "test": "node tests/smoke.js && node tests/edge-probe.js"
   },
   "version": "4.3.2",
   "devDependencies": {

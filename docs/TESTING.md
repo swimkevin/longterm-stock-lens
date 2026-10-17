@@ -2,8 +2,9 @@
 
 ## What the suite is
 
-One file, `tests/smoke.js`, run by `npm test`. **377 assertions**, all
-passing. It has two halves:
+Two files, run by `npm test`: `tests/smoke.js` (379 assertions) and
+`tests/edge-probe.js` (9 assertions) — **388 assertions**, all
+passing. smoke.js has two halves:
 
 1. **Pure-logic assertions** — the DOM-free core exposed on
    `globalThis.LongTermLens` (`scoreRisk`, `makeIdea`, `convictionOf`,
@@ -26,6 +27,10 @@ passing. It has two halves:
    the export download contract (Blob types, dated filenames, object-URL
    wiring), and verifies `localStorage` round-trips including a seeded
    v0.x migration.
+3. **edge probes** (`tests/edge-probe.js`) — rapid triple-click quick-add
+   creates exactly one idea, 60-char and emoji-only names render as inert
+   text, legacy v1 store migrates without losing ideas, and the export
+   builders include the migrated idea.
 
 ## The rules
 
