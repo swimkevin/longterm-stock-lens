@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.4.1] — 2026-10-18
+
+### Usability round: post-quiz momentum
+Round-2 deep testing (5-stock loop, Scorecard math hand-verified exact at 75%, 134/134 jsdom checks, interactive browser pass — zero functional bugs) found one first-run friction: the quiz result dead-ended at "Retake the quiz" with nothing pointing new users onward. The result panel now opens with a primary **"Start spotting ideas →"** button that lands on the Ideas tab.
+- 2 new assertions; 436 assertions green.
+
 ## [4.4.0] — 2026-10-18
 
 ### Wisdom: Buffett, Munger & Graham, woven into the product

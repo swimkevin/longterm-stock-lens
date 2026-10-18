@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.0';
+const APP_VERSION = '4.4.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1026,6 +1026,11 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
     '<p class="fineprint">Higher conviction % = higher risk, always. Retake this when life changes.</p>';
   const retakeRow = document.createElement('div');
   retakeRow.className = 'btn-row';
+  const start = document.createElement('button');
+  start.className = 'btn primary';
+  start.textContent = 'Start spotting ideas →';
+  start.addEventListener('click', () => { renderIdeasHome(); showScreen('ideas'); });
+  retakeRow.appendChild(start);
   const retake = document.createElement('button');
   retake.className = 'btn';
   retake.textContent = 'Retake the quiz';

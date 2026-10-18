@@ -388,6 +388,13 @@ async function main() {
   assert(prof && prof.bandLabel === 'Growth-leaning' && prof.total === 18, 'quiz result persisted to store (quizProfile)');
   assert(Array.isArray(prof.answers) && prof.answers.length === 6 && prof.answers.every(a => a === 0),
     'quiz ANSWERS persisted with the profile (old state can be restored)');
+  const quizCta = Array.from(res.querySelectorAll('.btn-row .btn'))
+    .find(b => b.textContent.includes('Start spotting ideas'));
+  assert(!!quizCta, 'quiz result offers a forward CTA');
+  quizCta.click();
+  assert(!document.getElementById('screen-ideas').classList.contains('hidden') &&
+    document.getElementById('screen-profile').classList.contains('hidden'),
+    'quiz CTA lands on the Ideas tab');
   // leave and return: the saved profile + answers must be right there
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   document.querySelector('.nav-btn[data-nav="profile"]').click();
