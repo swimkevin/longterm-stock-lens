@@ -932,6 +932,14 @@ async function main() {
   assert(!document.body.textContent.includes('SEC EDGAR'), 'footer and Learn no longer plug EDGAR');
   assert(!document.body.textContent.includes('Muse or Claude'), 'prompt hints name ChatGPT or Claude, never the same tool twice');
 
+  // ---- zero code comments in shipped source (owner directive) ----
+  console.log('comment-free source:');
+  const stripStrings = s => s.replace(/'(?:[^'\\]|\\.)*'/g, "''").replace(/"(?:[^"\\]|\\.)*"/g, '""').replace(/`(?:[^`\\]|\\.)*`/g, '``');
+  for (const f of ['app.js', 'styles.css']) {
+    const code = stripStrings(require('fs').readFileSync(__dirname + '/../' + f, 'utf-8'));
+    assert(!/\/\/|\/\*/.test(code), f + ' ships with zero code comments');
+  }
+
   // ---- delete my data (two-step) + quiz retake ----
   console.log('data wipe + retake:');
   document.querySelector('.nav-btn[data-nav="ideas"]').click();

@@ -319,7 +319,6 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible {
 .sealed-words .note-text { font-size: 1.02rem; }
 .idea-filter { width: 100%; margin: 0 0 0.8rem; }
 
-/* Explainer accordions (Profile) */
 .explainer { margin: 0.4rem 0 1.2rem; }
 .explainer details { border-top: 1px solid var(--line); }
 .explainer details:last-child { border-bottom: 1px solid var(--line); }

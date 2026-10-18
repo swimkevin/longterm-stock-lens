@@ -13,11 +13,20 @@ a CRUD journal. The temptation is to reach for a framework out of habit.
 1. **Framework (React/Vue + bundler).** Component model, ecosystem, but a
    build step, dependency tree, and supply-chain surface for a site that
    doesn't need reactivity beyond show/hide.
-2. **Vanilla HTML/CSS/JS, zero runtime dependencies, no build step.**
+2. **TypeScript (with or without a framework).** Static types would catch a
+   real bug class in this codebase (shape mismatches across schema
+   migrations, date-string handling). Cost: a compile step between the
+   repo and the deployed site, which breaks the "open index.html and it
+   runs" property, complicates the GitHub Pages deploy, and adds a
+   toolchain every future contributor must adopt for a ~2,500-line app.
+   Revisit if the data model grows past what disciplined JSDoc-free
+   vanilla can carry — the test suite (400+ assertions, including
+   migration round-trips) is currently doing the type system's job.
+3. **Vanilla HTML/CSS/JS, zero runtime dependencies, no build step.**
 
 ## Decision
 
-Option 2. `app.js` is one IIFE; `tests/smoke.js` runs in plain Node with
+Option 3. `app.js` is one IIFE; `tests/smoke.js` runs in plain Node with
 jsdom. `package.json` exists only for the dev test harness — the shipped
 site loads no packages at all.
 

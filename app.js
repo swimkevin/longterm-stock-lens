@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.4';
+const APP_VERSION = '4.3.5';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -392,7 +392,7 @@ function isPlausibleLocalDate(dateStr) {
   const y = +m[1], mo = +m[2], d = +m[3];
   if (y < 2000 || y > 2100) return false;
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
-  const dt = new Date(y, mo - 1, d); // local constructor, round-trip only
+  const dt = new Date(y, mo - 1, d);
   return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
 }
 function setReviewAt(idea, dateStr) {
@@ -565,10 +565,6 @@ function sealThesis(idea, today) {
   });
 }
 
-// Copies whatever the user has typed into the (still unsealed) thesis form into
-// the idea's thesis draft, so a detail re-render (conviction tap, check-in
-// save, review-by change) can't silently wipe it. Sealed ideas have no form,
-// so this is a no-op for them.
 function captureThesisDraft(i) {
   const det = document.getElementById('idea-detail');
   if (!det) return;
@@ -2401,7 +2397,7 @@ function init() {
                 sessionStorage.setItem('lrl-healed-' + v, '1');
                 window.location.href = updateReloadURL(window.location.pathname, v, window.location.hash);
               }
-            } catch (e) { /* sessionStorage unavailable: leave the manual path */ }
+            } catch (e) {}
           }
         } else if (manual) {
           cu.textContent = 'Up to date ✓';
@@ -2467,7 +2463,7 @@ function init() {
       return;
     }
     clearTimeout(delArmTimer);
-    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* storage unavailable */ }
+    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
     store = blankStore();
     saveStore(store);
     lessonQuizState = {};

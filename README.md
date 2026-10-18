@@ -5,13 +5,17 @@
 [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
 ![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-400%20assertions-brightgreen)
+![tests](https://img.shields.io/badge/tests-402%20assertions-brightgreen)
 
 **Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 
-I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it daily, and still didn't know *what* to invest in. The miss wasn't information. It was trust: I didn't know how much to trust my own gut, because I'd never kept score.
+## Why this exists
 
-This is the tool that keeps score.
+I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it every day, and still couldn't have told you *what* to invest in. Twice I saw the wave early. Twice I did nothing with it.
+
+The miss wasn't information. I had the information. The miss was trust — I didn't know how much to trust my own gut, because I'd never kept score of it. Every "I knew it" after the fact was free; every call I'd actually made had evaporated, unrecorded, untestable. You can't calibrate judgment you never wrote down.
+
+So this is the tool that writes it down. Not a screener, not a tip sheet — a sealed record of what *I* thought, how sure I was, and what happened next. The next time I see the wave early, I'll have years of evidence about whether my early calls are worth acting on. That's the whole bet: **judgment is a skill, and skills improve with a scoreboard.**
 
 > **Educational only — not financial advice.** This app helps you organize and test your own thinking. It never tells you what to buy.
 
@@ -41,15 +45,15 @@ The **Scorecard** turns that record into hit rates by how sure you were, with ho
 
 ## Engineering notes
 
-- **Zero runtime dependencies, no build step.** One IIFE, vanilla JS + CSS custom properties. The whole app is `index.html` + `app.js` + `styles.css`, deployable to any static host.
+- **Zero runtime dependencies, no build step.** One IIFE, vanilla JS + CSS custom properties. The whole app is `index.html` + `app.js` + `styles.css`, deployable to any static host. (Why not TypeScript or a framework? Answered in [docs/adr/0002](docs/adr/0002-vanilla-js-zero-dependencies.md).)
 - **Structure follows the funnel.** No dropdown menus, no buried pages: five always-visible tabs, trends merged into Ideas, accounts merged into Learn. A boot-time version check reloads the app once when a newer build exists, so a phone can never run a half-stale mix of old script and new page.
 - **Local-first by design.** All data lives in `localStorage` (schema-versioned, with migrations from v1 journal formats forward). No accounts, no server, nothing to leak. Export to JSON/Markdown is built in.
 - **Pure logic, tested in isolation.** Scoring, check-in scheduling, the scorecard math, sealing, and prompt building are pure functions exposed on `globalThis.LongTermLens`; rendering is a separate layer on top.
-- **400 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push.
+- **402 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push. Owner-level rules (no SEC links, local-only dates, sealed theses stay sealed, zero code comments in shipped source) are enforced by tests, not by memory.
 - **Design system, not vibes.** Token-based theming (light/dark), one accent color, one primary action per view, hairline surfaces. The UI benchmark is Claude/Linear restraint: nothing on screen that doesn't earn its place.
 - **Accessibility basics done properly:** focus rings, aria labels/pressed states, 44px targets, `prefers-reduced-motion`, keyboard shortcut (⌘K jumps to quick-add).
 
-Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/TESTING.md](docs/TESTING.md) · [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
+Decisions with their accepted costs: [docs/adr/](docs/adr/) · Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/TESTING.md](docs/TESTING.md) · [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Run it locally
 
@@ -60,7 +64,7 @@ python3 -m http.server 8000   # or any static server
 # → http://localhost:8000
 
 npm install   # dev-only: jsdom for the test suite
-npm test      # 400 assertions (smoke 391 + edge probes 9)
+npm test      # 402 assertions (smoke 393 + edge probes 9)
 ```
 
 ## Project layout
@@ -70,7 +74,7 @@ index.html        screens + static copy
 app.js            data model, pure logic, rendering (one IIFE)
 styles.css        design tokens + components
 tests/smoke.js    jsdom assertion suite
-docs/             architecture, testing, roadmap
+docs/             architecture, testing, roadmap, ADRs
 ```
 
 ## The hardest lesson: deleting

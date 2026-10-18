@@ -1,5 +1,12 @@
 # Changelog — Long-Term Lens
 
+## [4.3.5] — 2026-10-18
+
+### Comment-free source, stronger README, ADR answers "why not TypeScript" (owner-directed polish)
+- Shipped source is now zero-comment by rule, not by habit: removed the last code comments in `app.js`/`styles.css` (the why lives in `docs/adr/`, `CHANGELOG.md`, and commit messages), recorded the rule in `AGENTS.md`, and added a test that strips string literals and fails the build if any `//` or `/* */` comment appears in shipped source. 2 new assertions; 402 assertions green.
+- README rewritten around a proper "Why this exists" section (the Bitcoin-at-$5k and early-AI misses, and why the miss was trust in one's own judgment rather than information), with the engineering notes now pointing at the ADRs and naming the test-enforced owner rules.
+- `docs/adr/0002` now answers the question a hiring manager would ask: why not TypeScript — accepted costs named, revisit condition stated (test suite currently doing the type system's job).
+
 ## [4.3.4] — 2026-10-18
 
 ### "Check in on" date hardening (live-regression follow-up)
