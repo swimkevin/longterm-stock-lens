@@ -816,6 +816,44 @@ async function main() {
          window.getComputedStyle(document.getElementById('screen-ideas')).display !== 'none',
     'returns to the ideas screen after delete');
 
+  // ---- v4.3.6: independent-audit fixes ----
+  console.log('audit fixes:');
+  const imp1 = L.importIdeasFromJSON(JSON.stringify([{ name: 'Imported Co', tickers: 'IMP' }]));
+  assert(!imp1.error && imp1.ideas.length === 1 && imp1.ideas[0].name === 'Imported Co', 'import accepts the export JSON array shape');
+  assert(typeof imp1.ideas[0].id === 'string' && imp1.ideas[0].id.length > 0, 'imported ideas get ids assigned');
+  const imp2 = L.importIdeasFromJSON(JSON.stringify({ ideas: [{ name: 'Wrapped Co' }] }));
+  assert(!imp2.error && imp2.ideas.length === 1, 'import accepts the {ideas:[...]} shape');
+  assert(L.importIdeasFromJSON('not json at all').error === 'not-json', 'import rejects non-JSON text');
+  assert(L.importIdeasFromJSON('{"foo":1}').error === 'not-a-backup', 'import rejects JSON that is not a backup');
+  const rt = L.importIdeasFromJSON(L.journalToJSON([{ name: 'Round Trip', id: 'rt1', thesis: { belief: 'b', falsify: 'f' } }]));
+  assert(!rt.error && rt.ideas[0].name === 'Round Trip' && rt.ideas[0].thesis.belief === 'b', 'export → import round-trips ideas');
+  assert(typeof L.normalizeIdea({ name: 'No Id' }).id === 'string', 'normalizeIdea assigns a missing id');
+  assert(!('thesesLabel' in L), 'dead thesesLabel removed from the API surface');
+
+  document.querySelector('#trend-name').value = 'Orphan Audit Trend';
+  document.querySelector('#trend-add').click();
+  const oRow = Array.from(document.querySelectorAll('#trends-watching .note-card'))
+    .find(r => r.querySelector('.entry-name').textContent === 'Orphan Audit Trend');
+  assert(!!oRow, 'orphan-test trend quick-added to Watching');
+  oRow.querySelector('.btn.primary').click();
+  assert(!!document.querySelector('#idea-detail .link-danger'), 'Make an idea opens the new idea detail');
+  document.querySelector('#idea-detail .link-danger').click();
+  const oTrend = readStore().trends.find(t => t.name === 'Orphan Audit Trend');
+  assert(oTrend && oTrend.status === 'watching' && !oTrend.ideaId, 'deleting the idea returns its trend to Watching');
+
+  document.querySelector('#qa-name').value = 'Audit Fix Co';
+  document.querySelector('#qa-add').click();
+  const ciBtn = document.querySelector('#idea-detail [data-action="checkin-now"]');
+  assert(!!ciBtn, 'check-in button present on the new idea');
+  ciBtn.click(); ciBtn.click();
+  assert(document.querySelectorAll('#idea-detail .detail-review-wrap').length === 1, 'double-clicking Check in now yields one form, not two');
+  const beliefBox = document.querySelector('#idea-detail .thesis-belief');
+  beliefBox.value = '';
+  document.querySelector('#idea-detail [data-action="thesis-save"]').click();
+  const hint = document.querySelector('#idea-detail .thesis-hint');
+  assert(!!hint && hint.textContent.includes('Write what you think first'), 'empty save shows inline guidance instead of a silent no-op');
+  assert(!readStore().ideas.find(i => i.name === 'Audit Fix Co').sealed, 'empty save seals nothing');
+
   // ---- disclaimers ----
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   assert(document.querySelector('.disclaimer-banner').textContent.includes('not financial advice'), 'hero disclaimer present');

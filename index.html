@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Long-Term Lens — Your ideas about what's next</title>
 <meta name="description" content="An educational hub for beginner long-term investors: investor profile, ideas research loop, fundamentals micro-lessons, and account explainers. Educational only — not financial advice.">
-<link rel="stylesheet" href="styles.css?v=4.3.5">
+<link rel="stylesheet" href="styles.css?v=4.3.6">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1117">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -95,11 +95,14 @@
       <div id="ideas-list"></div>
 
       <h2>Your data</h2>
-      <p class="fineprint">Export your research anytime. Stored in this browser's localStorage under
+      <p class="fineprint">Export your research anytime, and import a JSON backup to restore your ideas —
+        handy when you switch devices. Stored in this browser's localStorage under
         <code>longterm-stock-lens-v1</code> — nothing leaves your device.</p>
       <div class="btn-row export-row">
         <button id="export-json" class="btn">Export JSON</button>
         <button id="export-md" class="btn">Export Markdown</button>
+        <button id="import-json" class="btn">Import JSON</button>
+        <input type="file" id="import-json-file" accept=".json,application/json" class="hidden" aria-label="Choose a JSON backup file">
       </div>
       <p style="margin-top: 2rem;">
         <button id="delete-data" class="btn danger">Delete my data</button>
@@ -310,9 +313,9 @@
 <footer class="footer">
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v4.3.5</span> · Your data stays in this browser. · <button id="btn-check-update" class="linklike">Check for updates</button></p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v4.3.6</span> · Your data stays in this browser. · <button id="btn-check-update" class="linklike">Check for updates</button></p>
 </footer>
 
-<script src="app.js?v=4.3.5"></script>
+<script src="app.js?v=4.3.6"></script>
 </body>
 </html>

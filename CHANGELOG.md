@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [4.3.6] — 2026-10-18
+
+### Independent-audit fixes (fresh-eyes review scored 7/10, leans interview)
+An independent cold audit (adversarial QA + FANG hiring-manager review, no prior context) found one major gap and four minor bugs. All fixed, all test-pinned:
+- **Import your JSON backup** (the major): export was write-only — no UI or function could restore a backup, which undercut the local-first story ("what happens when I get a new phone?" had no answer). "Your data" now has Import JSON: validates the file, normalizes/migrates every idea through the same path as the loader, and replaces the idea list with feedback. Pure `importIdeasFromJSON` exposed for tests; export → import round-trips.
+- **Double "Check in now" stacked two forms** on the idea page (the Reviews-tab path deduped, the detail path didn't). The detail handler now removes any existing form before appending.
+- **Deleting an idea orphaned its trend** in "Became ideas" with a permanently disabled button. `deleteIdea` now returns linked trends to Watching so they can be chased again.
+- **Saving an empty thesis was a silent no-op** (worse: the button still flashed "Saved ✓"). Empty saves now show inline guidance and focus the field; nothing seals.
+- **Tampered stores could yield id-less ideas**; `normalizeIdea` now assigns a missing id (new shared `newId` helper, also used by `makeIdea`/`makeTrend`).
+- Removed dead `thesesLabel` (exported, never called) — a re-sweep confirmed every other low-count function is genuinely referenced (event listeners, `.map()` callbacks, tests).
+- Fixed leftover first-person copy in the analyze tip ("paste it here in chat with me…").
+- 15 new assertions; 417 assertions green. Deliberately not changed: the single-IIFE structure stays (native modules would break the open-it-and-it-runs property), and README screenshots still need the owner's phone.
+
 ## [4.3.5] — 2026-10-18
 
 ### Comment-free source, stronger README, ADR answers "why not TypeScript" (owner-directed polish)

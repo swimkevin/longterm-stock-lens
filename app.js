@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.5';
+const APP_VERSION = '4.3.6';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -334,10 +334,6 @@ function buildAnalyzePrompt(idea) {
     'Format: headers with short bullets. Analytical, no hype.',
   ].join('\n');
 }
-function thesesLabel(n) {
-  if (!n) return '';
-  return '(' + n + (n === 1 ? ' idea)' : ' ideas)');
-}
 
 function ideasLabel(n) {
   if (!n) return '';
@@ -403,7 +399,7 @@ function setReviewAt(idea, dateStr) {
 function makeIdea(name, tickers, today) {
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
   return {
-    id: 'e' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+    id: newId('e'),
     name: name || '',
     tickers: (tickers || '').toUpperCase(),
     tags: [],
@@ -427,7 +423,7 @@ const TREND_STATUS_LABELS = { watching: 'Watching', missed: 'Missed', chased: 'B
 function makeTrend(name, why, today) {
   const t = /^\d{4}-\d{2}-\d{2}$/.test(today || '') ? today : todayISO();
   return {
-    id: 't' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36),
+    id: newId('t'),
     name: (name || '').slice(0, 80),
     why: (why || '').slice(0, 1000),
     createdAt: t,
@@ -742,6 +738,10 @@ function migrateStore(raw) {
   return store;
 }
 
+function newId(prefix) {
+  return prefix + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+}
+
 function normalizeIdea(rawIdea) {
   const idea = Object.assign({
     tags: [], status: 'open', trendId: null,
@@ -749,6 +749,7 @@ function normalizeIdea(rawIdea) {
     reviewMonths: DEFAULT_REVIEW_MONTHS,
     reviewHistory: [],
   }, rawIdea || {});
+  if (!idea.id) idea.id = newId('e');
   idea.thesis = Object.assign({ belief: '', falsify: '' }, idea.thesis);
   if (!(typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5)) idea.conviction = null;
   if (idea.conviction === null && idea.scores && typeof idea.scores === 'object') {
@@ -851,6 +852,9 @@ function getIdea(id) {
 
 function deleteIdea(id) {
   store.ideas = (store.ideas || []).filter(i => i.id !== id);
+  (store.trends || []).forEach(t => {
+    if (t.ideaId === id) { t.ideaId = null; t.status = 'watching'; t.updatedAt = todayISO(); }
+  });
   saveStore(store);
 }
 
@@ -1305,8 +1309,21 @@ function renderIdeaDetail(idea) {
   saveBtn.dataset.action = 'thesis-save';
   saveBtn.textContent = 'Save';
   saveBtn.addEventListener('click', () => {
+    const words = belief.value.trim();
+    let hint = th.querySelector('.thesis-hint');
+    if (!words) {
+      if (!hint) {
+        hint = document.createElement('p');
+        hint.className = 'fineprint thesis-hint';
+        th.insertBefore(hint, saveBtn);
+      }
+      hint.textContent = 'Write what you think first — saving locks it in and it can never be edited.';
+      belief.focus();
+      return;
+    }
+    if (hint) hint.remove();
     updateIdea(idea.id, i => {
-      i.thesis = { belief: belief.value.trim(), falsify: falsify.value.trim() };
+      i.thesis = { belief: words, falsify: falsify.value.trim() };
       const sealed = sealThesis(i);
       if (sealed !== i) Object.assign(i, sealed);
       if (priceInput) {
@@ -1400,6 +1417,8 @@ function renderIdeaDetail(idea) {
   nowBtn.dataset.action = 'checkin-now';
   nowBtn.textContent = 'Check in now';
   nowBtn.addEventListener('click', () => {
+    const prev = box.querySelector('.detail-review-wrap');
+    if (prev) prev.remove();
     const wrap = document.createElement('div');
     wrap.className = 'detail-review-wrap';
     box.appendChild(wrap);
@@ -1501,7 +1520,7 @@ function renderAnalyzeSection(box, idea) {
   sec.appendChild(row);
   const fp = document.createElement('p');
   fp.className = 'fineprint';
-  fp.textContent = 'Tip: paste it here in chat with me and I\u2019ll do the full workup against what you wrote.';
+  fp.textContent = 'Tip: paste it into your AI chat for the full workup against what you wrote.';
   sec.appendChild(fp);
   box.appendChild(sec);
 }
@@ -2353,6 +2372,39 @@ function exportMarkdown() {
   );
 }
 
+function importIdeasFromJSON(text) {
+  let parsed;
+  try { parsed = JSON.parse(text); } catch (e) { return { error: 'not-json' }; }
+  const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.ideas) ? parsed.ideas : null);
+  if (!list) return { error: 'not-a-backup' };
+  return { ideas: list.map(normalizeIdea) };
+}
+
+function importJSONBackup(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    const res = importIdeasFromJSON(String(rd.result || ''));
+    const btn = $('import-json');
+    const orig = btn.textContent;
+    if (res.error) {
+      btn.textContent = res.error === 'not-json' ? 'Not a JSON file' : 'Not a Lens backup file';
+    } else {
+      store.ideas = res.ideas;
+      saveStore(store);
+      reloadJournal();
+      btn.textContent = 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓';
+    }
+    setTimeout(() => { btn.textContent = orig; }, 2500);
+  };
+  rd.onerror = () => {
+    const btn = $('import-json');
+    const orig = btn.textContent;
+    btn.textContent = 'Could not read file';
+    setTimeout(() => { btn.textContent = orig; }, 2500);
+  };
+  rd.readAsText(file);
+}
+
 function init() {
   const THEME_KEY = 'ltl_theme';
   let theme = 'dark';
@@ -2450,6 +2502,12 @@ function init() {
   });
   $('export-json').addEventListener('click', exportJSON);
   $('export-md').addEventListener('click', exportMarkdown);
+  $('import-json').addEventListener('click', () => $('import-json-file').click());
+  $('import-json-file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (f) importJSONBackup(f);
+  });
   const delData = $('delete-data');
   let delArmTimer = null;
   delData.addEventListener('click', () => {
@@ -2506,11 +2564,11 @@ if (typeof globalThis !== 'undefined') {
     REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
     convictionOf, convictionDots, spotPriceOf, buildDiscoverPrompt,
-    ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt, isPlausibleLocalDate,
+    ideasLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt, isPlausibleLocalDate,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
     applyReview, trackRecord, calibration, sealThesis, buildAnalyzePrompt,
-    journalToJSON, journalToMarkdown, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
+    journalToJSON, journalToMarkdown, importIdeasFromJSON, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
     APP_VERSION, updateReloadURL, isNewerVersion };
 }
 })();
