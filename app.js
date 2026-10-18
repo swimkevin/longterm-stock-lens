@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.3';
+const APP_VERSION = '4.3.4';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -386,8 +386,17 @@ function isReviewDue(idea, today) {
   return !!r && r <= today;
 }
 
+function isPlausibleLocalDate(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  if (!m) return false;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  if (y < 2000 || y > 2100) return false;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(y, mo - 1, d); // local constructor, round-trip only
+  return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+}
 function setReviewAt(idea, dateStr) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr || '')) return null;
+  if (!isPlausibleLocalDate(dateStr)) return null;
   return Object.assign({}, idea, { reviewAt: dateStr });
 }
 
@@ -2501,7 +2510,7 @@ if (typeof globalThis !== 'undefined') {
     REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
     convictionOf, convictionDots, spotPriceOf, buildDiscoverPrompt,
-    ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt,
+    ideasLabel, thesesLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt, isPlausibleLocalDate,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
     applyReview, trackRecord, calibration, sealThesis, buildAnalyzePrompt,

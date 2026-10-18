@@ -1,5 +1,10 @@
 # Changelog — Long-Term Lens
 
+## [4.3.4] — 2026-10-18
+
+### "Check in on" date hardening (live-regression follow-up)
+- The live regression check typed a date into the idea page's "Check in on" picker and the store accepted `0001-02-18` — `setReviewAt` only checked the `YYYY-MM-DD` shape, so any four-digit year sailed through. It now rejects implausible dates: years outside 2000–2100, impossible months/days, and non-round-tripping calendar dates (Feb 30, non-leap Feb 29), returning `null` so the picker reverts. DOM-free `isPlausibleLocalDate` helper exposed for tests. 9 new assertions; 400 assertions green.
+
 ## [4.3.3] — 2026-10-17
 
 ### Scorecard empty-state copy fix (live-regression follow-up)

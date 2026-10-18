@@ -111,6 +111,15 @@ async function main() {
   assert(s1 && s1.reviewAt === '2026-12-15', 'valid date sets reviewAt');
   assert(L.setReviewAt({ id: 'e1' }, 'not-a-date') === null, 'invalid date -> null');
   assert(L.setReviewAt({ id: 'e1' }, '') === null, 'empty date -> null');
+  assert(L.setReviewAt({ id: 'e1' }, '0001-02-18') === null, 'year 0001 rejected (live-regression: automation-typed date)');
+  assert(L.setReviewAt({ id: 'e1' }, '1999-12-31') === null, 'year 1999 rejected');
+  assert(L.setReviewAt({ id: 'e1' }, '2101-01-01') === null, 'year 2101 rejected');
+  assert(L.setReviewAt({ id: 'e1' }, '2026-13-01') === null, 'month 13 rejected');
+  assert(L.setReviewAt({ id: 'e1' }, '2026-00-10') === null, 'month 00 rejected');
+  assert(L.setReviewAt({ id: 'e1' }, '2026-02-30') === null, 'Feb 30 rejected');
+  assert(L.setReviewAt({ id: 'e1' }, '2023-02-29') === null, 'non-leap Feb 29 rejected');
+  assert(L.isPlausibleLocalDate('2024-02-29') === true, 'leap Feb 29 accepted');
+  assert(L.isPlausibleLocalDate('2026-10-18') === true, 'ordinary date accepted');
 
   console.log('rescheduleReview:');
   const base = { id: 'e1', name: 'Base', createdAt: '2026-10-04', reviewMonths: 3, reviewAt: '2020-01-01' };
