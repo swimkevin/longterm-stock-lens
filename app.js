@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.6';
+const APP_VERSION = '4.3.7';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1308,6 +1308,24 @@ function renderIdeaDetail(idea) {
   saveBtn.className = 'btn';
   saveBtn.dataset.action = 'thesis-save';
   saveBtn.textContent = 'Save';
+  let draftTimer = null;
+  const queueDraftSave = () => {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => {
+      updateIdea(idea.id, i => {
+        i.thesis = i.thesis || {};
+        i.thesis.belief = belief.value;
+        i.thesis.falsify = falsify.value;
+        if (priceInput) {
+          if (priceInput.value) i.thesis.priceDraft = priceInput.value;
+          else delete i.thesis.priceDraft;
+        }
+      });
+    }, 800);
+  };
+  belief.addEventListener('input', queueDraftSave);
+  falsify.addEventListener('input', queueDraftSave);
+  if (priceInput) priceInput.addEventListener('input', queueDraftSave);
   saveBtn.addEventListener('click', () => {
     const words = belief.value.trim();
     let hint = th.querySelector('.thesis-hint');
@@ -2432,6 +2450,13 @@ function init() {
   }
   function checkForUpdates(manual) {
     if (!cu) return;
+    if (typeof fetch !== 'function') {
+      if (manual) {
+        cu.textContent = 'Check failed';
+        setTimeout(() => { cu.textContent = 'Check for updates'; }, 2000);
+      }
+      return;
+    }
     if (manual) cu.textContent = 'Checking…';
     fetch('version.txt?v=' + Date.now())
       .then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.text(); })

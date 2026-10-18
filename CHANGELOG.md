@@ -1,5 +1,14 @@
 # Changelog — Long-Term Lens
 
+## [4.3.7] — 2026-10-18
+
+### Deep-testing follow-ups: draft autosave + fetch-hardened update check
+A two-layer deep test (jsdom harness: 10 stocks through the full loop with hand-verified Scorecard math — 63% overall, per-level rates and +27% average move all exact, 259/259 checks green; plus a real-browser pass: visual seal rendering, keyboard-only quiz + quick-add, downloads, due badge, Accounts figures) found no functional bugs. Two improvements shipped from its notes:
+- **Thesis drafts now autosave as you type** (debounced 800ms into the store, no re-render, no focus loss). Previously a reload with zero intervening clicks lost the draft; any conviction tap/date change/check-in already persisted it, and now typing alone does too.
+- **Update check no longer assumes `fetch` exists** — it bails out (manual clicks show "Check failed") instead of throwing in exotic environments. This also makes the test suite hermetic: the boot timer's network call can no longer surface as a jsdom script error.
+- Triaged and deliberately not changed: conviction stays editable after sealing by design (the caption says the number is what future check-ins look back at; check-ins snapshot it per check-in, so history can't be rewritten); browser-back navigation is recorded in ROADMAP.md as needing its own careful release.
+- 1 new assertion; 418 assertions green.
+
 ## [4.3.6] — 2026-10-18
 
 ### Independent-audit fixes (fresh-eyes review scored 7/10, leans interview)

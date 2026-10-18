@@ -853,6 +853,11 @@ async function main() {
   const hint = document.querySelector('#idea-detail .thesis-hint');
   assert(!!hint && hint.textContent.includes('Write what you think first'), 'empty save shows inline guidance instead of a silent no-op');
   assert(!readStore().ideas.find(i => i.name === 'Audit Fix Co').sealed, 'empty save seals nothing');
+  beliefBox.value = 'Autosave draft words';
+  beliefBox.dispatchEvent(new window.Event('input', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 950));
+  const draftIdea = readStore().ideas.find(i => i.name === 'Audit Fix Co');
+  assert(draftIdea && draftIdea.thesis && draftIdea.thesis.belief === 'Autosave draft words', 'typed thesis draft autosaves to the store after a pause');
 
   // ---- disclaimers ----
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
