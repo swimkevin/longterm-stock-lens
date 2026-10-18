@@ -4,6 +4,12 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## 2026-10-18 — v4.4.1 (usability round)
+- Shipped: post-quiz "Start spotting ideas →" CTA (round-2 deep test's top usability finding: the quiz result dead-ended new users).
+- Measurements: 436 assertions green (was 434); round 2: 5-stock loop, Scorecard math hand-verified exact (75%), 134/134 jsdom checks + interactive browser pass, zero functional bugs; usability audit: all 5 tabs obvious in seconds, one clear primary action each — bar holds.
+- Loop lesson: the usability audit's ranked observations worked — one high-impact item, two defensible non-issues, no vague vibes. Keep the "Muse-easy" audit as a standing deep-test phase.
+- Debloat: 0 dead functions, 0 dead CSS classes (scan clean two rounds running).
+
 ## 2026-10-18 — v4.4.0 "Wisdom" (manual elevation round)
 - Shipped: daily verified Buffett/Munger/Graham quote, 5 timeless-principles essays + wisdom archive in Learn, origin story in Profile, Scorecard empty-state wisdom, serif-italic quote typography.
 - Measurements: 434 assertions green (was 418); app.js 2736 lines (was 2706); styles.css 342; 0 dead functions; 0 dead CSS classes.
