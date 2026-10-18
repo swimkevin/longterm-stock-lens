@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Long-Term Lens — Your ideas about what's next</title>
 <meta name="description" content="An educational hub for beginner long-term investors: investor profile, ideas research loop, fundamentals micro-lessons, and account explainers. Educational only — not financial advice.">
-<link rel="stylesheet" href="styles.css?v=4.3.7">
+<link rel="stylesheet" href="styles.css?v=4.4.0">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1117">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -35,6 +35,7 @@
 
       <h1>Spot what's <span class="accent">next</span>.</h1>
       <p class="subtitle">A calm place for your ideas about the next big thing — AI, AI infrastructure, crypto, whatever's coming. Write down what you think and why, lock it in so future-you can't quietly rewrite it, and check back in a few months to see how your calls are doing.</p>
+      <div id="wisdom-line"></div>
 
       <div id="cal-strip"></div>
 
@@ -178,6 +179,13 @@
             <p>Not financial advice, and nothing here buys, sells, or moves money. It's a frame for thinking — retake it when life changes: a new job, a shorter timeline, or new debt all shift the answer.</p>
           </div>
         </details>
+        <details>
+          <summary>Why this exists</summary>
+          <div class="explainer-body">
+            <p>I watched Bitcoin at ~$5,000 and thought "this will be huge" — then bought nothing. I watched AI coming for years, used it every day, and still couldn't have said what to do about it. Twice I saw the wave early. Twice I did nothing.</p>
+            <p>The miss wasn't information. The miss was trust — I'd never kept score of my own judgment, so I didn't know how much to believe my gut. This app is the scoreboard: write down what you think, lock it in, and check back. <strong>Judgment is a skill, and skills improve with a scoreboard.</strong></p>
+          </div>
+        </details>
       </div>
       <div id="quiz" class="quiz"></div>
       <div id="quiz-result" class="result hidden" role="status"></div>
@@ -188,17 +196,28 @@
   <section id="screen-learn" class="screen hidden">
     <div class="wrap">
       <h1 id="learn-lessons">Learn the fundamentals</h1>
-      <p class="subtitle">Thirteen concepts worth understanding before you research any company. Each one is a
-        2-minute micro-lesson: plain-English explainer, what "healthy" generally looks like, red flags —
-        then a 3-question check. These are <em>typical patterns</em>, not rules — context (industry,
-        company age, cycle) always matters.</p>
-      <p class="fineprint">On this page: <a class="inline-link" href="#learn-lessons">the lessons</a> · <a class="inline-link" href="#learn-checklist">the 5-minute checklist</a> · <a class="inline-link" href="#learn-more">keep learning</a> · <a class="inline-link" href="#accounts-part">accounts &amp; the Roth IRA</a></p>
+      <p class="subtitle">Two tracks: <strong>thirteen concepts</strong> worth understanding before you research any
+        company — each a 2-minute micro-lesson with a 3-question check — and <strong>five timeless
+        principles</strong> from the investors who thought hardest about temperament, patience, and
+        knowing what you don't know. These are <em>typical patterns</em>, not rules — context
+        (industry, company age, cycle) always matters.</p>
+      <p class="fineprint">On this page: <a class="inline-link" href="#learn-lessons">the lessons</a> · <a class="inline-link" href="#learn-principles">timeless principles</a> · <a class="inline-link" href="#learn-wisdom">wisdom</a> · <a class="inline-link" href="#learn-checklist">the 5-minute checklist</a> · <a class="inline-link" href="#learn-more">keep learning</a> · <a class="inline-link" href="#accounts-part">accounts &amp; the Roth IRA</a></p>
       <label class="field search-field">Search the lessons
         <input type="search" id="glossary-search" maxlength="60" placeholder="e.g. margin, debt, moat…">
       </label>
       <p class="fineprint hidden" id="glossary-count" role="status"></p>
       <div id="glossary"></div>
       <div class="empty hidden" id="glossary-empty">No terms match — try a broader word like "debt" or "growth".</div>
+
+      <h2 id="learn-principles">Timeless principles</h2>
+      <p class="subtitle">Five ideas from Warren Buffett, Charlie Munger, and Ben Graham — the investors who
+        thought hardest about judgment itself. Each one connects to something this app asks you to do.</p>
+      <div id="principles"></div>
+
+      <h2 id="learn-wisdom">Wisdom, in their words</h2>
+      <p class="subtitle">One of these opens your Ideas page every day. All verified against primary sources —
+        Berkshire Hathaway letters, documented interviews — because a misattributed quote teaches the wrong lesson about checking your sources.</p>
+      <div id="wisdom-list"></div>
 
       <h2 id="learn-checklist">The 5-minute checklist</h2>
       <ol class="checklist">
@@ -313,9 +332,9 @@
 <footer class="footer">
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v4.3.7</span> · Your data stays in this browser. · <button id="btn-check-update" class="linklike">Check for updates</button></p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v4.4.0</span> · Your data stays in this browser. · <button id="btn-check-update" class="linklike">Check for updates</button></p>
 </footer>
 
-<script src="app.js?v=4.3.7"></script>
+<script src="app.js?v=4.4.0"></script>
 </body>
 </html>

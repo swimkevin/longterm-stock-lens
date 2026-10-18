@@ -333,6 +333,21 @@ async function main() {
   assert(L.GLOSSARY.every(g => g.quiz.every(q => q.options.length >= 3 && q.a >= 0 && q.a < q.options.length && q.why)),
     'every quiz question has options, a valid answer index, and an explanation');
 
+  console.log('wisdom + principles:');
+  assert(L.WISDOM.length === 10, '10 wisdom quotes');
+  assert(L.WISDOM.every(q => q.text && q.who && q.source), 'every quote carries text, attribution, and a primary source');
+  assert(L.WISDOM.every(q => !/warren buffett.{0,20}warren buffett/i.test(q.who)), 'no doubled attributions');
+  const w1 = L.wisdomFor('2026-10-18');
+  assert(L.wisdomFor('2026-10-18') === w1, 'wisdomFor is deterministic for a date');
+  assert(L.wisdomFor('not-a-date') === L.WISDOM[0], 'wisdomFor falls back to the first quote on bad input');
+  const seen = new Set();
+  for (let d = 1; d <= 10; d++) seen.add(L.wisdomFor('2026-10-' + String(d).padStart(2, '0')).text);
+  assert(seen.size === 10, '10 consecutive days rotate through all 10 quotes');
+  assert(L.PRINCIPLES.length === 5, '5 timeless principles');
+  assert(L.PRINCIPLES.every(p => p.title && p.body.length === 2 && p.tryIt && p.quote && p.quote.text && p.quote.who && p.quote.source),
+    'every principle has a title, two paragraphs, a try-it, and a sourced quote');
+  assert(L.PRINCIPLES.every(p => L.WISDOM.some(q => q.text === p.quote.text)), 'every principle quote comes from the verified wisdom set');
+
   console.log('glossary search:');
   assert(L.filterGlossaryTerms('').length === EXPECTED_LESSONS, 'empty query matches all');
   assert(L.filterGlossaryTerms('moat').length === 1, 'query "moat" finds Economic moat');
@@ -741,6 +756,29 @@ async function main() {
   gSearch.value = '';
   fireInput();
   assert(document.querySelectorAll('#glossary .gloss:not(.hidden)').length === EXPECTED_LESSONS, 'clearing search restores all lessons');
+
+  console.log('wisdom + principles render:');
+  const wisdomLine = document.getElementById('wisdom-line');
+  assert(!!wisdomLine && wisdomLine.textContent.includes(L.wisdomFor(L.todayISO()).text),
+    'Ideas home shows today\u2019s wisdom quote');
+  const principleCards = document.querySelectorAll('#principles .principle');
+  assert(principleCards.length === 5, 'Learn renders 5 principle cards (got ' + principleCards.length + ')');
+  assert(Array.from(principleCards).every(c => c.querySelector('blockquote.wisdom') && c.textContent.includes('Try it:')),
+    'every principle card carries its quote and a try-it');
+  const wisdomItems = document.querySelectorAll('#wisdom-list .wisdom');
+  assert(wisdomItems.length === 10, 'Learn wisdom list shows all 10 quotes (got ' + wisdomItems.length + ')');
+  assert(!document.querySelector('#wisdom-list').innerHTML.includes('<img'), 'wisdom list renders no markup from data');
+  const whyExists = Array.from(document.querySelectorAll('#profile-explainer summary'))
+    .find(s => s.textContent === 'Why this exists');
+  assert(!!whyExists, 'Profile carries a "Why this exists" origin story');
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  const emptyStateStore = window.localStorage.getItem(KEY);
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {} }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  assert(document.querySelector('#track-record .wisdom') !== null, 'Scorecard empty state carries a wisdom line');
+  window.localStorage.setItem(KEY, emptyStateStore);
+  L.reloadJournal();
   // P/E lesson quiz: correct answers are option indexes 0, 1, 1
   const peQuiz = document.querySelectorAll('#glossary .gloss')[0].querySelectorAll('.lesson-quiz .q');
   const correctIdx = [0, 1, 1];
@@ -1110,9 +1148,10 @@ async function main() {
   filterEl.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert(document.querySelectorAll('#ideas-list .idea-row').length === 1, 'clearing the filter restores the list');
   document.querySelector('.nav-btn[data-nav="learn"]').click();
-  assert(document.querySelectorAll('#screen-learn a[href^="#learn-"], #screen-learn a[href="#accounts-part"]').length === 4,
-    'Learn carries four jump links');
-  assert(document.getElementById('accounts-part') !== null && document.getElementById('learn-checklist') !== null,
+  assert(document.querySelectorAll('#screen-learn a[href^="#learn-"], #screen-learn a[href="#accounts-part"]').length === 6,
+    'Learn carries six jump links');
+  assert(document.getElementById('accounts-part') !== null && document.getElementById('learn-checklist') !== null &&
+    document.getElementById('learn-principles') !== null && document.getElementById('learn-wisdom') !== null,
     'Learn jump targets exist');
 
 
@@ -1125,7 +1164,7 @@ async function main() {
   const expl = document.getElementById('profile-explainer');
   assert(!!expl, 'profile explainer exists');
   const dets = expl.querySelectorAll('details');
-  assert(dets.length === 3, 'explainer has three dropdowns');
+  assert(dets.length === 4, 'explainer has four dropdowns');
   assert(dets[0].open === true, 'first dropdown starts open (how it works)');
   assert(dets[0].querySelector('summary').textContent === 'How this works', 'dropdown 1: how this works');
   assert(dets[1].querySelector('summary').textContent === 'The four bands', 'dropdown 2: the four bands');

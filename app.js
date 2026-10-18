@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.3.7';
+const APP_VERSION = '4.4.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -95,6 +95,74 @@ function scoreRisk(answers) {
   const band = BANDS.find(b => total >= b.min) || BANDS[BANDS.length - 1];
   return { total, max: QUIZ.length * 3, band };
 }
+
+const WISDOM = [
+  { text: 'Be fearful when others are greedy, and be greedy when others are fearful.',
+    who: 'Warren Buffett', source: 'New York Times op-ed, 2008' },
+  { text: 'Price is what you pay; value is what you get.',
+    who: 'Ben Graham, via Warren Buffett', source: 'Berkshire Hathaway letter, 2008' },
+  { text: 'Our favorite holding period is forever.',
+    who: 'Warren Buffett', source: 'Berkshire Hathaway letter, 1988' },
+  { text: "It's far better to buy a wonderful company at a fair price than a fair company at a wonderful price.",
+    who: 'Warren Buffett, crediting Charlie Munger', source: 'Berkshire Hathaway letter, 1989' },
+  { text: "If you aren't willing to own a stock for ten years, don't even think about owning it for ten minutes.",
+    who: 'Warren Buffett', source: 'Berkshire Hathaway letter, 1996' },
+  { text: 'You only find out who is swimming naked when the tide goes out.',
+    who: 'Warren Buffett', source: 'Berkshire Hathaway letter, 2001' },
+  { text: "Someone's sitting in the shade today because someone planted a tree a long time ago.",
+    who: 'Warren Buffett', source: '1991; quoted in Of Permanent Value, 2007' },
+  { text: 'In the short run, the market is a voting machine but in the long run it is a weighing machine.',
+    who: 'Ben Graham, via Warren Buffett', source: 'Berkshire Hathaway letter, 1987' },
+  { text: "What counts for most people in investing is not how much they know, but rather how realistically they define what they don't know.",
+    who: 'Warren Buffett', source: 'Berkshire Hathaway letter, 1992' },
+  { text: "Success in investing doesn't correlate with IQ once you're above the level of 25. Once you have ordinary intelligence, what you need is the temperament to control the urges that get other people into trouble in investing.",
+    who: 'Warren Buffett', source: 'BusinessWeek interview, 1999' },
+];
+
+function wisdomFor(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  if (!m) return WISDOM[0];
+  const days = Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000);
+  return WISDOM[((days % WISDOM.length) + WISDOM.length) % WISDOM.length];
+}
+
+const PRINCIPLES = [
+  { title: 'Circle of competence',
+    body: [
+      'Every investor has a circle of competence: the subjects they actually understand from real experience. Inside the circle, your judgment has an edge. Outside it, you are guessing — and the market charges tuition for guesses.',
+      "The circle's size doesn't matter much. What matters is knowing where the edges are and staying inside them. Your work, your hobbies, the products you use every day — that is your circle. If you can't explain why a trend matters in two sentences, it's outside your circle for now.",
+    ],
+    tryIt: 'Write down three subjects you understand better than most people. Those are your hunting grounds — start your trend list there.',
+    quote: WISDOM[8] },
+  { title: 'Margin of safety',
+    body: [
+      "Price is what you pay; value is what you get. A margin of safety means only acting when the price is far enough below your estimate of value that you can be wrong and still be fine. It's engineering tolerance applied to money: bridges are built to hold far more than they'll ever carry.",
+      "For a long-term holder, the margin of safety isn't just price — it's the strength of the business. A wonderful company at a fair price gives you two margins at once: the business keeps compounding, and time forgives your entry price.",
+    ],
+    tryIt: "For your next idea, write the price you'd need to see to feel safe — then write what would have to go wrong for even that price to be a mistake.",
+    quote: WISDOM[1] },
+  { title: 'Mr. Market',
+    body: [
+      "Imagine a business partner who shows up every day offering to buy your share or sell you his — at prices set entirely by his mood. Some days he's euphoric, some days he's terrified. You don't have to trade with him. His job is to serve you with prices, not to guide you with wisdom.",
+      "Your sealed thesis is the antidote to Mr. Market. When prices swing, you don't re-decide from nothing — you re-read what you believed on a calm day and ask whether anything actually changed.",
+    ],
+    tryIt: 'Next time a stock you watch drops hard in a week, open your sealed words before you open the chart.',
+    quote: WISDOM[7] },
+  { title: 'Temperament beats intellect',
+    body: [
+      "Investing success doesn't track IQ. It tracks temperament: the ability to sit still while everyone is excited, to think clearly while everyone is scared, and to admit you were wrong without quietly rewriting the story.",
+      "This is why the app seals your words. Memory is generous to the rememberer — every \u201CI knew it\u201D feels true after the fact. A sealed record is temperament in software form: it won't let future-you flatter past-you.",
+    ],
+    tryIt: 'After your next check-in, compare what you remember believing with what you actually wrote. Notice the gap — that is the tax temperament saves you.',
+    quote: WISDOM[9] },
+  { title: 'Time, the quiet compounder',
+    body: [
+      "Compounding needs two ingredients: a decent rate of return and a long time. Most people overestimate what they can do in a year and underestimate what patience does in a decade. The check-in dates here are gentle nudges, never deadlines, because good long-term moves look boring for long stretches.",
+      "The skill is telling \u201Cboring and compounding\u201D apart from \u201Cboring and dying\u201D — which is exactly what a sealed thesis lets you do. Re-read your own calm-day reasoning; if it still holds, the boredom is the price of the return.",
+    ],
+    tryIt: 'Pick your longest-held idea and check in on it. Ask one question: is the tree growing, or just standing still?',
+    quote: WISDOM[2] },
+];
 
 const GLOSSARY = [
   { abbr: 'P/E', name: 'Price-to-Earnings ratio',
@@ -1060,6 +1128,7 @@ function ideaRow(idea, opts) {
 
 function renderIdeasHome() {
   const today = todayISO();
+  renderWisdomLine();
 
   const strip = $('cal-strip');
   if (strip) {
@@ -1879,6 +1948,7 @@ function renderTrackRecord() {
     }
   }
   cal.appendChild(p);
+  if (c.overallRate === null && tr.reviews === 0) cal.appendChild(wisdomNode(WISDOM[8]));
   if (c.overallRate !== null) {
     const bars = document.createElement('div');
     bars.className = 'cal-bars';
@@ -2245,6 +2315,71 @@ function lessonProgress(abbr) {
   return (g && typeof g.best === 'number') ? g.best : null;
 }
 
+function wisdomNode(q) {
+  const p = document.createElement('p');
+  p.className = 'wisdom';
+  const t = document.createElement('span');
+  t.className = 'wisdom-text';
+  t.textContent = '\u201C' + q.text + '\u201D';
+  const by = document.createElement('span');
+  by.className = 'wisdom-by';
+  by.textContent = ' — ' + q.who + ', ' + q.source;
+  p.appendChild(t);
+  p.appendChild(by);
+  return p;
+}
+
+function renderWisdomLine() {
+  const el = $('wisdom-line');
+  if (!el) return;
+  el.innerHTML = '';
+  el.appendChild(wisdomNode(wisdomFor(todayISO())));
+}
+
+function renderPrinciples() {
+  const box = $('principles');
+  if (!box) return;
+  box.innerHTML = '';
+  PRINCIPLES.forEach(pr => {
+    const art = document.createElement('article');
+    art.className = 'panel principle';
+    const h = document.createElement('h3');
+    h.textContent = pr.title;
+    art.appendChild(h);
+    pr.body.forEach(par => {
+      const p = document.createElement('p');
+      p.textContent = par;
+      art.appendChild(p);
+    });
+    const bq = document.createElement('blockquote');
+    bq.className = 'wisdom';
+    const t = document.createElement('span');
+    t.className = 'wisdom-text';
+    t.textContent = '\u201C' + pr.quote.text + '\u201D';
+    const by = document.createElement('span');
+    by.className = 'wisdom-by';
+    by.textContent = ' — ' + pr.quote.who + ', ' + pr.quote.source;
+    bq.appendChild(t);
+    bq.appendChild(by);
+    art.appendChild(bq);
+    const act = document.createElement('p');
+    act.className = 'fineprint';
+    const lab = document.createElement('strong');
+    lab.textContent = 'Try it: ';
+    act.appendChild(lab);
+    act.appendChild(document.createTextNode(pr.tryIt));
+    art.appendChild(act);
+    box.appendChild(art);
+  });
+}
+
+function renderWisdomList() {
+  const box = $('wisdom-list');
+  if (!box) return;
+  box.innerHTML = '';
+  WISDOM.forEach(q => box.appendChild(wisdomNode(q)));
+}
+
 function renderGlossary() {
   const box = $('glossary');
   box.innerHTML = '';
@@ -2498,6 +2633,8 @@ function init() {
   $('idea-back').addEventListener('click', () => { renderIdeasHome(); showScreen('ideas'); });
   renderQuiz();
   renderGlossary();
+  renderPrinciples();
+  renderWisdomList();
   $('glossary-search').addEventListener('input', applyGlossaryFilter);
   renderIdeasHome();
   renderReviews();
@@ -2586,6 +2723,7 @@ if (document.readyState === 'loading') {
 
 if (typeof globalThis !== 'undefined') {
   globalThis.LongTermLens = { QUIZ, BANDS, scoreRisk, GLOSSARY, filterGlossaryTerms,
+    WISDOM, PRINCIPLES, wisdomFor,
     REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
     convictionOf, convictionDots, spotPriceOf, buildDiscoverPrompt,

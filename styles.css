@@ -330,3 +330,13 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible {
 .explainer-body p { margin: 0.35rem 0; }
 .band-list { margin: 0.2rem 0; padding-left: 1.1rem; }
 .band-list li { margin: 0.3rem 0; }
+#wisdom-line { margin: 0.2rem 0 1.1rem; max-width: 44rem; }
+#wisdom-line:empty { display: none; }
+.wisdom { margin: 0.9rem 0; }
+.wisdom-text { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 1.02rem; line-height: 1.55; color: var(--ink); }
+.wisdom-by { display: block; margin-top: 0.3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-style: normal; font-size: 0.82rem; color: var(--muted); }
+#wisdom-list .wisdom { padding: 0.85rem 0; border-top: 1px solid var(--line); margin: 0; }
+#wisdom-list .wisdom:first-child { border-top: none; }
+.principle h3 { margin: 0 0 0.5rem; font-size: 1.12rem; }
+.principle p { margin: 0.55rem 0; color: var(--ink-2); }
+.principle blockquote.wisdom { border-left: 3px solid var(--accent); padding: 0.1rem 0 0.1rem 0.9rem; margin: 0.9rem 0; }

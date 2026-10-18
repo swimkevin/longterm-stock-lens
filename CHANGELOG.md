@@ -1,5 +1,16 @@
 # Changelog — Long-Term Lens
 
+## [4.4.0] — 2026-10-18
+
+### Wisdom: Buffett, Munger & Graham, woven into the product
+The app's founding insight is that judgment is a skill — so v4.4.0 puts the masters of judgment inside the product:
+- **Daily wisdom** — a verified Buffett/Munger/Graham quote opens the Ideas page every day (deterministic rotation, 10 quotes). Every quote was verified against primary sources (Berkshire Hathaway letters, documented interviews); three popular misattributions were rejected and left out.
+- **Timeless principles** — a new Learn track with five plain-English essays: circle of competence, margin of safety, Mr. Market, temperament beats intellect, and time the compounder. Each ends with a "Try it" that ties the principle to something the app asks you to do.
+- **Wisdom archive** — all ten quotes with their sources live in Learn, with a note on why verification matters.
+- **Why this exists, in the app** — the origin story (Bitcoin at ~$5k, the early-AI miss, "judgment is a skill, and skills improve with a scoreboard") now lives in the Profile explainer, where new visitors land.
+- Scorecard's empty state carries a quiet reminder of why the record matters.
+- 16 new assertions; 434 assertions green.
+
 ## [4.3.7] — 2026-10-18
 
 ### Deep-testing follow-ups: draft autosave + fetch-hardened update check

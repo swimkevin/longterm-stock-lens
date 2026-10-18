@@ -35,7 +35,7 @@ A calm place for your ideas about the next big thing — AI, AI infrastructure, 
 5. **Get a second opinion** — the app builds one prompt from everything you wrote; paste it into any AI for the numbers, the case for, the case against. It analyzes; it never says "buy."
 6. **Check in** — any time you like (the date is just a nudge). The app shows you your own locked-in words — and the price then vs. now — and asks one question: *did it play out the way you said?*
 
-Trends and ideas share the Ideas tab on purpose — a trend is just an idea before it has a company. Missed a wave? It goes in the same place, under **Missed waves**, with the lesson it taught you: your pattern library for the next one. The Learn tab carries the 13 micro-lessons plus the account basics — including the **2026 Roth IRA income window** ($153k–$168k single) and how pre-tax 401(k) contributions can legitimately bring you under it.
+Trends and ideas share the Ideas tab on purpose — a trend is just an idea before it has a company. Missed a wave? It goes in the same place, under **Missed waves**, with the lesson it taught you: your pattern library for the next one. The Learn tab carries the 13 micro-lessons plus the account basics — including the **2026 Roth IRA income window** ($153k–$168k single) and how pre-tax 401(k) contributions can legitimately bring you under it — plus **five timeless principles** (circle of competence, margin of safety, Mr. Market, temperament, patience) drawn from Buffett, Munger, and Graham, each tied to something the app asks you to do. A verified wisdom quote — pinned to its primary source, never a meme attribution — opens your Ideas page every day.
 
 ## The interesting part: the Scorecard
 
@@ -49,7 +49,7 @@ The **Scorecard** turns that record into hit rates by how sure you were, with ho
 - **Structure follows the funnel.** No dropdown menus, no buried pages: five always-visible tabs, trends merged into Ideas, accounts merged into Learn. A boot-time version check reloads the app once when a newer build exists, so a phone can never run a half-stale mix of old script and new page.
 - **Local-first by design.** All data lives in `localStorage` (schema-versioned, with migrations from v1 journal formats forward). No accounts, no server, nothing to leak. Export to JSON/Markdown is built in.
 - **Pure logic, tested in isolation.** Scoring, check-in scheduling, the scorecard math, sealing, and prompt building are pure functions exposed on `globalThis.LongTermLens`; rendering is a separate layer on top.
-- **418 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push. Owner-level rules (no SEC links, local-only dates, sealed theses stay sealed, zero code comments in shipped source) are enforced by tests, not by memory.
+- **434 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push. Owner-level rules (no SEC links, local-only dates, sealed theses stay sealed, zero code comments in shipped source) are enforced by tests, not by memory.
 - **Design system, not vibes.** Token-based theming (light/dark), one accent color, one primary action per view, hairline surfaces. The UI benchmark is Claude/Linear restraint: nothing on screen that doesn't earn its place.
 - **Accessibility basics done properly:** focus rings, aria labels/pressed states, 44px targets, `prefers-reduced-motion`, keyboard shortcut (⌘K jumps to quick-add).
 
@@ -64,7 +64,7 @@ python3 -m http.server 8000   # or any static server
 # → http://localhost:8000
 
 npm install   # dev-only: jsdom for the test suite
-npm test      # 418 assertions (smoke 409 + edge probes 9)
+npm test      # 434 assertions (smoke 425 + edge probes 9)
 ```
 
 ## Project layout
