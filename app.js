@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.1';
+const APP_VERSION = '4.4.2';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -632,6 +632,7 @@ function sealThesis(idea, today) {
 function captureThesisDraft(i) {
   const det = document.getElementById('idea-detail');
   if (!det) return;
+  if (det.dataset.ideaId !== i.id) return;
   const b = det.querySelector('.thesis-belief');
   const f = det.querySelector('.thesis-falsify');
   const p = det.querySelector('.thesis-price');
@@ -748,6 +749,7 @@ const SCHEMA_VERSION = 3;
 function migrateV2ToV3(parsed) {
   const upgraded = blankStore();
   upgraded.ideas = (parsed.ideas || []).map(normalizeIdea);
+  upgraded.trends = (parsed.trends || []).map(normalizeTrend);
   upgraded.glossary = parsed.glossary || {};
   upgraded.quizProfile = parsed.quizProfile || null;
   return upgraded;
@@ -819,6 +821,7 @@ function normalizeIdea(rawIdea) {
   }, rawIdea || {});
   if (!idea.id) idea.id = newId('e');
   idea.thesis = Object.assign({ belief: '', falsify: '' }, idea.thesis);
+  if (idea.sealed && (typeof idea.sealed.belief !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(idea.sealed.date || ''))) delete idea.sealed;
   if (!(typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5)) idea.conviction = null;
   if (idea.conviction === null && idea.scores && typeof idea.scores === 'object') {
     const vals = Object.values(idea.scores).filter(v => typeof v === 'number' && v >= 1 && v <= 5);
@@ -900,6 +903,8 @@ function showScreen(name) {
   const el = $('screen-' + name);
   if (el) {
     el.classList.remove('hidden');
+    const h = el.querySelector('h1');
+    if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
 
     el.style.animation = 'none';
     void el.offsetWidth;
@@ -912,7 +917,6 @@ function showScreen(name) {
 }
 
 let store = loadStore();
-let activeReviewId = null;
 
 function getIdea(id) {
   return (store.ideas || []).find(i => i.id === id) || null;
@@ -1269,6 +1273,7 @@ function sectionShell(title, hint) {
 function renderIdeaDetail(idea) {
   const box = $('idea-detail');
   box.innerHTML = '';
+  box.dataset.ideaId = idea.id;
   const conv = convictionOf(idea);
 
   const head = document.createElement('div');
@@ -1682,10 +1687,7 @@ function renderReviews() {
     start.className = 'btn primary';
     start.textContent = 'Check in';
     start.setAttribute('aria-label', 'Check in on ' + idea.name);
-    start.addEventListener('click', () => {
-      activeReviewId = idea.id;
-      renderReviewForm(card, idea);
-    });
+    start.addEventListener('click', () => renderReviewForm(card, idea));
     actions.appendChild(start);
     card.appendChild(actions);
     box.appendChild(card);
@@ -1762,7 +1764,6 @@ function renderReviewForm(card, idea, onDone) {
   }
 
   const q1 = document.createElement('p');
-  q1.innerHTML = '';
   const q1t = document.createElement('strong');
   q1t.textContent = 'Did it play out the way you said?';
   q1.appendChild(q1t);
@@ -1883,7 +1884,6 @@ function renderReviewForm(card, idea, onDone) {
       priceNow: isFinite(pn) && pn > 0 ? pn : null,
     }, todayISO());
     updateIdea(idea.id, () => { captureThesisDraft(updated); return updated; });
-    activeReviewId = null;
     renderIdeasHome();
     renderReviews();
     if (onDone) onDone();
@@ -1892,7 +1892,7 @@ function renderReviewForm(card, idea, onDone) {
   const cancel = document.createElement('button');
   cancel.className = 'btn';
   cancel.textContent = 'Cancel';
-  cancel.addEventListener('click', () => { activeReviewId = null; captureThesisDraft(getIdea(idea.id)); saveStore(store); if (onDone) { onDone(); } else { renderReviews(); } });
+  cancel.addEventListener('click', () => { captureThesisDraft(getIdea(idea.id)); saveStore(store); if (onDone) { onDone(); } else { renderReviews(); } });
   row.appendChild(cancel);
   form.appendChild(row);
   card.appendChild(form);
@@ -2664,9 +2664,7 @@ function init() {
     }
   });
   $('trend-add').addEventListener('click', quickAddTrend);
-  ['trend-name', 'trend-why'].forEach(id => {
-    $(id).addEventListener('keydown', e => { if (e.key === 'Enter') quickAddTrend(); });
-  });
+  $('trend-name').addEventListener('keydown', e => { if (e.key === 'Enter') quickAddTrend(); });
   $('export-json').addEventListener('click', exportJSON);
   $('export-md').addEventListener('click', exportMarkdown);
   $('import-json').addEventListener('click', () => $('import-json-file').click());

@@ -1211,6 +1211,69 @@ async function main() {
   assert(document.getElementById('idea-detail').textContent.includes('Spotted at $120'),
     'drafted price logged at seal');
 
+  // ---- v4.4.2: a check-in from the Check-ins tab must never borrow another idea's draft ----
+  console.log('cross-idea draft guard:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Draft A';
+  document.getElementById('qa-add').click();
+  document.querySelector('#idea-detail .thesis-belief').value = 'A DRAFT WORDS';
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Checkin B';
+  document.getElementById('qa-add').click();
+  const bDueDate = document.querySelector('#idea-detail input[type="date"]');
+  bDueDate.value = L.todayISO();
+  bDueDate.dispatchEvent(new window.Event('change', { bubbles: true }));
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(document.querySelectorAll('.idea-main'))
+    .find(b => b.getAttribute('aria-label') === 'Open research for Draft A').click();
+  document.querySelector('#idea-detail .thesis-belief').value = 'A DRAFT WORDS';
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  const bCheckinBtn = Array.from(document.querySelectorAll('#screen-reviews .btn.primary'))
+    .find(b => b.getAttribute('aria-label') === 'Check in on Checkin B');
+  assert(!!bCheckinBtn, 'due list offers an inline Check in button for B');
+  bCheckinBtn.click();
+  const bForm = bCheckinBtn.closest('.entry').querySelector('.review-form');
+  assert(!!bForm, 'check-in form mounts inside the Check-ins tab card');
+  bForm.querySelector('textarea').value = 'B note.';
+  Array.from(bForm.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
+  const bStored = readStore().ideas.find(i => i.name === 'Checkin B');
+  assert(bStored.reviewHistory.length === 1, 'the check-in itself saved on B');
+  assert(bStored.thesis.belief !== 'A DRAFT WORDS', 'B\'s thesis was not overwritten with A\'s on-screen draft');
+  document.querySelector('#idea-detail [data-action="checkin-now"]').click();
+  const aForm = document.querySelector('#idea-detail .review-form');
+  aForm.querySelector('textarea').value = 'A note.';
+  Array.from(aForm.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
+  const aStored = readStore().ideas.find(i => i.name === 'Draft A');
+  assert(aStored.thesis.belief === 'A DRAFT WORDS', 'detail-page check-in still captures the same idea\'s draft');
+  assert(aStored.reviewHistory.length === 1, 'A\'s check-in saved');
+
+  console.log('screen navigation moves focus:');
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  const trackH = document.querySelector('#screen-track h1');
+  assert(document.activeElement === trackH, 'opening Scorecard moves focus to its heading');
+  assert(trackH.getAttribute('tabindex') === '-1', 'screen heading is focusable without joining the tab order');
+
+  console.log('trend Enter key:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const trendsBefore = readStore().trends.length;
+  document.getElementById('trend-name').value = 'NoSubmit Trend';
+  document.getElementById('trend-why').value = 'why text';
+  document.getElementById('trend-why').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  assert(readStore().trends.length === trendsBefore, 'Enter in the trend why box types a newline, not a submit');
+  document.getElementById('trend-name').dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  assert(readStore().trends.length === trendsBefore + 1, 'Enter in the trend name box still adds the trend');
+
+  console.log('import hardens malformed sealed records:');
+  assert(!L.normalizeIdea({ name: 'Bad Seal', sealed: {} }).sealed, 'sealed without date/belief is dropped');
+  assert(!L.normalizeIdea({ name: 'No Date', sealed: { belief: 'words' } }).sealed, 'sealed without a date is dropped');
+  const goodSeal = L.normalizeIdea({ name: 'Good', sealed: { belief: 'words', falsify: 'x', date: '2026-10-01' } });
+  assert(goodSeal.sealed && goodSeal.sealed.belief === 'words', 'well-formed sealed records survive');
+
+  console.log('v2 migration keeps trends:');
+  const upgraded = L.migrateV2ToV3({ schema: 2, ideas: [], trends: [{ id: 't9', name: 'Old Trend', why: 'because', status: 'watching' }], glossary: {}, quizProfile: null });
+  assert(upgraded.schema === 3, 'migration lands on the current schema');
+  assert(upgraded.trends.length === 1 && upgraded.trends[0].name === 'Old Trend', 'v2 trends survive the v3 migration');
+
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
   realErrors.forEach(e => console.error('    ' + e));

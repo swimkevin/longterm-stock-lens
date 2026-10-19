@@ -2,9 +2,12 @@
 
 ## What the suite is
 
-Two files, run by `npm test`: `tests/smoke.js` (382 assertions) and
-`tests/edge-probe.js` (9 assertions) — **391 assertions**, all
-passing. smoke.js has two halves:
+Two files, run by `npm test`: `tests/smoke.js` (442 assertions) and
+`tests/edge-probe.js` (9 assertions) — **451 assertions**, all
+passing. Counts are runtime assertion executions: every `assert()` call
+that runs prints one `  ok` line, and looped assertions count each
+execution, so the number tracks executed checks, not distinct
+`assert()` statements in source. smoke.js has two halves:
 
 1. **Pure-logic assertions** — the DOM-free core exposed on
    `globalThis.LongTermLens` (`scoreRisk`, `makeIdea`, `convictionOf`,

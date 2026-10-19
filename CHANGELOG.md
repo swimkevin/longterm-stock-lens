@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [4.4.2] — 2026-10-19
+
+### Adversarial-audit fixes: a real data-integrity bug, CSS validity, docs honesty
+The loop's scheduled fresh-eyes audit (static review, no live browser) earned its keep — it found one genuine bug the suite and two deep-test rounds had missed:
+- **Cross-idea draft contamination (critical).** Saving a check-in from the Check-ins tab called `captureThesisDraft` against the *checked-in* idea while reading `#idea-detail`'s DOM — which still showed whichever idea was last opened. Typing a thesis draft on idea A, then checking in on idea B from the tab, silently overwrote B's thesis with A's draft (for a sealed B, the sealed record survived but the thesis shown in the Check-ins list was corrupted). Fixed: the detail renderer stamps the shown idea's id on the DOM, and draft capture bails unless the ids match. Ships with a click-through regression test (the test fails on the old code).
+- **Undefined CSS variables.** `--ink` / `--ink-2` were used in three rules but never defined; replaced with `--text` (pixel-identical to the inherited rendering, now valid).
+- **Docs honesty.** Assertion counts are now defined as runtime executions and corrected everywhere (451: smoke 442 + edge 9); the "44px targets" claim was softened to "generous touch targets" (only `.chip` enforces 44px).
+- **Small hardening:** write-only `activeReviewId` removed; dead `q1.innerHTML = ''` removed; v2→v3 migration now carries `trends`; Enter in the trend "why" textarea types a newline instead of submitting; imported ideas with malformed `sealed` records are dropped instead of rendering "Locked in on undefined"; screen navigation moves keyboard focus to the screen heading and all interactive selectors have `:focus-visible` styles.
+- 15 new assertions; 451 assertions green. Live-verified on the deployed URL (five-tab pass, seal/read-only, check-in, trends, filter, Learn links — all clean).
+
 ## [4.4.1] — 2026-10-18
 
 ### Usability round: post-quiz momentum
