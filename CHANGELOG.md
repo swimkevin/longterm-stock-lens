@@ -1,5 +1,12 @@
 # Changelog — Long-Term Lens
 
+## [4.4.3] — 2026-10-20
+
+### Debloat: dead CSS token removed, custom-property scan test-enforced
+The daily debloat scan found `--red-soft` (light + dark definitions) defined but never used — leftover from v4.4.2's CSS-validity pass. Removed both definitions; `--red` itself is live (danger buttons, form errors, flags) and stays.
+- **New regression test:** the smoke suite now statically checks styles.css — every `var(--x)` used must be defined, and every `--x` defined must be used. Verified the new assertion FAILS on the pre-fix stylesheet (`dead: red-soft`) and passes with the fix. This turns the manual debloat scan's custom-property check into an enforced rule.
+- 2 new assertions; 453 assertions green. The v4.4.3 diff is CSS-only (dead token removal) plus the test itself; the deployed v4.4.2 passed the full five-tab live pass (idea loop, seal read-only, check-in, trends, filter, Learn — all clean; edge probes: triple-click dedupe, mid-flow reload, Check-ins badge behavior). Live version check on v4.4.3 after push.
+
 ## [4.4.2] — 2026-10-19
 
 ### Adversarial-audit fixes: a real data-integrity bug, CSS validity, docs honesty

@@ -1274,6 +1274,15 @@ async function main() {
   assert(upgraded.schema === 3, 'migration lands on the current schema');
   assert(upgraded.trends.length === 1 && upgraded.trends[0].name === 'Old Trend', 'v2 trends survive the v3 migration');
 
+  console.log('CSS custom properties stay valid and used:');
+  const css = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+  const defined = new Set([...css.matchAll(/(^|\s)--([a-zA-Z0-9-]+)\s*:/gm)].map(m => m[2]));
+  const used = new Set([...css.matchAll(/var\(--([a-zA-Z0-9-]+)/g)].map(m => m[1]));
+  const undefinedUsed = [...used].filter(v => !defined.has(v));
+  const unusedDefined = [...defined].filter(v => !used.has(v));
+  assert(undefinedUsed.length === 0, 'every var(--x) used in styles.css is defined' + (undefinedUsed.length ? ' (missing: ' + undefinedUsed.join(', ') + ')' : ''));
+  assert(unusedDefined.length === 0, 'every --x defined in styles.css is used' + (unusedDefined.length ? ' (dead: ' + unusedDefined.join(', ') + ')' : ''));
+
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
   realErrors.forEach(e => console.error('    ' + e));
