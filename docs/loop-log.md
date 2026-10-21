@@ -4,6 +4,26 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## Metrics trend
+
+| Date | Release | Assertions | Issues found / fixed | Dead code (fn/css/vars/state) | Notes |
+|---|---|---|---|---|---|
+| 2026-10-18 | v4.3.5 | 402 | audit → comment strip + README | — | zero-comment source, test-enforced |
+| 2026-10-18 | v4.3.6 | 417 | audit → JSON import + 5 fixes | 0 / 0 / — / — | export was write-only |
+| 2026-10-18 | v4.3.7 | 418 | deep test → autosave + fetch guard | 0 / 0 / — / — | 10-stock loop, math exact |
+| 2026-10-18 | v4.4.0 | 434 | elevation: wisdom engine | 0 / 0 / — / — | quotes primary-sourced |
+| 2026-10-18 | v4.4.1 | 436 | usability → post-quiz CTA | 0 / 0 / — / — | 134/134 jsdom + browser pass |
+| 2026-10-19 | v4.4.2 | 451 | audit → C1 draft-contamination + 8 fixes | 0 / 0 / 2 undef / 1 write-only | audit caught what 436 missed |
+| 2026-10-20 | v4.4.3 | 453 | debloat → dead --red-soft | 0 / 0 / 0 / 0 | CSS token scan test-enforced |
+| 2026-10-21 | — | 453 | quiet run, nothing shipped | 0 / 0 / 0 / 0 | honest all-green |
+| 2026-10-21 | v4.4.4 | 455 | self-heal behavioral test | 0 / 0 / 0 / 0 | negative control verified |
+
+## 2026-10-21 — v4.4.4 (manual loop rerun + gate hardening, Kevin's directive)
+- Shipped: behavioral self-heal test (auto update check arms the one-shot session guard; repeat check does not re-arm). Replaces the source-grep pin with a click-through test; `checkForUpdates` exposed on LongTermLens as the test seam. Negative control verified: all 3 self-heal assertions fail with the guard key broken.
+- Loop change (Kevin's ask): FIXES & PUSHING is now three explicit gates — GATE 1 local `npm test` exit 0 on the exact pushed tree (re-run after the last edit; pushing via API bypasses pre-push hooks), GATE 2 CI green on the pushed SHA (`.github/workflows/test.yml` runs `npm ci` + `npm test` on every push to main — confirmed), GATE 3 live version + deployed verification. v4.4.4 shipped through all three: local 455/455 exit 0, CI tests+pages success on afa8b67c, live version.txt 4.4.4.
+- Measurements: 455 assertions green (was 453); debloat clean.
+- Loop lesson: the self-heal — a safety mechanism the loop is told never to weaken — was only pinned by a grep. Safety mechanisms deserve behavioral tests; grep-pins are a smell. New rule of thumb: any test that only greps source is a candidate for a behavioral replacement.
+
 ## 2026-10-21 — v4.4.3 re-verified (quiet run, nothing shipped)
 - Shipped: nothing — the bar held. All verification green on the live v4.4.3.
 - Measurements: 453 assertions green (smoke 444 + edge probes 9); debloat scan clean — 0 dead functions, CSS custom-property scan test-enforced green, Safari-compat inspection clean (no structuredClone/.at()/replaceAll/Intl/:has/backdrop-filter), 0 write-only module lets; app.js 2739 / styles.css 342 / index.html 339 lines. Deployed bundle (index.html, app.js, styles.css, version.txt via curl) is BYTE-IDENTICAL to local v4.4.3. Real-browser functional pass against the deployed bytes: 15/15 PASS, 0 console errors (boot title, 5 tabs, quick-add → thesis autosave → seal read-only with exact text, Check-ins due queue, Scorecard render, Learn Accounts/Roth $7,500, no sec.gov, footer 4.4.3, filter narrows, empty filter restores). Visual QA: detail view clean and minimal; the h1 focus outline on navigation is the designed v4.4.2 focus-management behavior.

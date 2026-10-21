@@ -1,0 +1,94 @@
+# Loop Playbook — Long-Term Lens daily improvement
+
+This file is the loop's operating manual. The scheduler holds only a pointer to it.
+The loop improves by editing this file (via cron.update on the scheduler body when
+the pointer itself must change, and by committing playbook edits with the run's
+other changes). Every rule here was earned by a real incident; the history is in
+docs/loop-log.md.
+
+## Grant and stop conditions
+- Standing grant: Kevin re-enabled this loop 2026-10-14 ("I want daily loop to stay
+  on... ship fixes and reiterate on improvements until site is in good state for
+  FANG recruiters") after his Oct 13 pause of all job-hunt work.
+- A pause from Kevin means FULL STOP: no runs, no "helpful" background work, no
+  nudges. Resume only on his explicit word. His attention is the protected resource.
+- Scope: this repo only (swimkevin/longterm-stock-lens). Never touch other repos,
+  accounts, or services on this loop's authority.
+
+## Risk tiering (explicit)
+- This is a static personal site: no backend, no user data beyond the visitor's
+  own localStorage, no payments. Blast radius of a bad push: a broken static page
+  for visitors until revert.
+- Therefore: direct-to-main shipping with the three gates below is the chosen
+  risk posture — deliberate, not lazy. This posture does NOT transfer to any
+  multi-user or stateful system.
+
+## Rollback
+- `git revert <sha>` (or `git reset --hard <last-good>` on the local tree followed
+  by a normal push — the PAT helper pushes the tree, so a local revert + push
+  is the rollback), push via the PAT helper, then GATE 2 (CI green) and GATE 3
+  (live version.txt matches the reverted version). One paragraph, no improvisation.
+
+## Secrets and shipping path
+- Pushing uses `~/workspace/skills/github-pat/bin/push.py` with a GitHub PAT
+  (repo + workflow scopes). No secret values live in this repo, in docs, in logs,
+  or in chat — ever. Report only whether the push worked, never the token.
+- If pushes start failing with 401/403: the token was revoked or expired. The loop
+  cannot self-repair this — it needs Kevin to re-issue. Report it plainly and stop
+  attempting pushes; keep doing read-only work (tests, audits) in the meantime.
+
+## Hard rules (from repo AGENTS.md — non-negotiable)
+- Vanilla HTML/CSS/JS, zero runtime dependencies, no build step. GitHub Pages-ready from main.
+- EDUCATIONAL ONLY — never add buy/sell recommendations, real-time prices, price fetching, or personalized advice. The app never recommends specific stocks; it helps Kevin evaluate his own candidates. Footer + hero disclaimer stays.
+- NEVER re-add sec.gov / SEC EDGAR links anywhere (footer, Learn, idea page) per Kevin's directive — a regression test fails the build if any sec.gov link returns. Filings guidance stays plain text ("read the company's own 10-K").
+- app.js is one IIFE. Pure logic exposed on globalThis.LongTermLens — keep new logic DOM-free where possible.
+- User strings via textContent or esc(). Never raw innerHTML for user content.
+- ZERO CODE COMMENTS in shipped source (app.js, styles.css, index.html) — owner directive 2026-10-18. Code must be self-explanatory; the why lives in docs/adr/, CHANGELOG.md, and commit messages. A test enforces this — keep it green.
+- `npm test` must pass before any push. Add assertions with every logic change. CRITICAL LESSON: tests must CLICK THROUGH actions, not merely assert elements exist.
+- localStorage key: longterm-stock-lens-v1. Schema changes need migration, never data loss.
+- Tax figures: label "verify at irs.gov".
+- PLAIN, NON-WORK LANGUAGE in all copy (v3.3.0): Check-ins (not Reviews), Scorecard (not Calibration), "What you think" (not Thesis), "How sure are you?" (not Conviction). Work-sounding words like "due"/"reviews" stay out.
+- LOCAL DATES ONLY (v4.1.0): every date stamp uses the user's local date, never UTC — a regression test forbids the UTC pattern from returning. Sealed theses are READ-ONLY once saved, and the second-opinion prompt is built from the sealed record itself — never reintroduce an edit path for a sealed thesis.
+- The version self-heal (v3.7.0) is a SAFETY mechanism: the startup version check auto-reloads ONCE (loop-guarded) when a newer version exists. Never weaken its loop guard. (2026-10-14/17: the transient "Fresh version available" notice was investigated and found to be the self-heal working correctly on a genuinely stale cached build — NOT a bug. Do not "fix" it; the guard is test-pinned.)
+
+## The product (v4.4.4, 455 assertions green — verified 2026-10-21)
+A personal site so Kevin never misses another wave like Bitcoin at ~$5k or early AI. Core loop: spot a trend → brainstorm/find candidate companies → research and write down what you think + the price you saw → decide → check back in later and see how your calls are doing (Scorecard). Kevin's bar: "super intuitive, simple, clean like Muse, only essential features." When in doubt, CUT.
+Navigation: FIVE tabs — Profile, Ideas, Check-ins (due-count badge on the tab itself), Scorecard, Learn. There is NO "More" menu and NO separate Trends or Accounts tab anymore — do not reintroduce them. Trends live INSIDE Ideas (quick-add → trends & misses → ideas → data, one funnel); Accounts closes out Learn under "Accounts & the Roth IRA" (verified 2026 IRS figures: $7,500 under 50 / $8,600 50+, MAGI phase-out $153k–$168k single / $242k–$252k MFJ, pre-tax 401(k) up to $24,500 lowers Roth MAGI dollar-for-dollar). Profile is FIRST for new visitors; once a profile is saved the app opens on Ideas. Profile: one-line subtitle plus FOUR accordion dropdowns ("How this works" starts open and links onward to Learn, "The four bands" 80/20 · 87/13 · 93/7 · 98/2, "What this isn't", "Why this exists" origin story v4.4.0); a test pins the dropdown band numbers to the quiz's real band data; hero disclaimer banner (v4.3.0). The quiz result opens with a primary "Start spotting ideas →" CTA landing on Ideas (v4.4.1). Ideas has a name/ticker filter and a daily wisdom quote (v4.4.0, deterministic rotation over 10 verified Buffett/Munger/Graham quotes). Scorecard rates label their denominator and show the average price move across priced check-ins; its empty state carries a wisdom line (v4.4.0). Learn: 13 micro-lessons + "Timeless principles" (5 essays: circle of competence, margin of safety, Mr. Market, temperament, patience — each with a verified quote and a "Try it") + "Wisdom" archive (all 10 quotes with primary sources) + checklist + accounts. Trends carry a "Find companies" prompt (categories + candidate names, no-recommendations rule built in) with one-tap add-as-idea linked back to its trend; "price when I spotted it" locks in with the idea and "price now" is entered at check-in. Check-ins badge uses plain language (v4.3.0); delete-my-data also clears the quiz state (v4.3.1). Check-in dates are plausibility-validated (v4.3.4). "Your data" has Export JSON/Markdown AND Import JSON (backup restores ideas, replacing the list; v4.3.6). Deleting an idea returns its trend to Watching (v4.3.6). Thesis drafts autosave as you type (v4.3.7); the update check bails safely if fetch is unavailable (v4.3.7). README has a full "Why this exists" section (v4.3.5); ADR 0002 answers "why not TypeScript."
+Design: one neutral token system, single green accent, near-black primary buttons, consistent sans headings, editorial serif-italic for wisdom quotes. Zero code comments in shipped source.
+
+## Backlog (re-question every run)
+- DONE v3.1–v4.4: audit fixes, design refresh, plain-language rewrite, debloat + README rewrite, check-in save bug fix, trends/price package, saved-profile state, EDGAR removal, navigation overhaul + self-heal, v4.0.0 five-tab consolidation, v4.1.0 dual-persona audit fixes (sealed read-only, local dates, labeled denominators), v4.2.0 Profile explainer dropdowns, v4.3.0 thesis-draft-survives-conviction-tap fix + Profile hero disclaimer + plain-language badge label + delete-my-data quiz reset, v4.3.2 docs + dead-CSS debloat, v4.3.3 edge-probe CI fix + Scorecard empty-state copy, v4.3.4 check-in date plausibility hardening, v4.3.5 comment-free source (test-enforced) + README why-section + ADR TypeScript answer, v4.3.6 independent-audit fixes (JSON import, check-in form dedupe, orphan-trend reset, empty-save guidance, id hardening, dead thesesLabel removal), v4.3.7 deep-testing follow-ups (thesis-draft autosave, fetch-hardened update check; 10-stock loop hand-verified Scorecard math exact, 259/259 jsdom checks + real-browser pass clean, zero functional bugs), v4.4.0 wisdom engine (daily verified Buffett/Munger/Graham quote on Ideas, 5 timeless-principles essays + wisdom archive in Learn, origin story in Profile, Scorecard empty-state wisdom line), v4.4.1 post-quiz CTA (round-2 deep test: 5-stock loop, Scorecard math exact at 75%, 134/134 jsdom + interactive browser pass, zero functional bugs; usability audit: all 5 tabs obvious in seconds), v4.4.2 adversarial-audit fixes (cross-idea draft-contamination guard + click-through regression test, undefined CSS vars fixed, assertion-count docs corrected with method defined, write-only state removed, v2→v3 trends migration, trend-why Enter fix, sealed-shape import hardening, screen focus management + focus-visible coverage; 451 assertions green), v4.4.3 debloat (dead --red-soft token removed, CSS custom-property scan test-enforced; 453 assertions green), v4.4.4 self-heal behavioral test (one-shot guard armed/not-re-armed, negative control verified; 455 assertions green). Do NOT redo any of it. (Compaction rule, 2026-10-21: when this DONE list passes ~15 entries, collapse the oldest into one line per minor version.)
+- Triaged 2026-10-18 and deliberately NOT changed: conviction stays editable after sealing by design (the caption says the number is what future check-ins look back at; check-ins snapshot it per check-in, so history can't be rewritten); browser-back navigation recorded in ROADMAP.md as needing its own careful release (touches every nav path incl. boot + self-heal).
+- Open product question for Kevin (his call): check-ins can't be backdated — the check-in form has no date input, so a user catching up on a missed month gets today's journal date. Raise it, don't build it.
+- Category-level allocation guidance stays DEPRIORITIZED / dropped — do not pick it up.
+- Cloud backup and benchmark data were deliberately NOT added — local-first / no-feeds are Kevin's chosen hard lines, conscious trade-offs, not oversights.
+- Next candidate: README screenshot placeholders still need Kevin's phone (mobile + desktop) — flag, don't fake.
+
+## Testing (every run)
+1. `npm test` first (full suite, real exit code).
+2. Live-test the DEPLOYED site (cache-busted): every one of the five tabs renders real content, Profile shows the saved result immediately (new visitors land on Profile; saved profiles open on Ideas), Check-ins badge behavior, add idea → seal thesis (read-only after sealing) → check-in form closes → trend "Find companies" add-as-idea flow, Ideas filter, Learn jump link to Accounts. Desktop width in browser; phone = static CSS review + Kevin's iPhone is the final visual gate — say so honestly. Safari-compat inspection each run.
+3. Edge cases (pick 3-4): rapid clicking, refresh mid-flow, 40+ char names, emoji names, cleared localStorage, legacy migration, export contents, keyboard tab order.
+4. README check: describes the actual UI (five tabs, Trends inside Ideas, Accounts inside Learn, no More menu)? Test counts current?
+5. NEW-FEATURE RULE (2026-10-18): every new user-facing feature ships with its own deep-test round — jsdom click-through of the feature, live verification on the deployed URL, and assertions pinning its behavior. Features are not "done" when coded; they're done when deep-tested.
+6. CONTENT RULE (2026-10-18): any new factual content (quotes, figures, claims) must cite a primary source. Misattributed or unverifiable content is a release-blocker. For quotes: verify against the primary source text, not quote-aggregator sites.
+7. HERMETIC-SUITE RULE (2026-10-18): no test may depend on timer/event-loop luck. If a test fails intermittently, the product code gets a guard (like the fetch guard) or the test gets deterministic control — never a retry loop.
+8. VISUAL-QA FALLBACK (2026-10-18): if the browser task flakes, use the VM's Chromium at /opt/meta-chromium/chrome over CDP (remote-debugging-port) with jsdom-serialized snapshots (inline styles.css, file:// URL) for screenshots. Never let a flaked visual check go unverified. (2026-10-21 extension: Chrome 152 blocks localhost http:// navigations via CDP with ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS, even as the launch URL — the local-http-server route is dead on this build. Working recipe: curl the deployed files, diff byte-identical against local, load the bundle via file:// as Chrome's initial launch URL (never Page.navigate), fresh --user-data-dir per run, drive with Node's global WebSocket — no constructor options, the second arg is the protocols slot. Full recipe in docs/TESTING.md. Never `pkill -f` a pattern that appears in your own command line — use the `pgrep -f "[p]attern"` bracket trick.)
+9. DEBLOAT CHECK (2026-10-18): each run, report app.js/styles.css/index.html line counts and scan for dead functions (defined once, never referenced) and dead CSS classes. Growth must be feature-driven; cut or justify anything else. (2026-10-19 extension: also flag CSS custom properties used via var() but never defined, and write-only module state (assigned, never read) — both shipped real issues the function/class scan missed. 2026-10-21 note: the test-enforced CSS token scan is authoritative — hand-rolled shell greps for var()/write-only state are redundant and bug-prone; do not duplicate them.)
+10. GREP-PIN SMELL (2026-10-21): any test that only greps source for a string is a candidate for a behavioral replacement. Safety mechanisms (self-heal guard, sealed read-only, UTC ban) deserve click-through tests, not string matches.
+
+## Shipping gates (all must pass, in order, no exceptions)
+- GATE 1 — LOCAL TESTS BEFORE PUSH: immediately before pushing, run `npm test` on the exact tree being pushed and confirm exit code 0. The suite run at session start does NOT cover edits made during the session — re-run after the last code change, every time. If red: fix, re-run, then push. Never push a red tree. (Why the explicit gate: pushing via the GitHub API bypasses any local pre-push hook, so the loop's own discipline is the only front gate. 2026-10-21: Kevin asked for this gate by name.)
+- Five-place version bump (package.json, APP_VERSION, version.txt, footer, ?v=). Test-only changes may skip the bump.
+- Push via PAT push.py (has workflow scope).
+- GATE 2 — CI GREEN: after pushing, poll the GitHub Actions runs for the pushed SHA until the `tests` workflow concludes. It must be green before the run is called done. CI is the independent backstop: `.github/workflows/test.yml` runs `npm ci` + `npm test` on Node 24 for every push to main (and every PR). On CI failure: download the logs via the API, read the real error (never guess), fix locally, re-run GATE 1, push again.
+- GATE 3 — LIVE VERIFY: confirm the deployed version.txt matches the pushed version, then live-verify the fixes on the DEPLOYED URL (cache-busted). Iterate until right — never ask Kevin to verify.
+
+## Self-improvement (every run)
+- After work, ask: did the playbook catch everything this run, or did the operator have to rescue something manually? Any manual rescue becomes a new rule above (and the scheduler body only changes if the pointer itself must change).
+- Update docs/loop-log.md with the run's entry: version shipped, measurements (assertions, line counts, dead-code scan), issues found/fixed, and the loop lesson. Keep the metrics table current.
+- Every ~4 runs, or when the loop's own testing stops finding things, commission a fresh-eyes adversarial audit (subagent, no live browser needed) — the loop cannot audit itself.
+- If a run ships nothing but "all green," say so honestly and point at the loop log as the evidence. A quiet run is fine; a quiet run that claims improvements is not.
+
+## Learning and reporting
+- LEARNING: append to ~/memory/YYYY-MM-DD.md.
+- REPORT: only broken core features, Kevin-attention items, or notable improvements.
