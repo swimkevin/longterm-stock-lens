@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.3';
+const APP_VERSION = '4.4.4';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -2628,6 +2628,7 @@ function init() {
         }
       });
   }
+  globalThis.LongTermLens.checkForUpdates = checkForUpdates;
   if (cu) {
     cu.addEventListener('click', () => checkForUpdates(true));
 

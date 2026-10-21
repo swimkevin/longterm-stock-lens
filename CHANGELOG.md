@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.4.4] — 2026-10-21
+
+### Self-heal, behaviorally tested
+The version self-heal (the loop-guarded auto-reload that rescues stale cached builds) was only pinned by a source-grep test. It now has a click-through behavioral test: stub fetch to serve a newer version, run the auto check, assert the one-shot session guard arms — then run it again and assert it does not re-arm. Negative control verified (all three self-heal assertions fail with the guard key broken). `checkForUpdates` is now exposed on LongTermLens as the test seam.
+- 2 new assertions; 455 assertions green.
+
 ## [4.4.3] — 2026-10-20
 
 ### Debloat: dead CSS token removed, custom-property scan test-enforced

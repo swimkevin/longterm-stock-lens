@@ -539,6 +539,20 @@ async function main() {
     'boot version check fetch is cache-busted (no stale version.txt phantom notice)');
   assert(appSrcUpdate.includes("sessionStorage.getItem('lrl-healed-'"),
     'self-heal loop guard intact');
+  const hadFetch = 'fetch' in window;
+  const realWindowFetch = window.fetch;
+  window.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('9.9.9') });
+  window.sessionStorage.removeItem('lrl-healed-9.9.9');
+  L.checkForUpdates(false);
+  await new Promise(r => setTimeout(r, 100));
+  assert(window.sessionStorage.getItem('lrl-healed-9.9.9') === '1',
+    'auto update check arms the one-shot self-heal guard for the newer version');
+  L.checkForUpdates(false);
+  await new Promise(r => setTimeout(r, 100));
+  assert(window.sessionStorage.getItem('lrl-healed-9.9.9') === '1',
+    'repeat auto check does not re-arm the guard (exactly one reload attempt)');
+  if (hadFetch) window.fetch = realWindowFetch; else delete window.fetch;
+  window.sessionStorage.removeItem('lrl-healed-9.9.9');
 
   console.log('idea detail back + XSS in name:');
   document.getElementById('idea-back').click();
