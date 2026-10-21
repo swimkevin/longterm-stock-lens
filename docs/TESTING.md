@@ -63,6 +63,27 @@ leave no `onerror` handlers anywhere in the idea detail.
   shipped site has zero dependencies, so the test harness can never leak
   into production.
 
+## Real-browser verification (documented 2026-10-21)
+
+The jsdom suite is the primary gate. For the deployed bundle, the verified
+recipe on this VM is:
+
+1. `curl` the deployed `index.html`, `app.js`, `styles.css`, `version.txt`
+   and `diff` against the local tree — they must be byte-identical.
+2. Launch `/opt/meta-chromium/chrome --headless=new --no-sandbox` with
+   `--remote-debugging-port=<port>`, a fresh `--user-data-dir` per run, and
+   the bundle's `file:///…/index.html` as the initial launch URL. Do NOT
+   navigate via CDP's `Page.navigate` and do NOT serve over localhost http —
+   Chrome 152 blocks local-network navigations initiated that way
+   (`ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`).
+3. Drive with Node's global `WebSocket` against the page's
+   `webSocketDebuggerUrl` from `/json/list` (no constructor options —
+   the second argument is the protocols slot).
+4. Assert: zero console errors, five tabs render, and click through the
+   real flows (quick-add opens the draft detail directly — assert that,
+   not a list row; seal produces the read-only block; filter narrows and
+   restores). Screenshots via `Page.captureScreenshot`.
+
 ## Verification notes
 
 Examples of the discipline above, from real history:
