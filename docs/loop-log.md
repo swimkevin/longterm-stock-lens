@@ -25,6 +25,7 @@ entries show it catching more, shipping cleaner, and needing fewer manual rescue
 - Loop lesson: the API push path leaves the local clone behind the remote — every run must reconcile the tree to origin/main before working, comparing against the DEPLOYED bundle, not assuming. → New rule in the playbook.
 - Loop lesson: this is the SECOND assertion-count drift incident (10-21: five docs disagreed; 10-22: badge + split + TESTING.md stale after a bump). Manual "update the numbers" steps decay; the runner now owns them. When a manual checklist step fails twice, it becomes a test.
 - Debloat: app.js 2740 / styles.css 342 / index.html 339 lines; 0 dead anything.
+- Gates: local 455/455 exit 0 on the pushed tree (via new runner) → CI `tests` + `pages build and deployment` success on 88413309 → live version.txt 4.4.4, deployed app.js/index.html/styles.css byte-identical, README badge shows 455 on main.
 
 ## 2026-10-21 — v4.4.4 (manual loop rerun + gate hardening, Kevin's directive)
 - Shipped: behavioral self-heal test (auto update check arms the one-shot session guard; repeat check does not re-arm). Replaces the source-grep pin with a click-through test; `checkForUpdates` exposed on LongTermLens as the test seam. Negative control verified: all 3 self-heal assertions fail with the guard key broken.
