@@ -5,7 +5,7 @@
 [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
 ![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-453%20assertions-brightgreen)
+![tests](https://img.shields.io/badge/tests-455%20assertions-brightgreen)
 
 **Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 
@@ -64,7 +64,7 @@ python3 -m http.server 8000   # or any static server
 # → http://localhost:8000
 
 npm install   # dev-only: jsdom for the test suite
-npm test      # 455 assertions (smoke 444 + edge probes 9)
+npm test      # 455 assertions (smoke 446 + edge probes 9)
 ```
 
 ## Project layout

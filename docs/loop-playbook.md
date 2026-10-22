@@ -65,10 +65,17 @@ Design: one neutral token system, single green accent, near-black primary button
 - Next candidate: README screenshot placeholders still need Kevin's phone (mobile + desktop) — flag, don't fake.
 
 ## Testing (every run)
+0. RECONCILE THE TREE: `git fetch origin main`, then compare the working tree to
+   origin/main before touching anything. Pushes go out via the GitHub API, which
+   can leave the local clone behind the remote with shipped changes sitting
+   uncommitted (2026-10-22: v4.4.4 was live and byte-identical to the tree, but
+   the tree was dirty and HEAD was one commit behind). Verify against the
+   DEPLOYED bundle (curl + byte-compare), then reset to origin/main. Never build
+   on a tree whose relation to the shipped state is unknown.
 1. `npm test` first (full suite, real exit code).
 2. Live-test the DEPLOYED site (cache-busted): every one of the five tabs renders real content, Profile shows the saved result immediately (new visitors land on Profile; saved profiles open on Ideas), Check-ins badge behavior, add idea → seal thesis (read-only after sealing) → check-in form closes → trend "Find companies" add-as-idea flow, Ideas filter, Learn jump link to Accounts. Desktop width in browser; phone = static CSS review + Kevin's iPhone is the final visual gate — say so honestly. Safari-compat inspection each run.
 3. Edge cases (pick 3-4): rapid clicking, refresh mid-flow, 40+ char names, emoji names, cleared localStorage, legacy migration, export contents, keyboard tab order.
-4. README check: describes the actual UI (five tabs, Trends inside Ideas, Accounts inside Learn, no More menu)? Test counts current?
+4. README check: describes the actual UI (five tabs, Trends inside Ideas, Accounts inside Learn, no More menu)? The badge and per-suite split are pinned by `tests/run.js` — the suite fails if they drift from runtime counts; TESTING.md's count paragraph must be hand-updated on count changes and the runner catches a missed one.
 5. NEW-FEATURE RULE (2026-10-18): every new user-facing feature ships with its own deep-test round — jsdom click-through of the feature, live verification on the deployed URL, and assertions pinning its behavior. Features are not "done" when coded; they're done when deep-tested.
 6. CONTENT RULE (2026-10-18): any new factual content (quotes, figures, claims) must cite a primary source. Misattributed or unverifiable content is a release-blocker. For quotes: verify against the primary source text, not quote-aggregator sites.
 7. HERMETIC-SUITE RULE (2026-10-18): no test may depend on timer/event-loop luck. If a test fails intermittently, the product code gets a guard (like the fetch guard) or the test gets deterministic control — never a retry loop.

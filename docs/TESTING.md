@@ -2,12 +2,21 @@
 
 ## What the suite is
 
-Two files, run by `npm test`: `tests/smoke.js` (444 assertions) and
-`tests/edge-probe.js` (9 assertions) — **453 assertions**, all
+Two files, run by `npm test` via `tests/run.js`: `tests/smoke.js` (446 assertions) and
+`tests/edge-probe.js` (9 assertions) — **455 assertions**, all
 passing. Counts are runtime assertion executions: every `assert()` call
 that runs prints one `  ok` line, and looped assertions count each
 execution, so the number tracks executed checks, not distinct
-`assert()` statements in source. smoke.js has two halves:
+`assert()` statements in source. The published numbers are pinned by the runner:
+`tests/run.js` (the `npm test` entry point) spawns both suites, streams their
+output, counts runtime `ok` lines per suite, and fails the build if the README
+badge (`tests-N%20assertions`) or the `(smoke A + edge probes B)` split disagrees
+with the counts. The runner's own confirmation line is deliberately not
+`ok`-prefixed so it can't pollute the count. This exists because v4.4.4 shipped
+with a stale 453 badge and a stale per-suite split — the second assertion-count
+drift incident. Numbers Kevin can see are numbers the suite owns.
+
+smoke.js has two halves:
 
 1. **Pure-logic assertions** — the DOM-free core exposed on
    `globalThis.LongTermLens` (`scoreRisk`, `makeIdea`, `convictionOf`,
