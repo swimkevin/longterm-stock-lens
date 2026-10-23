@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.4';
+const APP_VERSION = '4.4.5';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -598,7 +598,8 @@ function convictionDots(n) {
 
 function spotPriceOf(idea) {
   const log = (idea && idea.priceLog) || [];
-  return log.length ? log[0].price : null;
+  const spotted = log.find(p => p && p.note === 'spotted');
+  return spotted ? spotted.price : null;
 }
 
 function buildDiscoverPrompt(trend) {
@@ -831,6 +832,16 @@ function normalizeIdea(rawIdea) {
   delete idea.weights;
   if (!Array.isArray(idea.tags)) idea.tags = [];
   if (!Array.isArray(idea.reviewHistory)) idea.reviewHistory = [];
+  idea.reviewHistory = idea.reviewHistory
+    .filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date || ''))
+    .map(r => ({
+      date: r.date,
+      outcome: ['intact', 'changed', 'resolved'].includes(r.outcome) ? r.outcome : 'intact',
+      reasonMatch: ['yes', 'no', 'na'].includes(r.reasonMatch) ? r.reasonMatch : 'na',
+      conviction: (typeof r.conviction === 'number' && r.conviction >= 1 && r.conviction <= 5) ? r.conviction : null,
+      priceNow: (typeof r.priceNow === 'number' && isFinite(r.priceNow) && r.priceNow > 0) ? r.priceNow : null,
+      note: String(r.note || '').slice(0, 1000),
+    }));
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.createdAt || '')) idea.createdAt = todayISO();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) idea.reviewAt = reviewAtOf(idea);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.updatedAt || '')) idea.updatedAt = idea.createdAt;
@@ -2546,6 +2557,8 @@ function importJSONBackup(file) {
     const orig = btn.textContent;
     if (res.error) {
       btn.textContent = res.error === 'not-json' ? 'Not a JSON file' : 'Not a Lens backup file';
+    } else if (!confirm('Replace your ' + store.ideas.length + ' idea' + (store.ideas.length === 1 ? '' : 's') + ' with the ' + res.ideas.length + ' from this file? This cannot be undone.')) {
+      btn.textContent = orig;
     } else {
       store.ideas = res.ideas;
       saveStore(store);
@@ -2735,7 +2748,7 @@ if (typeof globalThis !== 'undefined') {
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
     applyReview, trackRecord, calibration, sealThesis, buildAnalyzePrompt,
-    journalToJSON, journalToMarkdown, importIdeasFromJSON, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
+    journalToJSON, journalToMarkdown, importIdeasFromJSON, importJSONBackup, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
     APP_VERSION, updateReloadURL, isNewerVersion };
 }
 })();

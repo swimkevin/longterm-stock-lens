@@ -1,5 +1,15 @@
 # Changelog — Long-Term Lens
 
+## [4.4.5] — 2026-10-23
+
+### Adversarial-audit fixes: import confirm, Scorecard spot-price math, check-in sanitization
+The loop's scheduled fresh-eyes audit (4th run since the last one) found three real issues the suite had missed:
+- **Import JSON now asks before replacing.** Picking a backup file used to wipe and replace the entire ideas list instantly — one wrong file meant irreversible loss. It now shows a confirmation naming both counts ("Replace your 3 ideas with the 1 from this file? This cannot be undone.") before replacing; canceling keeps every existing idea.
+- **Scorecard math for price-less ideas.** `spotPriceOf` returned the first price-log entry regardless of its note, so an idea sealed *without* a spot price got its first check-in price mislabeled "$X when spotted →" and contributed a phantom 0% move into the Scorecard average. The spot price now resolves to the entry actually noted 'spotted'; without one, no move math renders and the average skips the idea.
+- **Malformed check-in entries sanitized on import.** `normalizeIdea` now validates `reviewHistory` entries the way it already did for `priceLog`: entries with invalid dates are dropped, outcomes/reason matches coerced to their allow-lists, non-numeric prices nulled. A bad backup could previously crash the Scorecard sort (`undefined.localeCompare`) or render "NaN% on average".
+- Also codified: the real-browser pass is now `tests/browser-pass.js` (`npm run browser-pass`), self-contained CDP harness — 12 checks + zero-console-error assertion against the deployed bundle.
+- 10 new assertions; 465 assertions green (smoke 456 + edge probes 9). Live-verified on the deployed URL: browser-pass 12/12, 0 console errors.
+
 ## [4.4.4] — 2026-10-21
 
 ### Self-heal, behaviorally tested

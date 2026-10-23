@@ -144,7 +144,13 @@ async function main() {
 
   console.log('prices (spotted + check-in):');
   assert(L.spotPriceOf({ priceLog: [] }) === null && L.spotPriceOf({}) === null, 'no price log -> no spot price');
-  assert(L.spotPriceOf({ priceLog: [{ date: '2026-10-09', price: 84.5, note: 'spotted' }] }) === 84.5, 'spot price is the first log entry');
+  assert(L.spotPriceOf({ priceLog: [{ date: '2026-10-09', price: 84.5, note: 'spotted' }] }) === 84.5, 'spot price is the spotted log entry');
+  // v4.5.0: an idea sealed without a spot price gets its first check-in price
+  // appended as the log's first entry — that must NOT count as the spot price.
+  assert(L.spotPriceOf({ priceLog: [{ date: '2026-11-01', price: 97.25, note: 'check-in' }] }) === null,
+    'check-in-only log has no spot price (no phantom 0% move)');
+  assert(L.spotPriceOf({ priceLog: [{ date: '2026-11-01', price: 97.25, note: 'check-in' }, { date: '2026-10-09', price: 84.5, note: 'spotted' }] }) === 84.5,
+    'spot price found by note, not by position');
   const arP = L.applyReview(idea0, { outcome: 'intact', reasonMatch: 'yes', note: '', nextMonths: '3', priceNow: 97.25 }, '2026-11-01');
   assert(arP.reviewHistory[0].priceNow === 97.25, 'check-in price stored on the entry');
   assert(arP.priceLog.length === 1 && arP.priceLog[0].price === 97.25 && arP.priceLog[0].note === 'check-in',
@@ -154,6 +160,18 @@ async function main() {
   const normP = L.normalizeIdea({ name: 'P', priceLog: [{ price: '55', date: 'bogus' }, { price: -1 }, null, { price: 12, date: '2026-01-01', note: 'x'.repeat(200) }] });
   assert(normP.priceLog.length === 2 && normP.priceLog[0].price === 55 && /^\d{4}-\d{2}-\d{2}$/.test(normP.priceLog[0].date) &&
     normP.priceLog[1].note.length === 80, 'normalizeIdea sanitizes the price log');
+  // v4.5.0: a malformed import entry must not crash the Scorecard render
+  // (b.r.date.localeCompare on a missing date) or poison the average with NaN.
+  const normR = L.normalizeIdea({ name: 'R', reviewHistory: [
+    { outcome: 'intact', reasonMatch: 'yes' },
+    { date: '2026-11-01', outcome: 'bogus', reasonMatch: 'maybe', conviction: 99, priceNow: 'not-a-number', note: 42 },
+    { date: '2026-11-02', outcome: 'changed', reasonMatch: 'no', conviction: 3, priceNow: 50, note: 'ok' },
+  ] });
+  assert(normR.reviewHistory.length === 2, 'entries with bad/missing dates are dropped');
+  assert(normR.reviewHistory[0].outcome === 'intact' && normR.reviewHistory[0].reasonMatch === 'na' &&
+    normR.reviewHistory[0].conviction === null && normR.reviewHistory[0].priceNow === null &&
+    typeof normR.reviewHistory[0].note === 'string', 'malformed entry fields are sanitized');
+  assert(normR.reviewHistory[1].conviction === 3 && normR.reviewHistory[1].priceNow === 50, 'valid entry fields survive');
 
   console.log('discover prompt:');
   const dp = L.buildDiscoverPrompt({ name: 'AI infrastructure', why: 'Every model needs more compute' });
@@ -884,6 +902,28 @@ async function main() {
   assert(!imp2.error && imp2.ideas.length === 1, 'import accepts the {ideas:[...]} shape');
   assert(L.importIdeasFromJSON('not json at all').error === 'not-json', 'import rejects non-JSON text');
   assert(L.importIdeasFromJSON('{"foo":1}').error === 'not-a-backup', 'import rejects JSON that is not a backup');
+  // ---- v4.5.0: import replaces the whole list — it must ask first ----
+  console.log('import confirm:');
+  document.querySelector('#qa-name').value = 'Keep Me';
+  document.querySelector('#qa-add').click();
+  const importBefore = readStore().ideas.length;
+  assert(importBefore >= 1, 'an idea exists before the import test');
+  const backupFile = new window.File([JSON.stringify([{ name: 'Imported Co' }])], 'backup.json', { type: 'application/json' });
+  const origConfirm = window.confirm;
+  window.confirm = () => false;
+  L.importJSONBackup(backupFile);
+  await new Promise(r => setTimeout(r, 500));
+  assert(readStore().ideas.length === importBefore && readStore().ideas.some(i => i.name === 'Keep Me'),
+    'cancelled import keeps every existing idea');
+  assert(document.querySelector('#import-json').textContent === 'Import JSON', 'button text restored after cancel');
+  window.confirm = () => true;
+  L.importJSONBackup(backupFile);
+  await new Promise(r => setTimeout(r, 500));
+  const importAfter = readStore().ideas;
+  assert(importAfter.length === 1 && importAfter[0].name === 'Imported Co', 'confirmed import replaces the ideas list');
+  assert(document.querySelector('#import-json').textContent === 'Imported 1 idea ✓', 'import feedback shown');
+  window.confirm = origConfirm;
+  await new Promise(r => setTimeout(r, 2600));
   const rt = L.importIdeasFromJSON(L.journalToJSON([{ name: 'Round Trip', id: 'rt1', thesis: { belief: 'b', falsify: 'f' } }]));
   assert(!rt.error && rt.ideas[0].name === 'Round Trip' && rt.ideas[0].thesis.belief === 'b', 'export → import round-trips ideas');
   assert(typeof L.normalizeIdea({ name: 'No Id' }).id === 'string', 'normalizeIdea assigns a missing id');
@@ -1137,7 +1177,7 @@ async function main() {
   // check-ins with no verdicts must not claim "No check-ins yet."
   const savedStore = readStore();
   const nvStore = { schema: 3, ideas: [{ id: 'nv1', name: 'No Verdict Co', tickers: 'NV', reviewHistory: [
-    { at: '2026-10-17', outcome: 'intact', reasonMatch: 'na', note: 'Too soon.' },
+    { date: '2026-10-17', outcome: 'intact', reasonMatch: 'na', note: 'Too soon.' },
   ] }], trends: [], glossary: {}, quizProfile: null };
   window.localStorage.setItem(KEY, JSON.stringify(nvStore));
   L.reloadJournal();

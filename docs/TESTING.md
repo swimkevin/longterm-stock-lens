@@ -2,8 +2,8 @@
 
 ## What the suite is
 
-Two files, run by `npm test` via `tests/run.js`: `tests/smoke.js` (446 assertions) and
-`tests/edge-probe.js` (9 assertions) — **455 assertions**, all
+Two files, run by `npm test` via `tests/run.js`: `tests/smoke.js` (456 assertions) and
+`tests/edge-probe.js` (9 assertions) — **465 assertions**, all
 passing. Counts are runtime assertion executions: every `assert()` call
 that runs prints one `  ok` line, and looped assertions count each
 execution, so the number tracks executed checks, not distinct
@@ -72,10 +72,18 @@ leave no `onerror` handlers anywhere in the idea detail.
   shipped site has zero dependencies, so the test harness can never leak
   into production.
 
-## Real-browser verification (documented 2026-10-21)
+## Real-browser verification (documented 2026-10-21, codified as a script 2026-10-23)
 
 The jsdom suite is the primary gate. For the deployed bundle, the verified
-recipe on this VM is:
+recipe on this VM is codified in `tests/browser-pass.js` — run it with
+`npm run browser-pass [bundle-dir]` (defaults to the repo root; pass the
+dir the deployed files were curled into to test a live deploy). It asserts
+12 checks plus zero console errors, and exits nonzero otherwise. Rule 2 of
+the loop body ("live-test the deployed site") means: curl the deployed
+`index.html`, `app.js`, `styles.css`, `version.txt`, diff against the local
+tree (must be byte-identical), then run `npm run browser-pass <that dir>`.
+
+What the script does under the hood:
 
 1. `curl` the deployed `index.html`, `app.js`, `styles.css`, `version.txt`
    and `diff` against the local tree — they must be byte-identical.
@@ -92,6 +100,8 @@ recipe on this VM is:
    real flows (quick-add opens the draft detail directly — assert that,
    not a list row; seal produces the read-only block; filter narrows and
    restores). Screenshots via `Page.captureScreenshot`.
+5. Kill Chrome on exit, using the `pgrep -f "[p]attern"` bracket trick so
+   the cleanup never matches the script's own command line.
 
 ## Verification notes
 
