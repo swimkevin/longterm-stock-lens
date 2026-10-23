@@ -4,6 +4,19 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## 2026-10-23 — v4.4.5 (adversarial-audit fixes + browser-pass harness)
+
+- Shipped: the scheduled fresh-eyes audit (4th run since the 2026-10-19 audit) found three real issues the 455-assertion suite had missed, all fixed:
+  1. Import JSON now asks before replacing ("Replace your N ideas with the M from this file? This cannot be undone."); cancel keeps every existing idea. `importJSONBackup` exposed on LongTermLens as the test seam.
+  2. `spotPriceOf` resolves the entry actually noted 'spotted' instead of `priceLog[0]` — an idea sealed without a spot price no longer gets its first check-in price mislabeled "when spotted →" or contributes a phantom 0% move into the Scorecard average.
+  3. `normalizeIdea` sanitizes `reviewHistory` like `priceLog`: bad-date entries dropped, outcome/reasonMatch coerced to allow-lists, non-numeric priceNow nulled — a malformed backup could previously crash the Scorecard sort (`undefined.localeCompare`) or render "NaN% on average".
+- Also codified the real-browser pass as `tests/browser-pass.js` (`npm run browser-pass [bundle-dir]`): self-contained CDP harness — launches the VM Chromium, loads the bundle via file://, 12 click-through checks + zero-console-error assertion, kills Chrome on exit. Selector gotchas pinned as comments (textarea.thesis-belief, "Add idea" label, .idea-row).
+- Tests: 10 new assertions (2 spot-price, 3 sanitization, 5 import-confirm click-through incl. the cancel path); the badge-pin runner enforced the count update — README badge + split + TESTING.md hand-updated to 465 (smoke 456 + edge 9). One mid-run red: the import test's `delete window.confirm` removed jsdom's own confirm and broke 4 later tests; fixed by capturing/restoring the original. Another red: the scorecard empty-state seed used a bogus `at` field (never a real field — the app writes `date`); fixed the seed, kept the strict sanitizer.
+- Measurements: 465/465 green locally on the pushed tree; debloat clean — app.js 2740+9 / styles.css 342 / index.html 339, 0 dead functions/classes/vars (test-enforced); Safari-compat inspection clean; deployed bundle byte-identical to tree; browser-pass 12/12, 0 console errors against the DEPLOYED v4.4.5 bytes.
+- Gates: GATE 1 local 465/465 exit 0 on pushed tree → push via PAT helper (6255d1b) → GATE 2 CI `tests` success on the SHA → GATE 3 live version.txt 4.4.5, deployed bytes byte-identical, browser-pass 12/12 on the live bundle. Local tree reset to origin/main after the API push.
+- Loop lessons: (1) the ~4-run audit cadence keeps paying — this audit found a destructive no-confirm path and a wrong-numbers bug that two deep-test rounds and 455 assertions all missed. Keep it. (2) When an audit item breaks an existing test, check the test's seed first — the `at` seed was never a real field shape; the sanitizer was right, the seed was wrong. (3) Promote passing throwaway tooling into the repo (playbook rule added); the script's first three failures were bad selectors in my own harness, not product bugs — suspect the check first, then pin the right selector in the script. (4) Never `delete window.confirm` in jsdom — restore the original; jsdom defines it and later tests (and async callbacks) depend on it.
+- Deferred (audit Medium/Low, not this run): orphaned "chased" trends recovery path, trends excluded from JSON backup, `reviewAtOf` 1/12-month fallback, corrupt-localStorage silent blank boot, draft-timer cleanup after seal, dead post-seal feedback block, dead `reasons: ''` key, "MY THESIS:" prompt label vs plain-language rule (Kevin's call), quota-error surfacing, grep-pin smell on self-heal/fetch-url/toISOString pins.
+
 ## Metrics trend
 
 | Date | Release | Assertions | Issues found / fixed | Dead code (fn/css/vars/state) | Notes |
@@ -17,6 +30,8 @@ entries show it catching more, shipping cleaner, and needing fewer manual rescue
 | 2026-10-20 | v4.4.3 | 453 | debloat → dead --red-soft | 0 / 0 / 0 / 0 | CSS token scan test-enforced |
 | 2026-10-21 | — | 453 | quiet run, nothing shipped | 0 / 0 / 0 / 0 | honest all-green |
 | 2026-10-21 | v4.4.4 | 455 | self-heal behavioral test | 0 / 0 / 0 / 0 | negative control verified |
+| 2026-10-22 | v4.4.4 | 455 | docs+tests: badge pinned to suite counts | 0 / 0 / 0 / 0 | tests/run.js owns the numbers |
+| 2026-10-23 | v4.4.5 | 465 | audit → import confirm + spot-price math + reviewHistory sanitize + browser-pass harness | 0 / 0 / 0 / 0 | audit caught what 455 missed |
 
 ## 2026-10-22 — v4.4.4 (no bump; docs + test-infra: badge pinned to the suite)
 - Shipped: (1) fixed a real docs drift — the README shields badge still read 453 after the v4.4.4 bump to 455, and the per-suite split `(smoke 444 + edge probes 9)` was stale (true split: 446 + 9 = 455); TESTING.md had the same stale numbers; (2) new `tests/run.js` — `npm test` now runs through a runner that spawns both suites, streams their output unchanged, counts runtime `ok` lines per suite, and FAILS the build if the README badge or the per-suite split disagrees with the counts. Negative control verified (badge 999 → runner exits 1 with the exact mismatch). The runner's own confirmation line is deliberately not `ok`-prefixed so it can't pollute the count.
