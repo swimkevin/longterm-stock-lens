@@ -4,6 +4,17 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## 2026-10-23 — v4.4.6 (plain language + WHY re-examination, Kevin's directive)
+
+Kevin approved the plain-language fix for the second-opinion prompt ("Looks better! Use plain natural language, keep things very short and concise and intuitive if possible"): `MY THESIS:` → `What I think:`, and all prompt labels decapped (`IDEA:` → `Idea:`, etc.). A new assertion pins it — the built prompt may contain no shouty `ALL-CAPS:` labels. README "Run it locally" now documents all test entry points (suite via tests/run.js, real-Chromium browser pass) so the project is testable beyond the owner and the agent.
+
+WHY re-examination (Kevin: "remember the earlier goals of why doing this project... forgetting previous constraints and assumptions"): re-derived every feature from the WHY — a personal site so he never misses another wave (Bitcoin ~$5k, early AI); the miss was trust in his own judgment; judgment is a skill, skills improve with a scoreboard. Verdict: every feature maps to the WHY (quiz → position sizing, trends/misses → wave-spotting journal, sealed thesis → commitment device, conviction → calibration input, check-ins + Scorecard → the scoreboard itself, Learn/wisdom → judgment compounds). The most WHY-distant section is Accounts/Roth, kept because Kevin explicitly asked for it. Constraints re-questioned and all KEEP, on fresh grounds not habit: vanilla JS (now a differentiator, ADR 0002), no price feeds (the app measures judgment, not prices — feeds would dilute the WHY), localStorage-only (cloud sync still deferred by choice), educational-only (legal + philosophical core), five tabs (audits confirm the IA holds), zero-comment source (owner directive, test-enforced).
+
+Director-of-FANG-AI project review (third person, hire-only-if-impressed): the repo demonstrates senior+ judgment — chosen boring technology for stated reasons, 466 click-through assertions, CI on every push, ADRs with accepted costs, an honest README, and the version-controlled improvement loop with gates and metrics, which is the standout artifact most candidates lack. Gaps named honestly: README screenshots are still placeholders (blocked on Kevin's phone — flagged, never faked); the cold-visitor path is the Profile quiz, which is the right demo for a user but a 60-second recruiter skim leans on the README (acceptable — the README carries the pitch). Verdict: hire. The craft is in the systems around the code, not just the code.
+
+- Measurements: 466/466 green; debloat clean (app.js 2753, 0 dead functions, 0 undefined/unused CSS vars); browser-pass 12/12 on the tree.
+- Loop lesson: the badge-pin runner (tests/run.js) caught the author's own count drift twice in one session — self-checking docs work. Also: a user prompt label can violate the plain-language rule for months while every audit reads past it; the new no-shouty-labels assertion makes the copy rule test-enforceable, not just aspirational.
+
 ## 2026-10-23 — v4.4.5 (adversarial-audit fixes + browser-pass harness)
 
 - Shipped: the scheduled fresh-eyes audit (4th run since the 2026-10-19 audit) found three real issues the 455-assertion suite had missed, all fixed:
@@ -32,6 +43,7 @@ entries show it catching more, shipping cleaner, and needing fewer manual rescue
 | 2026-10-21 | v4.4.4 | 455 | self-heal behavioral test | 0 / 0 / 0 / 0 | negative control verified |
 | 2026-10-22 | v4.4.4 | 455 | docs+tests: badge pinned to suite counts | 0 / 0 / 0 / 0 | tests/run.js owns the numbers |
 | 2026-10-23 | v4.4.5 | 465 | audit → import confirm + spot-price math + reviewHistory sanitize + browser-pass harness | 0 / 0 / 0 / 0 | audit caught what 455 missed |
+| 2026-10-23 | v4.4.6 | 466 | plain-language prompt labels + README test docs | 0 / 0 / 0 / 0 | WHY re-examined; director review |
 
 ## 2026-10-22 — v4.4.4 (no bump; docs + test-infra: badge pinned to the suite)
 - Shipped: (1) fixed a real docs drift — the README shields badge still read 453 after the v4.4.4 bump to 455, and the per-suite split `(smoke 444 + edge probes 9)` was stale (true split: 446 + 9 = 455); TESTING.md had the same stale numbers; (2) new `tests/run.js` — `npm test` now runs through a runner that spawns both suites, streams their output unchanged, counts runtime `ok` lines per suite, and FAILS the build if the README badge or the per-suite split disagrees with the counts. Negative control verified (badge 999 → runner exits 1 with the exact mismatch). The runner's own confirmation line is deliberately not `ok`-prefixed so it can't pollute the count.

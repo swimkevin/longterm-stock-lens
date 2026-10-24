@@ -242,7 +242,7 @@ async function main() {
   assert(typeof prompt === 'string' && prompt.length > 400, 'prompt is a substantial string');
   assert(prompt.includes('Acme Semiconductor') && prompt.includes('ACME'), 'prompt carries name + ticker');
   assert(prompt.includes('AI inference at the edge') && prompt.includes('loses top-3 share'), 'prompt carries thesis fields');
-  assert(prompt.includes('HOW SURE I AM: 4 / 5'), 'prompt carries how sure you are');
+  assert(prompt.includes('How sure I am: 4 / 5'), 'prompt carries how sure you are');
   assert(!prompt.includes('checklist') && !prompt.includes('scorecard'), 'prompt dropped the old complexity');
   assert(prompt.includes('never tell me whether to buy or sell'), 'prompt keeps the educational-only boundary');
   assert(prompt.includes('Similar companies'), 'prompt asks for similar companies');
@@ -1024,7 +1024,7 @@ async function main() {
   assert(cw2.sealed && cw2.sealed.belief.includes('Compute demand'), 'thesis sealed alongside the price');
   const promptNow = document.querySelector('#idea-detail .analyze-sec textarea').value;
   assert(promptNow.includes('Compute demand compounds'), 'second-opinion prompt is fresh immediately after Save (no stale window)');
-  assert(promptNow.includes('PRICE WHEN I SPOTTED IT: $40.25'), 'prompt carries the spotted price immediately');
+  assert(promptNow.includes('Price when I spotted it: $40.25'), 'prompt carries the spotted price immediately');
   assert(detailText().includes('Spotted at $40.25'), 'locked spotted line shows immediately after Save');
   assert(detailText().includes('from trend:'), 'idea page links back to its trend');
   // check in with a price now -> history shows the move on the Scorecard
@@ -1122,8 +1122,10 @@ async function main() {
   const sealedPrompt = L.buildAnalyzePrompt({ name: 'SealTest', tickers: 'ST',
     thesis: { belief: 'EDITED WORDS', falsify: 'EDITED FALSIFY' },
     sealed: { belief: 'ORIGINAL WORDS', falsify: 'ORIGINAL FALSIFY', date: '2026-10-01' }, conviction: 3 });
-  assert(sealedPrompt.includes('MY THESIS: ORIGINAL WORDS'), 'second-opinion prompt uses the SEALED words, not later edits');
-  assert(sealedPrompt.includes('WHAT WOULD PROVE ME WRONG: ORIGINAL FALSIFY'), 'prompt uses the sealed falsify line');
+  assert(sealedPrompt.includes('What I think: ORIGINAL WORDS'), 'second-opinion prompt uses the SEALED words, not later edits');
+  assert(sealedPrompt.includes('What would prove me wrong: ORIGINAL FALSIFY'), 'prompt uses the sealed falsify line');
+  const shouty = sealedPrompt.split('\n').filter(l => /^[A-Z][A-Z ]{2,}:/.test(l));
+  assert(shouty.length === 0, 'second-opinion prompt uses plain language, no shouty labels');
   // Build a fresh fixture on the wiped store: add + seal Seal Corp at $84
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   document.getElementById('qa-name').value = 'Seal Corp';

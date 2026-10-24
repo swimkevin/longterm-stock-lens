@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.5';
+const APP_VERSION = '4.4.6';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -384,13 +384,13 @@ function buildAnalyzePrompt(idea) {
   return [
     "I'm researching a long-term (10+ year) investment idea. This is educational analysis only \u2014 never tell me whether to buy or sell.",
     '',
-    'IDEA: ' + name + ' (' + tickers + ')',
+    'Idea: ' + name + ' (' + tickers + ')',
     '',
-    'MY THESIS: ' + belief,
-    'WHAT WOULD PROVE ME WRONG: ' + falsify,
-    'HOW SURE I AM: ' + (conv === null ? 'not set' : conv + ' / 5'),
-    'PRICE WHEN I SPOTTED IT: ' + (spotPriceOf(idea) !== null ? '$' + spotPriceOf(idea) : 'not noted'),
-    'CHECK IN ON: ' + reviewBy,
+    'What I think: ' + belief,
+    'What would prove me wrong: ' + falsify,
+    'How sure I am: ' + (conv === null ? 'not set' : conv + ' / 5'),
+    'Price when I spotted it: ' + (spotPriceOf(idea) !== null ? '$' + spotPriceOf(idea) : 'not noted'),
+    'Check in on: ' + reviewBy,
     '',
     'Please do a full workup:',
     '1. Metrics check \u2014 for the ticker above, report the key long-term metrics (P/E or forward P/E, 3-5y revenue growth, operating margin, free cash flow, debt-to-equity, dividend yield if any). Cite the source and date of each number.',

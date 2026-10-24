@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.4.6] — 2026-10-23
+
+### Plain language, enforced
+Kevin's call: the second-opinion prompt now speaks plainly — `MY THESIS:` → `What I think:`, and every label decapped (`IDEA:` → `Idea:`, etc.). A new assertion fails the build if any shouty `ALL-CAPS:` label returns. README "Run it locally" now documents every test entry point so anyone can verify the project, not just the owner.
+- 1 new assertion; 466 assertions green.
+
 ## [4.4.5] — 2026-10-23
 
 ### Adversarial-audit fixes: import confirm, Scorecard spot-price math, check-in sanitization
