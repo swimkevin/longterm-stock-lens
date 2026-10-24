@@ -314,7 +314,7 @@ async function main() {
     'trendToIdea seeds idea name + trendId back-link');
   assert(made.idea.thesis.belief.includes('2026-10-09') && made.idea.thesis.belief.includes('Every dev I know'),
     'thesis belief seeded with spotted date + why');
-  assert(made.idea.thesis.reasons === '' && made.idea.thesis.falsify === '', 'other thesis fields start empty');
+  assert(Object.keys(made.idea.thesis).sort().join(',') === 'belief,falsify', 'trend-seeded thesis carries exactly belief + falsify, no dead keys');
   assert(made.trend.status === 'chased' && made.trend.ideaId === made.idea.id,
     'trend marked chased with ideaId');
   assert(tr0.status === 'watching', 'trendToIdea leaves the original trend untouched');

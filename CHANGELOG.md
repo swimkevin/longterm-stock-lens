@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.4.7] — 2026-10-24
+
+### Debloat: dead thesis key removed
+The v4.4.5 audit's deferred list named a write-only `thesis.reasons` key: `trendToIdea` wrote it, nothing ever read it (the detail view, sealed record, prompts, and exports all use belief + falsify only). Removed the write; a new assertion pins the trend-seeded thesis to exactly the `belief` + `falsify` keys so a dead key can't creep back. Stored backups carrying the old key are unaffected — nothing reads it.
+- 0 net new assertions; 466 assertions green.
+
 ## [4.4.6] — 2026-10-23
 
 ### Plain language, enforced

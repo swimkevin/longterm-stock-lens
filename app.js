@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.6';
+const APP_VERSION = '4.4.7';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -537,7 +537,6 @@ function trendToIdea(trend, today) {
   const why = (trend.why || '').trim();
   idea.thesis = {
     belief: why ? 'Spotted ' + trend.createdAt + ': ' + why : '',
-    reasons: '',
     falsify: '',
   };
   idea.trendId = trend.id;

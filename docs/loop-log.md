@@ -4,6 +4,15 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## 2026-10-24 — v4.4.7 (deferred-audit debloat: dead thesis key)
+
+- Reconciled first, per the standing rule: the tree was dirty with the already-shipped v4.4.6 content and HEAD one commit behind origin/main (the API-push pattern again). Deployed bundle (index.html, app.js, styles.css, version.txt) verified BYTE-IDENTICAL to the tree, then `reset --hard origin/main` before any work.
+- Shipped: removed the v4.4.5 audit's deferred dead key — `trendToIdea` wrote `thesis.reasons: ''`, nothing ever read it (detail view, sealed record, prompts, and exports all use belief + falsify only; `normalizeIdea` never defaults it). The write is gone; the old test assertion ("other thesis fields start empty") became an exact-keys pin: the trend-seeded thesis carries exactly `belief` + `falsify`. Negative control verified: the new assertion FAILs on the pre-fix code. Stored backups carrying the old key are unaffected — nothing reads it.
+- Assessed and deliberately NOT built from the same deferred list: draft-timer cleanup after seal (a pending 800ms autosave timer can fire after the seal click, but it rewrites the identical belief/falsify values into the old detached textarea's closure — no observable effect, and a test for it would need timer luck, which the hermetic rule forbids); "dead post-seal feedback block" (no such code found in app.js — likely already gone or mislabeled in the audit note); corrupt-localStorage silent blank boot and quota-error surfacing (both need a user-facing notice design — Kevin's call territory, not a silent fix).
+- Measurements: 466/466 green (0 net new assertions — one replaced one); debloat clean; app.js 2753 → 2752 lines / styles.css 342 / index.html 339; Safari-compat inspection clean (no structuredClone/.at()/replaceAll/Intl/:has/backdrop-filter); workflow file intact (tests on every push to main); browser-pass 12/12, 0 console errors on the deployed v4.4.6 bytes pre-push.
+- Loop lesson: the tree-reconcile rule fired for the third time — the API push path keeps leaving the local clone behind. The rule works, but the pattern recurs because the push helper never updates the local clone; worth noting, not worth re-engineering around (a post-push `git fetch` + reset is one command and already the rule).
+- Gates: (to be filled after push — GATE 1 local, GATE 2 CI, GATE 3 live)
+
 ## 2026-10-23 — loop iteration (playbook rules from the v4.4.6 round, Kevin's directive)
 
 No app changes. The v4.4.6 manual round's learnings are now permanent loop rules in docs/loop-playbook.md:
@@ -53,6 +62,7 @@ Director-of-FANG-AI project review (third person, hire-only-if-impressed): the r
 | 2026-10-22 | v4.4.4 | 455 | docs+tests: badge pinned to suite counts | 0 / 0 / 0 / 0 | tests/run.js owns the numbers |
 | 2026-10-23 | v4.4.5 | 465 | audit → import confirm + spot-price math + reviewHistory sanitize + browser-pass harness | 0 / 0 / 0 / 0 | audit caught what 455 missed |
 | 2026-10-23 | v4.4.6 | 466 | plain-language prompt labels + README test docs | 0 / 0 / 0 / 0 | WHY re-examined; director review |
+| 2026-10-24 | v4.4.7 | 466 | debloat → dead thesis.reasons key + exact-keys pin | 0 / 0 / 0 / 0 | reconcile rule fired 3rd time |
 
 ## 2026-10-22 — v4.4.4 (no bump; docs + test-infra: badge pinned to the suite)
 - Shipped: (1) fixed a real docs drift — the README shields badge still read 453 after the v4.4.4 bump to 455, and the per-suite split `(smoke 444 + edge probes 9)` was stale (true split: 446 + 9 = 455); TESTING.md had the same stale numbers; (2) new `tests/run.js` — `npm test` now runs through a runner that spawns both suites, streams their output unchanged, counts runtime `ok` lines per suite, and FAILS the build if the README badge or the per-suite split disagrees with the counts. Negative control verified (badge 999 → runner exits 1 with the exact mismatch). The runner's own confirmation line is deliberately not `ok`-prefixed so it can't pollute the count.
