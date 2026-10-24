@@ -4,6 +4,15 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## 2026-10-23 — loop iteration (playbook rules from the v4.4.6 round, Kevin's directive)
+
+No app changes. The v4.4.6 manual round's learnings are now permanent loop rules in docs/loop-playbook.md:
+- Testing rule 11: copy rules must be test-enforced where feasible (a prompt label violated plain language for months while audits read past it).
+- Testing rule 12: docs that state numbers must be machine-checked (tests/run.js pins the README badge/split; hand-updated numbers are a smell).
+- Self-improvement: every ~8 runs, re-derive features from the WHY + re-question constraints on fresh grounds (Kevin's standing directive, first exercised 2026-10-23); every ~8 runs, third-person director-level project review; every ~8 runs, verify .github/workflows/test.yml still triggers on push (exercised today — backstop intact); post-ship, update the playbook's "The product" version line in the same push.
+- GATE 2 note: if a CI poll is interrupted, query run status via API — never re-push to "retry" a poll (learned 2026-10-23 when a restart killed a poll mid-flight).
+- Loop lesson: the pointer architecture held — the cron body needed zero changes for all of this; loop evolution now happens entirely in version-controlled docs. That's the design working as intended.
+
 ## 2026-10-23 — v4.4.6 (plain language + WHY re-examination, Kevin's directive)
 
 Kevin approved the plain-language fix for the second-opinion prompt ("Looks better! Use plain natural language, keep things very short and concise and intuitive if possible"): `MY THESIS:` → `What I think:`, and all prompt labels decapped (`IDEA:` → `Idea:`, etc.). A new assertion pins it — the built prompt may contain no shouty `ALL-CAPS:` labels. README "Run it locally" now documents all test entry points (suite via tests/run.js, real-Chromium browser pass) so the project is testable beyond the owner and the agent.
