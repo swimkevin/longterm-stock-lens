@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.4.8] — 2026-10-25
+
+### Adversarial-audit fixes: sealed record wins, spot price kept, corrupt data preserved
+The scheduled fresh-eyes audit (4th run since the 2026-10-23 audit) found eleven issues; all eleven are fixed here. A spot price typed at seal time is no longer dropped when a check-in price already exists; the check-ins card, the markdown export, and the spotted-date line all read the sealed record and the actual spotted entry instead of the draft or the first log entry; importing a backup returns orphaned chased trends to Watching; delete-my-data now re-renders Learn and Scorecard and clears the idea filter; a corrupt store no longer boots blank and then lets the next save destroy the original — the unreadable blob is stashed as a backup and a notice explains it; storage failures now surface a banner instead of a false "Saved ✓"; the review-date fallback honors 1- and 12-month intervals; idea normalization now coerces types, whitelists status, and rejects impossible calendar dates; the pending draft timer is cancelled at seal so no stray key lands in a sealed idea; quiz-result numbers are escaped; and quiz, band, essay, and account copy drops the last "conviction"/"thesis" wording for plain language. Docs no longer claim a removed `weightedScore` export.
+- 30 new assertions; 496 assertions green.
+
 ## [4.4.7] — 2026-10-24
 
 ### Debloat: dead thesis key removed

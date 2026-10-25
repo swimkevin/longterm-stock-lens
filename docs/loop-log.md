@@ -4,6 +4,27 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## 2026-10-25 — v4.4.8 (adversarial-audit fixes: sealed record wins, corrupt data preserved)
+
+- Reconciled first: tree clean, HEAD = origin/main, deployed bundle (index.html, app.js, styles.css, version.txt) byte-identical to local before any work — the reconcile rule fired clean this time, no reset needed.
+- Scheduled fresh-eyes audit (4th run since the 2026-10-23 audit) ran source + jsdom probes only, no files touched, and found 11 real issues — all fixed here, each verified in code before fixing and pinned by a test after:
+  1. Corrupt localStorage booted blank and let the next save destroy the original (High): parse failure now stashes the raw blob under a `-corrupt-backup` key and shows a one-time dismissible notice; new saves never touch the backup.
+  2. Spot price at seal time silently dropped when any check-in price existed (High): the seal guard is now "no spotted entry yet" (`spotPriceOf() === null`), not "empty log".
+  3. Import orphaned chased trends with no recovery (Medium): import resets trends whose idea is gone back to Watching (`resetOrphanedTrends`, pure + exposed).
+  4. Delete-my-data left the Learn badge and Scorecard stale (Medium): the handler now re-renders Glossary + Scorecard and clears the idea filter.
+  5. Sealed record shown wrongly elsewhere (Medium): check-ins card and markdown export prefer the sealed record; both spotted-date lines use the actual spotted entry (`spottedEntryOf`).
+  6. `reviewAtOf` collapsed 1- and 12-month intervals to 3 (Medium): fallback now honors `REVIEW_INTERVALS`.
+  7. Quota/storage failures swallowed with false "Saved ✓" (Medium): `saveStore` returns a boolean and shows a dismissible failure banner on any write failure.
+  8. `normalizeIdea` under-validated (Low): name/tickers coerced, status whitelisted to open/resolved, `reviewMonths` clamped, thesis fields coerced, impossible calendar dates rejected via `isPlausibleLocalDate`.
+  9. Draft-timer residue + quiz-result numerics (Low): the seal handler cancels the pending draft timer; quiz total/max are `esc()`'d (band index/conv are internal constants, not stored values, so they need no escaping).
+  10. Copy-rule leftovers (Low): quiz Q6, all four band `why` strings, the alloc-bar aria-label, the risk fineprint, the Profile explainer, the checklist, the book note, and the Accounts copy drop "conviction"/"thesis" wording for plain language; essays say "sealed words".
+  11. Docs claimed a deleted function (Low): `weightedScore` removed from AGENTS.md and AI-WORKFLOW.md; `buildAnalyzePrompt` now uses `reviewAtOf()` instead of raw `reviewAt`.
+- Deliberately NOT fixed: trends are still excluded from JSON backup (markdown includes them; "Your data" copy says import restores "your ideas"). Adding trends to the backup is a schema decision, not a silent fix — needs Kevin's call or a format-version bump.
+- Two mid-run reds, both in the new tests, not the product: a `delBtn` identifier collision with an earlier test block (renamed), and a stale aria-label expectation pinning the old "conviction stocks" wording (updated to the new copy). The badge-pin runner then flagged the count drift (466 → 496) exactly as designed — README badge/split + TESTING.md updated, runner green.
+- Measurements: 496/496 green (487 smoke + 9 edge, 30 new assertions); debloat clean (test-enforced token scan green; new `.notice-banner` class uses only defined tokens); app.js 2752 → 2813 lines / styles.css 342 → 344 / index.html 339; Safari-compat inspection clean; workflow file intact (tests on every push to main); browser-pass 12/12, 0 console errors on the deployed v4.4.7 bytes pre-push.
+- Loop lesson: the audit's findings were all the same shape — pure functions tested only on their default path. New playbook rule 13: pin non-default paths, and pin call-site guards separately from the helper (the helper's test does not cover the call site). Also: the audit cadence keeps paying — this round found a data-loss path (corrupt boot) and a silent-drop path (seal spot price) that 466 assertions missed.
+- Gates: GATE 1 local 496/496 exit 0 on the pushed tree → push via PAT helper → GATE 2 CI `tests` success on the SHA → GATE 3 live version.txt 4.4.8, deployed bytes byte-identical to tree, browser-pass 12/12, 0 console errors on the live bundle.
+
 ## 2026-10-24 — v4.4.7 (deferred-audit debloat: dead thesis key)
 
 - Reconciled first, per the standing rule: the tree was dirty with the already-shipped v4.4.6 content and HEAD one commit behind origin/main (the API-push pattern again). Deployed bundle (index.html, app.js, styles.css, version.txt) verified BYTE-IDENTICAL to the tree, then `reset --hard origin/main` before any work.
@@ -63,6 +84,7 @@ Director-of-FANG-AI project review (third person, hire-only-if-impressed): the r
 | 2026-10-23 | v4.4.5 | 465 | audit → import confirm + spot-price math + reviewHistory sanitize + browser-pass harness | 0 / 0 / 0 / 0 | audit caught what 455 missed |
 | 2026-10-23 | v4.4.6 | 466 | plain-language prompt labels + README test docs | 0 / 0 / 0 / 0 | WHY re-examined; director review |
 | 2026-10-24 | v4.4.7 | 466 | debloat → dead thesis.reasons key + exact-keys pin | 0 / 0 / 0 / 0 | reconcile rule fired 3rd time |
+| 2026-10-25 | v4.4.8 | 496 | audit → sealed renders + spot-price guard + corrupt backup + 8 more | 0 / 0 / 0 / 0 | audit cadence pays again; rule 13: pin non-default paths |
 
 ## 2026-10-22 — v4.4.4 (no bump; docs + test-infra: badge pinned to the suite)
 - Shipped: (1) fixed a real docs drift — the README shields badge still read 453 after the v4.4.4 bump to 455, and the per-suite split `(smoke 444 + edge probes 9)` was stale (true split: 446 + 9 = 455); TESTING.md had the same stale numbers; (2) new `tests/run.js` — `npm test` now runs through a runner that spawns both suites, streams their output unchanged, counts runtime `ok` lines per suite, and FAILS the build if the README badge or the per-suite split disagrees with the counts. Negative control verified (badge 999 → runner exits 1 with the exact mismatch). The runner's own confirmation line is deliberately not `ok`-prefixed so it can't pollute the count.

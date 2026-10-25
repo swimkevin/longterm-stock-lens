@@ -4,7 +4,7 @@ Repo conventions for AI coding agents.
 
 - Vanilla HTML/CSS/JS, zero runtime dependencies, no build step. GitHub Pages-ready from `main`.
 - **Compliance is a hard boundary, not a feature flag:** educational content only. Never add buy/sell recommendations, real-time prices, price fetching, or personalized advice. Historical examples are illustrations only and must be labeled as such. The footer + hero disclaimer stays.
-- `app.js` is one IIFE. DOM-free data and pure functions (`QUIZ`, `BANDS`, `scoreRisk`, `GLOSSARY`, `weightedScore`) are exposed on `globalThis.LongTermLens` for `tests/smoke.js` — keep them DOM-free.
+- `app.js` is one IIFE. DOM-free data and pure functions (`QUIZ`, `BANDS`, `scoreRisk`, `GLOSSARY`) are exposed on `globalThis.LongTermLens` for `tests/smoke.js` — keep them DOM-free.
 - User-entered strings render via `textContent` or `esc()`. Never raw `innerHTML` for user content.
 - **Zero code comments in shipped source** (`app.js`, `styles.css`, `index.html`): code must be self-explanatory; the why lives in `docs/adr/`, `CHANGELOG.md`, and commit messages. Enforced by a test in `tests/smoke.js` — keep it green.
 - `npm test` must pass before any commit. Add assertions with every logic change.

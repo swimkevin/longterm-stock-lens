@@ -19,7 +19,7 @@ guide — it binds behavior:
 - **Rendering rule.** User-entered strings render via `textContent` or
   `esc()` — never raw `innerHTML`.
 - **Layering.** `app.js` stays one IIFE; the DOM-free core
-  (`QUIZ`, `BANDS`, `scoreRisk`, `GLOSSARY`, `weightedScore`, …) stays
+  (`QUIZ`, `BANDS`, `scoreRisk`, `GLOSSARY`, …) stays
   DOM-free and exposed on `globalThis.LongTermLens` for tests.
 - **Data rules.** Contribution limits and tax figures are always labeled
   "verify at irs.gov"; localStorage schema changes need a version bump

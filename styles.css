@@ -340,3 +340,5 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible,
 .principle h3 { margin: 0 0 0.5rem; font-size: 1.12rem; }
 .principle p { margin: 0.55rem 0; color: var(--text); }
 .principle blockquote.wisdom { border-left: 3px solid var(--accent); padding: 0.1rem 0 0.1rem 0.9rem; margin: 0.9rem 0; }
+.notice-banner { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--accent-soft, #e8f3ec); border-bottom: 1px solid var(--accent); padding: 0.7rem 1.2rem; font-size: 0.9rem; color: var(--text); }
+.notice-banner button { flex-shrink: 0; background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; border-radius: 6px; padding: 0.35rem 0.8rem; cursor: pointer; }

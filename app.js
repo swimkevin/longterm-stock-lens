@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.7';
+const APP_VERSION = '4.4.8';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -65,9 +65,9 @@ const QUIZ = [
     ],
   },
   {
-    q: 'If your conviction stocks underperformed the index for 3 years, you would…',
+    q: 'If your individual stocks underperformed the index for 3 years, you would…',
     options: [
-      { t: 'Re-check my thesis calmly and likely hold', s: 3 },
+      { t: 'Re-check what I think calmly and likely hold', s: 3 },
       { t: 'Hold, but second-guess myself', s: 2 },
       { t: 'Probably rotate back to index funds', s: 1 },
       { t: 'I\'d have sold long before that', s: 0 },
@@ -77,13 +77,13 @@ const QUIZ = [
 
 const BANDS = [
   { min: 14, index: 80, conv: 20, label: 'Growth-leaning',
-    why: 'Long timeline, stable income, and comfort with volatility. You can afford a meaningful conviction slice — but the index core still does most of the work.' },
+    why: 'Long timeline, stable income, and comfort with volatility. You can afford a meaningful individual-stock slice — but the index core still does most of the work.' },
   { min: 10, index: 87, conv: 13, label: 'Balanced',
-    why: 'A solid foundation with room for a few well-researched ideas. Keep conviction positions small enough that a mistake doesn\'t derail your plan.' },
+    why: 'A solid foundation with room for a few well-researched ideas. Keep individual-stock positions small enough that a mistake doesn\'t derail your plan.' },
   { min: 6, index: 93, conv: 7, label: 'Cautious',
-    why: 'Either your timeline is shorter or volatility would cost you sleep. A small conviction slice lets you learn without much downside.' },
+    why: 'Either your timeline is shorter or volatility would cost you sleep. A small individual-stock slice lets you learn without much downside.' },
   { min: 0, index: 98, conv: 2, label: 'Capital-preservation',
-    why: 'Right now, safety and learning matter more than stock-picking. Build the index core first; revisit conviction stocks as your situation changes.' },
+    why: 'Right now, safety and learning matter more than stock-picking. Build the index core first; revisit individual stocks as your situation changes.' },
 ];
 
 function scoreRisk(answers) {
@@ -144,7 +144,7 @@ const PRINCIPLES = [
   { title: 'Mr. Market',
     body: [
       "Imagine a business partner who shows up every day offering to buy your share or sell you his — at prices set entirely by his mood. Some days he's euphoric, some days he's terrified. You don't have to trade with him. His job is to serve you with prices, not to guide you with wisdom.",
-      "Your sealed thesis is the antidote to Mr. Market. When prices swing, you don't re-decide from nothing — you re-read what you believed on a calm day and ask whether anything actually changed.",
+      "Your sealed words are the antidote to Mr. Market. When prices swing, you don't re-decide from nothing — you re-read what you believed on a calm day and ask whether anything actually changed.",
     ],
     tryIt: 'Next time a stock you watch drops hard in a week, open your sealed words before you open the chart.',
     quote: WISDOM[7] },
@@ -158,7 +158,7 @@ const PRINCIPLES = [
   { title: 'Time, the quiet compounder',
     body: [
       "Compounding needs two ingredients: a decent rate of return and a long time. Most people overestimate what they can do in a year and underestimate what patience does in a decade. The check-in dates here are gentle nudges, never deadlines, because good long-term moves look boring for long stretches.",
-      "The skill is telling \u201Cboring and compounding\u201D apart from \u201Cboring and dying\u201D — which is exactly what a sealed thesis lets you do. Re-read your own calm-day reasoning; if it still holds, the boredom is the price of the return.",
+      "The skill is telling \u201Cboring and compounding\u201D apart from \u201Cboring and dying\u201D — which is exactly what sealed words let you do. Re-read your own calm-day reasoning; if it still holds, the boredom is the price of the return.",
     ],
     tryIt: 'Pick your longest-held idea and check in on it. Ask one question: is the tree growing, or just standing still?',
     quote: WISDOM[2] },
@@ -379,7 +379,7 @@ function buildAnalyzePrompt(idea) {
   const belief = sealedTh.belief || th.belief || notYet;
   const falsify = sealedTh.falsify || th.falsify || notYet;
   const conv = convictionOf(idea);
-  const reviewBy = (idea && idea.reviewAt) || '(none set)';
+  const reviewBy = (idea && reviewAtOf(idea)) || '(none set)';
 
   return [
     "I'm researching a long-term (10+ year) investment idea. This is educational analysis only \u2014 never tell me whether to buy or sell.",
@@ -440,7 +440,7 @@ const DEFAULT_REVIEW_MONTHS = 3;
 
 function reviewAtOf(idea) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) return idea.reviewAt;
-  const fallback = addMonths(idea.createdAt, idea.reviewMonths === 6 ? 6 : DEFAULT_REVIEW_MONTHS);
+  const fallback = addMonths(idea.createdAt, REVIEW_INTERVALS.includes(idea.reviewMonths) ? idea.reviewMonths : DEFAULT_REVIEW_MONTHS);
   return fallback;
 }
 
@@ -595,9 +595,12 @@ function convictionDots(n) {
   return '●'.repeat(n) + '○'.repeat(5 - n);
 }
 
-function spotPriceOf(idea) {
+function spottedEntryOf(idea) {
   const log = (idea && idea.priceLog) || [];
-  const spotted = log.find(p => p && p.note === 'spotted');
+  return log.find(p => p && p.note === 'spotted') || null;
+}
+function spotPriceOf(idea) {
+  const spotted = spottedEntryOf(idea);
   return spotted ? spotted.price : null;
 }
 
@@ -709,10 +712,11 @@ function journalToMarkdown(ideas, stamp, trends) {
     lines.push('- Status: ' + (e.status || 'open') + ' · Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
     if (e.tags && e.tags.length) lines.push('- Tags: ' + e.tags.join(', '));
     lines.push('');
-    if (e.thesis && (e.thesis.belief || e.thesis.falsify)) {
-      lines.push('What I believe: ' + (e.thesis.belief || ''));
+    const sealedMd = (e.sealed && e.sealed.belief) ? e.sealed : (e.thesis || {});
+    if (sealedMd.belief || sealedMd.falsify) {
+      lines.push('What I believe: ' + (sealedMd.belief || ''));
       lines.push('');
-      if (e.thesis.falsify) { lines.push('Would prove me wrong: ' + e.thesis.falsify); lines.push(''); }
+      if (sealedMd.falsify) { lines.push('Would prove me wrong: ' + sealedMd.falsify); lines.push(''); }
     }
     if (e.assumptions && e.assumptions.length) {
       lines.push('Key assumptions:');
@@ -820,7 +824,13 @@ function normalizeIdea(rawIdea) {
     reviewHistory: [],
   }, rawIdea || {});
   if (!idea.id) idea.id = newId('e');
+  if (idea.name != null && typeof idea.name !== 'string') idea.name = String(idea.name);
+  if (idea.tickers != null && typeof idea.tickers !== 'string') idea.tickers = String(idea.tickers);
+  if (!['open', 'resolved'].includes(idea.status)) idea.status = 'open';
+  if (!REVIEW_INTERVALS.includes(idea.reviewMonths)) idea.reviewMonths = DEFAULT_REVIEW_MONTHS;
   idea.thesis = Object.assign({ belief: '', falsify: '' }, idea.thesis);
+  if (typeof idea.thesis.belief !== 'string') idea.thesis.belief = '';
+  if (typeof idea.thesis.falsify !== 'string') idea.thesis.falsify = '';
   if (idea.sealed && (typeof idea.sealed.belief !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(idea.sealed.date || ''))) delete idea.sealed;
   if (!(typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5)) idea.conviction = null;
   if (idea.conviction === null && idea.scores && typeof idea.scores === 'object') {
@@ -841,7 +851,7 @@ function normalizeIdea(rawIdea) {
       priceNow: (typeof r.priceNow === 'number' && isFinite(r.priceNow) && r.priceNow > 0) ? r.priceNow : null,
       note: String(r.note || '').slice(0, 1000),
     }));
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.createdAt || '')) idea.createdAt = todayISO();
+  if (!isPlausibleLocalDate(idea.createdAt || '')) idea.createdAt = todayISO();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) idea.reviewAt = reviewAtOf(idea);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.updatedAt || '')) idea.updatedAt = idea.createdAt;
   if (!Array.isArray(idea.priceLog)) idea.priceLog = [];
@@ -875,10 +885,46 @@ function loadStore() {
     const migrated = migrateStore(parsed);
     saveStore(migrated);
     return migrated;
-  } catch (e) { return blankStore(); }
+  } catch (e) {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) localStorage.setItem(STORE_KEY + '-corrupt-backup', raw);
+    } catch (e2) {  }
+    return blankStore();
+  }
 }
 function saveStore(store) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {  }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); return true; } catch (e) { showSaveFailure(); return false; }
+}
+function showSaveFailure() {
+  if (document.getElementById('save-failure-notice')) return;
+  const n = document.createElement('div');
+  n.id = 'save-failure-notice';
+  n.className = 'notice-banner';
+  n.textContent = 'Couldn\u2019t save \u2014 your browser storage may be full. Your latest change may not be kept.';
+  const btn = document.createElement('button');
+  btn.textContent = 'Dismiss';
+  btn.addEventListener('click', () => n.remove());
+  n.appendChild(btn);
+  document.body.insertBefore(n, document.body.firstChild);
+}
+function showCorruptNotice() {
+  try {
+    if (!localStorage.getItem(STORE_KEY + '-corrupt-backup')) return;
+    if (localStorage.getItem(STORE_KEY + '-corrupt-notice-dismissed')) return;
+    const n = document.createElement('div');
+    n.id = 'corrupt-notice';
+    n.className = 'notice-banner';
+    n.textContent = 'Your saved data couldn\u2019t be read, so you\u2019re starting fresh \u2014 the unreadable copy is kept as a backup and new saves never overwrite it.';
+    const btn = document.createElement('button');
+    btn.textContent = 'Dismiss';
+    btn.addEventListener('click', () => {
+      try { localStorage.setItem(STORE_KEY + '-corrupt-notice-dismissed', '1'); } catch (e) {  }
+      n.remove();
+    });
+    n.appendChild(btn);
+    document.body.insertBefore(n, document.body.firstChild);
+  } catch (e) {  }
 }
 
 function esc(s) {
@@ -1028,16 +1074,16 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
     '<p class="fineprint">' + (savedDate
-      ? 'Saved ' + esc(savedDate) + ' · Score ' + total + ' / ' + max + (answersRestored
+      ? 'Saved ' + esc(savedDate) + ' · Score ' + esc(total) + ' / ' + esc(max) + (answersRestored
         ? ' — answers filled in below; change any and resubmit to update.'
         : ' — saved before answers were kept; answer below to store them with your result.')
-      : 'Score ' + total + ' / ' + max + ' — educational starting point, not advice.') + '</p>' +
-    '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent conviction stocks">' +
+      : 'Score ' + esc(total) + ' / ' + esc(max) + ' — educational starting point, not advice.') + '</p>' +
+    '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent individual stocks">' +
       '<div class="alloc-index" style="width:' + band.index + '%">' + band.index + '% index</div>' +
       '<div class="alloc-conv" style="width:' + band.conv + '%">' + convText + '</div>' +
     '</div>' +
     '<p>' + esc(band.why) + '</p>' +
-    '<p class="fineprint">Higher conviction % = higher risk, always. Retake this when life changes.</p>';
+    '<p class="fineprint">Higher individual-stock % = higher risk, always. Retake this when life changes.</p>';
   const retakeRow = document.createElement('div');
   retakeRow.className = 'btn-row';
   const start = document.createElement('button');
@@ -1346,7 +1392,7 @@ function renderIdeaDetail(idea) {
     if (spotS !== null) {
       const spotted = document.createElement('p');
       spotted.className = 'fineprint';
-      spotted.textContent = 'Spotted at $' + spotS + ' on ' + idea.priceLog[0].date + ' — locked in with your words.';
+      spotted.textContent = 'Spotted at $' + spotS + ' on ' + spottedEntryOf(idea).date + ' — locked in with your words.';
       th.appendChild(spotted);
     }
   } else {
@@ -1377,7 +1423,7 @@ function renderIdeaDetail(idea) {
   if (spot !== null) {
     const spotted = document.createElement('p');
     spotted.className = 'fineprint';
-    spotted.textContent = 'Spotted at $' + spot + ' on ' + idea.priceLog[0].date + ' — locked in with your words.';
+    spotted.textContent = 'Spotted at $' + spot + ' on ' + spottedEntryOf(idea).date + ' — locked in with your words.';
     th.appendChild(spotted);
   } else {
     const priceLab = document.createElement('label');
@@ -1416,6 +1462,7 @@ function renderIdeaDetail(idea) {
   falsify.addEventListener('input', queueDraftSave);
   if (priceInput) priceInput.addEventListener('input', queueDraftSave);
   saveBtn.addEventListener('click', () => {
+    clearTimeout(draftTimer);
     const words = belief.value.trim();
     let hint = th.querySelector('.thesis-hint');
     if (!words) {
@@ -1435,7 +1482,7 @@ function renderIdeaDetail(idea) {
       if (sealed !== i) Object.assign(i, sealed);
       if (priceInput) {
         const p = parseFloat(priceInput.value);
-        if (isFinite(p) && p > 0 && !(i.priceLog || []).length) {
+        if (isFinite(p) && p > 0 && spotPriceOf(i) === null) {
           i.priceLog = [{ date: todayISO(), price: p, note: 'spotted' }];
         }
       }
@@ -1669,15 +1716,16 @@ function renderReviews() {
 
     const thesis = document.createElement('p');
     thesis.className = 'entry-thesis';
-    thesis.textContent = idea.thesis.belief || '(nothing written yet)';
+    const sealedCard = (idea.sealed && idea.sealed.belief) ? idea.sealed : idea.thesis;
+    thesis.textContent = sealedCard.belief || '(nothing written yet)';
     card.appendChild(thesis);
-    if (idea.thesis.falsify) {
+    if (sealedCard.falsify) {
       const f = document.createElement('p');
       f.className = 'entry-falsify';
       const strong = document.createElement('strong');
       strong.textContent = 'Would prove me wrong: ';
       f.appendChild(strong);
-      f.appendChild(document.createTextNode(idea.thesis.falsify));
+      f.appendChild(document.createTextNode(sealedCard.falsify));
       card.appendChild(f);
     }
     const meta = document.createElement('p');
@@ -2548,6 +2596,12 @@ function importIdeasFromJSON(text) {
   return { ideas: list.map(normalizeIdea) };
 }
 
+function resetOrphanedTrends(trends, ideas) {
+  const ids = new Set((ideas || []).map(i => i && i.id));
+  return (trends || []).map(t => (t && t.status === 'chased' && !ids.has(t.ideaId))
+    ? Object.assign({}, t, { status: 'watching', ideaId: null }) : t);
+}
+
 function importJSONBackup(file) {
   const rd = new FileReader();
   rd.onload = () => {
@@ -2560,6 +2614,7 @@ function importJSONBackup(file) {
       btn.textContent = orig;
     } else {
       store.ideas = res.ideas;
+      store.trends = resetOrphanedTrends(store.trends, res.ideas);
       saveStore(store);
       reloadJournal();
       btn.textContent = 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓';
@@ -2658,6 +2713,7 @@ function init() {
   renderReviews();
   renderTrackRecord();
   renderTrends();
+  showCorruptNotice();
   showScreen(store.quizProfile ? 'ideas' : 'profile');
   const ideaFilterEl = $('idea-filter');
   if (ideaFilterEl) ideaFilterEl.addEventListener('input', () => {
@@ -2710,6 +2766,11 @@ function init() {
     renderIdeasHome();
     renderReviews();
     renderTrends();
+    renderGlossary();
+    renderTrackRecord();
+    ideaFilterQuery = '';
+    const ideaFilterEl = $('idea-filter');
+    if (ideaFilterEl) ideaFilterEl.value = '';
     delData.classList.remove('armed');
     delData.textContent = 'Deleted — everything is gone. Fresh start.';
     setTimeout(() => { delData.textContent = 'Delete my data'; }, 3000);
@@ -2742,12 +2803,12 @@ if (typeof globalThis !== 'undefined') {
     WISDOM, PRINCIPLES, wisdomFor,
     REVIEW_INTERVALS, DEFAULT_REVIEW_MONTHS,
     TREND_STATUSES, TREND_STATUS_LABELS,
-    convictionOf, convictionDots, spotPriceOf, buildDiscoverPrompt,
+    convictionOf, convictionDots, spotPriceOf, spottedEntryOf, buildDiscoverPrompt,
     ideasLabel, esc, addMonths, todayISO, reviewAtOf, isReviewDue, setReviewAt, isPlausibleLocalDate,
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
     applyReview, trackRecord, calibration, sealThesis, buildAnalyzePrompt,
-    journalToJSON, journalToMarkdown, importIdeasFromJSON, importJSONBackup, migrateStore, normalizeIdea, reloadJournal, SCHEMA_VERSION, STORE_KEY,
+    journalToJSON, journalToMarkdown, importIdeasFromJSON, importJSONBackup, resetOrphanedTrends, migrateStore, normalizeIdea, reloadJournal, loadStore, saveStore, SCHEMA_VERSION, STORE_KEY,
     APP_VERSION, updateReloadURL, isNewerVersion };
 }
 })();
