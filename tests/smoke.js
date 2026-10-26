@@ -1151,6 +1151,7 @@ async function main() {
   // ---- no EDGAR links anywhere (owner directive) ----
   console.log('external links policy:');
   assert(document.querySelectorAll('a[href*="sec.gov"]').length === 0, 'no SEC/EDGAR links anywhere in the page');
+  assert(document.querySelector('footer a[href="https://github.com/swimkevin/longterm-stock-lens"]') !== null, 'footer links to the repo (demo visitors can reach the code)');
   assert(!document.body.textContent.includes('SEC EDGAR'), 'footer and Learn no longer plug EDGAR');
   assert(!document.body.textContent.includes('Muse or Claude'), 'prompt hints name ChatGPT or Claude, never the same tool twice');
 

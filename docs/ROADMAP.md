@@ -5,9 +5,9 @@ recommendations — see AGENTS.md. The roadmap respects that boundary.
 
 ## Next
 
-- **Screenshots in the README** — placeholders are written; needs real captures (phone + desktop).
 - **Calibration depth, only if the data earns it** — review-punctuality stats, per-trend calibration. No speculative stats before the reviews exist.
 - **Back-button navigation** — the app pushes no history entries today, so the browser back button exits the site instead of returning to the Ideas list (the in-app back button works). Hash-based routing would fix it, but it touches every navigation path including boot and the self-heal reload — needs its own careful release, not a drive-by.
+- **README screenshots** — landed 2026-10-25 (real Chromium renders; desktop uses sample data, disclosed in the caption; real-device phone captures would still be an upgrade).
 
 ## Shipped
 
