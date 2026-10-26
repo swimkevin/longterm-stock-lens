@@ -4,6 +4,16 @@ How the loop itself is doing. Each entry: what the run shipped, the measurements
 and what the loop learned about its own process. The loop improves when these
 entries show it catching more, shipping cleaner, and needing fewer manual rescues.
 
+## 2026-10-25 — loop iteration 2 (retrospective rule + director review, Kevin's directive)
+
+No app changes. Kevin's directive: keep asking for lessons, improve the loop, retry it, director-review it.
+- Playbook gains (rules 14–16 + retrospective): (14) negative controls mandatory — every bug-fix regression test must be seen failing on unfixed code, recorded in the log entry; (15) deferred-item triage — each audit re-triages the deferred list (fixed / re-deferred with reason / escalated to Kevin), nothing unexamined for more than two audit cycles; (16) suite budget — full suite must stay under ~60s wall or be profiled/split. Retrospective rule: every loop-log entry answers three questions — what did we learn, what nearly went wrong, what would have caught it earlier.
+- Loop retry under the improved playbook: reconcile clean (HEAD = origin/main, only the playbook edit uncommitted); suite 496/496 exit 0 in 18.2s (under the new budget); debloat clean (0 dead functions, lines stable 2813/344/339); deployed bundle byte-identical; browser-pass 12/12, 0 console errors. App side: honest quiet run — nothing new found, and the retry proves the improved loop runs clean.
+- Deferred triage (new rule 15, first application): trends-excluded-from-JSON-backup has now survived two audit cycles (v4.4.5 audit → deferred, v4.4.8 deliberately not fixed as a format decision) → disposition: ESCALATED to Kevin. It needs a format decision (add trends to the backup schema, or disclose "your ideas" only), not another silent deferral.
+- Director review: docs/loop-review-2026-10-25.md (second review; standard: hire only if impressed). Verdict: HIRE — the loop is the strongest artifact in the project; gaps named honestly (hand-maintained metrics, single-worker push access, phone gate, prompt-injection surface, time-based audit cadence); next iterations named (generated metrics, big-diff audit trigger, two-model diff review).
+- Retrospective (new rule, first use): (1) Learned: forcing the three questions surfaced the deferred-item aging that a "lessons" line alone had missed. (2) Nearly went wrong: nothing — the closest was the playbook edit landing on a clean tree, and the reconcile rule's clean branch handled it. (3) Would have caught it earlier: the deferred-triage rule itself — without a forced re-triage, the trends-backup item would have sat indefinitely.
+- Gates: GATE 1 local 496/496 exit 0 on the pushed tree → push via PAT helper → GATE 2 CI green → GATE 3 docs verified live on GitHub.
+
 ## 2026-10-25 — v4.4.8 (adversarial-audit fixes: sealed record wins, corrupt data preserved)
 
 - Reconciled first: tree clean, HEAD = origin/main, deployed bundle (index.html, app.js, styles.css, version.txt) byte-identical to local before any work — the reconcile rule fired clean this time, no reset needed.
@@ -85,6 +95,7 @@ Director-of-FANG-AI project review (third person, hire-only-if-impressed): the r
 | 2026-10-23 | v4.4.6 | 466 | plain-language prompt labels + README test docs | 0 / 0 / 0 / 0 | WHY re-examined; director review |
 | 2026-10-24 | v4.4.7 | 466 | debloat → dead thesis.reasons key + exact-keys pin | 0 / 0 / 0 / 0 | reconcile rule fired 3rd time |
 | 2026-10-25 | v4.4.8 | 496 | audit → sealed renders + spot-price guard + corrupt backup + 8 more | 0 / 0 / 0 / 0 | audit cadence pays again; rule 13: pin non-default paths |
+| 2026-10-25 | — | 496 | loop iteration: retrospective + negative-control + deferred-triage + suite-budget rules; director review | 0 / 0 / 0 / 0 | retry all green, 18s suite |
 
 ## 2026-10-22 — v4.4.4 (no bump; docs + test-infra: badge pinned to the suite)
 - Shipped: (1) fixed a real docs drift — the README shields badge still read 453 after the v4.4.4 bump to 455, and the per-suite split `(smoke 444 + edge probes 9)` was stale (true split: 446 + 9 = 455); TESTING.md had the same stale numbers; (2) new `tests/run.js` — `npm test` now runs through a runner that spawns both suites, streams their output unchanged, counts runtime `ok` lines per suite, and FAILS the build if the README badge or the per-suite split disagrees with the counts. Negative control verified (badge 999 → runner exits 1 with the exact mismatch). The runner's own confirmation line is deliberately not `ok`-prefixed so it can't pollute the count.
