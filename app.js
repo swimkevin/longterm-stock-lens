@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.4.9';
+const APP_VERSION = '4.5.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -656,7 +656,7 @@ function calibration(ideas) {
       answered++;
       if (r.reasonMatch === 'yes') yes++;
       const c = r.conviction;
-      if (c >= 1 && c <= 5) {
+      if (Number.isInteger(c) && c >= 1 && c <= 5) {
         levels[c].n++;
         if (r.reasonMatch === 'yes') levels[c].yes++;
       }
@@ -718,7 +718,7 @@ function journalToMarkdown(ideas, stamp, trends) {
       lines.push('');
       if (sealedMd.falsify) { lines.push('Would prove me wrong: ' + sealedMd.falsify); lines.push(''); }
     }
-    if (e.assumptions && e.assumptions.length) {
+    if (Array.isArray(e.assumptions) && e.assumptions.length) {
       lines.push('Key assumptions:');
       e.assumptions.forEach(a => lines.push('  - ' + a.text + ' (' + a.confidence + '% confident)'));
       lines.push('');
@@ -728,7 +728,7 @@ function journalToMarkdown(ideas, stamp, trends) {
       e.priceLog.forEach(p => lines.push('  - ' + p.date + ': ' + p.price + (p.note ? ' — ' + p.note : '')));
       lines.push('');
     }
-    if (e.notes && e.notes.length) {
+    if (Array.isArray(e.notes) && e.notes.length) {
       lines.push('Notes:');
       e.notes.forEach(n => lines.push('  - ' + n.date + ': ' + n.text));
       lines.push('');
@@ -825,6 +825,7 @@ function normalizeIdea(rawIdea) {
   }, rawIdea || {});
   if (!idea.id) idea.id = newId('e');
   if (idea.name != null && typeof idea.name !== 'string') idea.name = String(idea.name);
+  if (!idea.name || !idea.name.trim()) idea.name = 'Untitled idea';
   if (idea.tickers != null && typeof idea.tickers !== 'string') idea.tickers = String(idea.tickers);
   if (!['open', 'resolved'].includes(idea.status)) idea.status = 'open';
   if (!REVIEW_INTERVALS.includes(idea.reviewMonths)) idea.reviewMonths = DEFAULT_REVIEW_MONTHS;
@@ -832,7 +833,8 @@ function normalizeIdea(rawIdea) {
   if (typeof idea.thesis.belief !== 'string') idea.thesis.belief = '';
   if (typeof idea.thesis.falsify !== 'string') idea.thesis.falsify = '';
   if (idea.sealed && (typeof idea.sealed.belief !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(idea.sealed.date || ''))) delete idea.sealed;
-  if (!(typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5)) idea.conviction = null;
+  if (typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5) idea.conviction = Math.round(idea.conviction);
+  else idea.conviction = null;
   if (idea.conviction === null && idea.scores && typeof idea.scores === 'object') {
     const vals = Object.values(idea.scores).filter(v => typeof v === 'number' && v >= 1 && v <= 5);
     if (vals.length) idea.conviction = Math.max(1, Math.min(5, Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)));
@@ -840,6 +842,8 @@ function normalizeIdea(rawIdea) {
   delete idea.scores;
   delete idea.weights;
   if (!Array.isArray(idea.tags)) idea.tags = [];
+  if (!Array.isArray(idea.notes)) idea.notes = [];
+  if (!Array.isArray(idea.assumptions)) idea.assumptions = [];
   if (!Array.isArray(idea.reviewHistory)) idea.reviewHistory = [];
   idea.reviewHistory = idea.reviewHistory
     .filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date || ''))
@@ -847,7 +851,7 @@ function normalizeIdea(rawIdea) {
       date: r.date,
       outcome: ['intact', 'changed', 'resolved'].includes(r.outcome) ? r.outcome : 'intact',
       reasonMatch: ['yes', 'no', 'na'].includes(r.reasonMatch) ? r.reasonMatch : 'na',
-      conviction: (typeof r.conviction === 'number' && r.conviction >= 1 && r.conviction <= 5) ? r.conviction : null,
+      conviction: (typeof r.conviction === 'number' && r.conviction >= 1 && r.conviction <= 5) ? Math.round(r.conviction) : null,
       priceNow: (typeof r.priceNow === 'number' && isFinite(r.priceNow) && r.priceNow > 0) ? r.priceNow : null,
       note: String(r.note || '').slice(0, 1000),
     }));
@@ -860,7 +864,7 @@ function normalizeIdea(rawIdea) {
     .map(p => ({
       date: /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date : idea.createdAt,
       price: +p.price,
-      note: (p.note || '').slice(0, 80),
+      note: String(p.note || '').slice(0, 80),
     }));
   return idea;
 }
@@ -875,6 +879,10 @@ function loadStore() {
       parsed.trends = Array.isArray(parsed.trends) ? parsed.trends.map(normalizeTrend) : [];
       parsed.glossary = parsed.glossary || {};
       return parsed;
+    }
+    if (parsed && parsed.schema === SCHEMA_VERSION && !Array.isArray(parsed.ideas)) {
+      try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
+      return blankStore();
     }
     if (parsed && parsed.schema === 2 && Array.isArray(parsed.ideas)) {
       const upgraded = migrateV2ToV3(parsed);
@@ -1070,7 +1078,7 @@ function renderQuiz() {
 function renderQuizResult(band, total, max, savedDate, answersRestored) {
   const res = $('quiz-result');
   res.classList.remove('hidden');
-  const convText = band.conv + '%';
+  const convText = esc(band.conv) + '%';
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
     '<p class="fineprint">' + (savedDate
@@ -1078,9 +1086,9 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
         ? ' — answers filled in below; change any and resubmit to update.'
         : ' — saved before answers were kept; answer below to store them with your result.')
       : 'Score ' + esc(total) + ' / ' + esc(max) + ' — educational starting point, not advice.') + '</p>' +
-    '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + band.index + ' percent index funds, ' + band.conv + ' percent individual stocks">' +
-      '<div class="alloc-index" style="width:' + band.index + '%">' + band.index + '% index</div>' +
-      '<div class="alloc-conv" style="width:' + band.conv + '%">' + convText + '</div>' +
+    '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + esc(band.index) + ' percent index funds, ' + esc(band.conv) + ' percent individual stocks">' +
+      '<div class="alloc-index" style="width:' + esc(band.index) + '%">' + esc(band.index) + '% index</div>' +
+      '<div class="alloc-conv" style="width:' + esc(band.conv) + '%">' + convText + '</div>' +
     '</div>' +
     '<p>' + esc(band.why) + '</p>' +
     '<p class="fineprint">Higher individual-stock % = higher risk, always. Retake this when life changes.</p>';
@@ -1483,7 +1491,7 @@ function renderIdeaDetail(idea) {
       if (priceInput) {
         const p = parseFloat(priceInput.value);
         if (isFinite(p) && p > 0 && spotPriceOf(i) === null) {
-          i.priceLog = [{ date: todayISO(), price: p, note: 'spotted' }];
+          i.priceLog = (i.priceLog || []).concat([{ date: todayISO(), price: p, note: 'spotted' }]);
         }
       }
     });
@@ -2755,7 +2763,7 @@ function init() {
       return;
     }
     clearTimeout(delArmTimer);
-    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(STORE_KEY + '-corrupt-backup'); localStorage.removeItem(STORE_KEY + '-corrupt-notice-dismissed'); } catch (e) {}
     store = blankStore();
     saveStore(store);
     lessonQuizState = {};
@@ -2808,7 +2816,7 @@ if (typeof globalThis !== 'undefined') {
     rescheduleReview, makeIdea, makeTrend, normalizeTrend, markTrendMissed, setTrendLesson,
     trendToIdea, migrateV2ToV3,
     applyReview, trackRecord, calibration, sealThesis, buildAnalyzePrompt,
-    journalToJSON, journalToMarkdown, importIdeasFromJSON, importJSONBackup, resetOrphanedTrends, migrateStore, normalizeIdea, reloadJournal, loadStore, saveStore, SCHEMA_VERSION, STORE_KEY,
+    journalToJSON, journalToMarkdown, importIdeasFromJSON, importJSONBackup, resetOrphanedTrends, migrateStore, normalizeIdea, reloadJournal, loadStore, saveStore, SCHEMA_VERSION, STORE_KEY, renderQuizResult,
     APP_VERSION, updateReloadURL, isNewerVersion };
 }
 })();

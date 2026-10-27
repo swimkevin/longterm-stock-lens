@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [4.5.0] — 2026-10-27
+
+### Adversarial-audit fixes: import and load hardening
+The scheduled fresh-eyes audit (4th run since the 2026-10-25 audit) found the suite's blind spot is now import/load hardening, not UI flows — a hand-crafted or old-schema backup could crash rendering, blank the app, silently wipe the store, or break export. All confirmed findings are fixed here:
+- A schema-3 store with a non-array `ideas` field no longer falls through to migration and silently wipes the store: it now loads blank, stashes the original bytes as a corrupt backup, and never overwrites them.
+- A fractional conviction (e.g. 4.5 from a hand-edited backup) no longer crashes the Scorecard: normalization rounds convictions to whole levels, and the Scorecard itself guards non-integer levels so it can never throw.
+- A non-string price-log note no longer throws on load: normalization coerces notes to strings, matching the review-history note handling.
+- Sealing an idea with a spot price now appends to the price log instead of replacing it, so check-in prices recorded before sealing survive.
+- A nameless imported idea now defaults to "Untitled idea" instead of crashing the ideas sort.
+- Markdown export tolerates non-array `notes`/`assumptions` instead of throwing, and normalization coerces both to arrays.
+- Quiz-result band numbers are escaped in every interpolated spot (aria label, bar labels, bar widths), and delete-my-data now also clears a leftover corrupt backup and its dismissal flag so no stale "couldn't be read" banner follows a wipe.
+- 14 new assertions; 511 assertions green. Every new regression test was verified to fail on the unfixed code before its fix landed.
+
 ## [4.4.9] — 2026-10-25
 
 ### Recruiter path: footer links to the repo; README screenshots land

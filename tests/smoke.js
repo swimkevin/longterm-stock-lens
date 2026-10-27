@@ -160,6 +160,16 @@ async function main() {
   const normP = L.normalizeIdea({ name: 'P', priceLog: [{ price: '55', date: 'bogus' }, { price: -1 }, null, { price: 12, date: '2026-01-01', note: 'x'.repeat(200) }] });
   assert(normP.priceLog.length === 2 && normP.priceLog[0].price === 55 && /^\d{4}-\d{2}-\d{2}$/.test(normP.priceLog[0].date) &&
     normP.priceLog[1].note.length === 80, 'normalizeIdea sanitizes the price log');
+  const normNote = L.normalizeIdea({ name: 'N', priceLog: [{ price: 10, date: '2026-01-01', note: 42 }, { price: 11, date: '2026-01-02', note: { x: 1 } }] });
+  assert(normNote.priceLog.length === 2 && normNote.priceLog[0].note === '42' && typeof normNote.priceLog[1].note === 'string',
+    'normalizeIdea coerces non-string price-log notes instead of throwing');
+  const normName = L.normalizeIdea({ tickers: 'AAA' });
+  assert(normName.name === 'Untitled idea', 'normalizeIdea defaults a missing name so the ideas sort cannot throw');
+  assert(L.normalizeIdea({ name: '   ' }).name === 'Untitled idea', 'normalizeIdea defaults a blank name');
+  const normConv = L.normalizeIdea({ name: 'C', conviction: 4.5, reviewHistory: [{ date: '2026-01-01', outcome: 'intact', reasonMatch: 'yes', conviction: 4.5 }] });
+  assert(normConv.conviction === 5 && normConv.reviewHistory[0].conviction === 5, 'normalizeIdea rounds fractional convictions to whole levels');
+  const normFields = L.normalizeIdea({ name: 'F', notes: 'hello', assumptions: 'hello' });
+  assert(Array.isArray(normFields.notes) && Array.isArray(normFields.assumptions), 'normalizeIdea coerces non-array notes/assumptions');
   // v4.5.0: a malformed import entry must not crash the Scorecard render
   // (b.r.date.localeCompare on a missing date) or poison the average with NaN.
   const normR = L.normalizeIdea({ name: 'R', reviewHistory: [
@@ -218,6 +228,8 @@ async function main() {
     'positive insight when hi >> lo (got: ' + cal.insight + ')');
   const calEmpty = L.calibration([]);
   assert(calEmpty.overallRate === null && calEmpty.answered === 0 && calEmpty.insight === null, 'empty -> nulls, no insight');
+  const calFloat = L.calibration([{ reviewHistory: [{ outcome: 'intact', reasonMatch: 'yes', conviction: 4.5 }] }]);
+  assert(calFloat.answered === 1 && calFloat.levels[5].n === 0, 'calibration never throws on a fractional conviction');
   const arConv = L.applyReview(Object.assign({}, idea0, { conviction: 4 }),
     { outcome: 'intact', reasonMatch: 'yes', nextMonths: '3' }, '2026-10-09');
   assert(arConv.reviewHistory[0].conviction === 4, 'applyReview records conviction snapshot');
@@ -342,6 +354,8 @@ async function main() {
   assert(md.includes('Would prove me wrong: If not.'), 'markdown includes falsify text');
   assert(md.includes('not financial advice'), 'markdown carries disclaimer');
   assert(L.journalToMarkdown([], '2026-10-04').includes('No ideas yet'), 'empty markdown export handled');
+  const mdRaw = L.journalToMarkdown([{ name: 'Raw', createdAt: '2026-01-01', reviewAt: '2026-04-01', notes: 'hello', assumptions: 'hello' }], '2026-10-04');
+  assert(typeof mdRaw === 'string' && mdRaw.includes('## Raw'), 'markdown export tolerates non-array notes/assumptions');
   const js = JSON.parse(L.journalToJSON(mig.ideas));
   assert(Array.isArray(js) && js.length === 2 && js[0].name === 'Acme', 'JSON export round-trips ideas array');
 
@@ -924,6 +938,8 @@ async function main() {
   assert(document.querySelector('#import-json').textContent === 'Imported 1 idea ✓', 'import feedback shown');
   window.confirm = origConfirm;
   await new Promise(r => setTimeout(r, 2600));
+  const impNameless = L.importIdeasFromJSON(JSON.stringify([{ tickers: 'AAA' }]));
+  assert(!impNameless.error && impNameless.ideas[0].name === 'Untitled idea', 'import defaults a nameless idea instead of crashing the sort');
   const rt = L.importIdeasFromJSON(L.journalToJSON([{ name: 'Round Trip', id: 'rt1', thesis: { belief: 'b', falsify: 'f' } }]));
   assert(!rt.error && rt.ideas[0].name === 'Round Trip' && rt.ideas[0].thesis.belief === 'b', 'export → import round-trips ideas');
   assert(typeof L.normalizeIdea({ name: 'No Id' }).id === 'string', 'normalizeIdea assigns a missing id');
@@ -975,6 +991,8 @@ async function main() {
   const sealedSpot = readStore().ideas.find(i => i.name === 'Spot Seal Co');
   assert(sealedSpot && sealedSpot.sealed && L.spotPriceOf(sealedSpot) === 80, 'spot price at seal time is kept even with a check-in price already logged');
   assert(sealedSpot.priceLog.some(p => p.note === 'spotted' && p.price === 80), 'sealed spot price lands in the log as a spotted entry');
+  assert(sealedSpot.priceLog.length === 2 && sealedSpot.priceLog.some(p => p.note === 'check-in' && p.price === 100),
+    'sealing appends the spot price instead of wiping earlier check-in prices');
   window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [{ id: 't-orphan', name: 'Orphan Import Trend', status: 'chased', ideaId: 'gone-id', createdAt: '2026-01-01', updatedAt: '2026-01-01' }], glossary: {} }));
   L.reloadJournal();
   const orphanFile = new window.File([JSON.stringify([{ name: 'Fresh Co' }])], 'backup.json', { type: 'application/json' });
@@ -992,7 +1010,9 @@ async function main() {
   document.querySelector('#idea-filter').value = 'zzz';
   document.querySelector('#idea-filter').dispatchEvent(new window.Event('input', { bubbles: true }));
   const delBtn2 = document.querySelector('#delete-data');
+  window.localStorage.setItem(KEY + '-corrupt-backup', 'stale-backup');
   delBtn2.click(); delBtn2.click();
+  assert(window.localStorage.getItem(KEY + '-corrupt-backup') === null, 'delete-my-data also clears a leftover corrupt backup');
   assert(!document.querySelector('#glossary .gloss summary .lesson-done'), 'delete-my-data clears the Learn badge from the screen');
   assert(document.querySelector('#track-record .wisdom') !== null, 'delete-my-data re-renders the Scorecard empty state');
   assert(document.querySelector('#idea-filter').value === '', 'delete-my-data clears the idea filter');
@@ -1001,6 +1021,15 @@ async function main() {
   const corruptLoaded = L.loadStore();
   assert(corruptLoaded && corruptLoaded.ideas.length === 0, 'corrupt store loads as blank instead of throwing');
   assert(window.localStorage.getItem(KEY + '-corrupt-backup') === 'CORRUPT{{{', 'corrupt blob is stashed as a backup before anything overwrites it');
+  const badSchemaRaw = JSON.stringify({ schema: 3, ideas: 'oops', trends: [{ id: 't1', name: 'KeepMe' }], glossary: {} });
+  window.localStorage.setItem(KEY, badSchemaRaw);
+  const badSchemaLoaded = L.loadStore();
+  assert(badSchemaLoaded && badSchemaLoaded.ideas.length === 0, 'schema-3 store with non-array ideas loads as blank instead of wiping silently');
+  assert(window.localStorage.getItem(KEY + '-corrupt-backup') === badSchemaRaw, 'malformed schema-3 store is stashed as a backup');
+  assert(window.localStorage.getItem(KEY) === badSchemaRaw, 'malformed schema-3 store is not overwritten on load');
+  L.renderQuizResult({ label: 'X', index: '50"><b', conv: '50', why: 'w' }, 1, 2, null, false);
+  assert(document.querySelector('#quiz-result').innerHTML.includes('50&quot;') && !document.querySelector('#quiz-result b'),
+    'quiz result escapes stored band numbers instead of breaking out of attributes');
   window.localStorage.setItem(KEY, preCorruptRaw);
   window.localStorage.removeItem(KEY + '-corrupt-backup');
   window.localStorage.removeItem(KEY + '-corrupt-notice-dismissed');
