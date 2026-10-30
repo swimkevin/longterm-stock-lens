@@ -1,5 +1,23 @@
 # Changelog — Long-Term Lens
 
+## [4.5.1] — 2026-10-30
+
+### Adversarial-audit fixes, round 2
+The scheduled fresh-eyes audit (4th run since the 2026-10-27 audit) found 17 verified issues, no High severity — the suite's blind spot has moved from load hardening to import honesty, focus management, and draft preservation. All confirmed findings are fixed here:
+- An import that fails to save no longer reports "Imported ✓": the button now says "Import failed — not saved" while the save-failure banner shows and the stored ideas stay untouched.
+- Importing a backup with duplicate idea ids no longer makes edit/delete hit both rows: duplicate ids are re-issued on import.
+- The load fallthrough paths now stash a corrupt backup like the schema-3 path does: malformed schema-2 stores, unknown-schema stores whose trends migration would drop, and schema-3 stores with malformed trends all leave a recovery copy; orphaned chased trends also reset to Watching on load (schema-3 and v2 migration alike).
+- Focus is no longer dropped to the body on routine re-renders: conviction clicks refocus the same rating, quiz retake focuses the first option, saving a Check-ins-tab check-in focuses the Check-ins heading, and completing a lesson quiz focuses that lesson.
+- The glossary filter is reapplied after every glossary re-render, so the list and its count line can no longer contradict the search box; delete-my-data also clears the glossary search and removes any stale corrupt-data banner.
+- An open detail check-in form survives detail re-renders: a typed note is carried across conviction, date, and thesis-seal re-renders, and the form reopens with the note; saving or cancelling the check-in still discards it, never resurrects it. Thesis drafts are also captured when a detail re-renders, so an orphaned autosave timer can no longer resurrect stale words on reopen.
+- Checking in on an already-resolved idea still records the check-in but no longer reschedules a date that can never surface.
+- Impossible calendar dates (e.g. Feb 30) no longer survive anywhere: review-by, check-in history, price-log, sealed, and trend dates are all plausibility-checked, and the review-by helper itself was the regex-only hole behind one of them.
+- Empty-belief sealed records are dropped in normalization, so the detail view and the export can no longer disagree about them; markdown export tolerates string/number note and assumption elements instead of printing `undefined`.
+- Declining a manual update now arms the one-shot session guard, so the auto check 2.5 seconds later cannot reload a version the user just declined; the manual reload button still works.
+- A stored quiz profile with an unknown band label and no usable numbers now falls back to the band its stored answers (or total) imply instead of rendering an empty allocation bar; stored float quiz answers count as unanswered instead of laundering into a band.
+- The dead "Saved ✓" lookup after thesis save is removed (the sealed view never contained that button).
+- 49 new assertions; 560 assertions green. Every new regression test was verified to fail on the unfixed code before shipping, including a second control run after a null-deref in the test itself aborted the first one.
+
 ## [4.5.0] — 2026-10-27
 
 ### Adversarial-audit fixes: import and load hardening

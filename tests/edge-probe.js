@@ -89,6 +89,29 @@ async function main() {
   assert(Array.isArray(js) && js.length === 1 && js[0].name === 'Old One', 'export JSON contains the migrated idea');
   assert(typeof md === 'string' && md.indexOf('Old One') !== -1, 'export markdown contains the migrated idea');
 
+  // 5. Second boot, pre-seeded: stored float quiz answer + unknown band label.
+  //    beforeParse seeds localStorage before the app's scripts read it.
+  const floatSeed = { schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { total: 9, max: 18, bandLabel: 'NoSuchBand', date: '2026-10-19', answers: [0, 1, 1.5, 2, 3, 0] } };
+  const vc2 = new VirtualConsole();
+  const errors2 = [];
+  vc2.on('jsdomError', e => errors2.push('jsdomError: ' + e.message));
+  vc2.on('error', (...a) => errors2.push('console.error: ' + a.join(' ')));
+  const dom2 = new JSDOM(html, { url: 'http://127.0.0.1:' + port + '/index.html', resources: 'usable', runScripts: 'dangerously', virtualConsole: vc2,
+    beforeParse(window) { window.scrollTo = () => {}; window.localStorage.setItem(KEY, JSON.stringify(floatSeed)); } });
+  await new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('load timeout (second boot)')), 15000);
+    dom2.window.addEventListener('load', () => { clearTimeout(t); resolve(); });
+  });
+  const document2 = dom2.window.document;
+  document2.querySelector('.nav-btn[data-nav="profile"]').click();
+  const barIndex = document2.querySelector('#quiz-result .alloc-index');
+  assert(barIndex && barIndex.textContent.includes('93%'), 'unknown band label falls back to the band the stored answers imply (93% index)');
+  document2.querySelector('#quiz .btn.primary').click();
+  assert(document2.getElementById('quiz-result').textContent.includes('Please answer question 3'),
+    'stored float quiz answer counts as unanswered instead of laundering into a band');
+  assert(errors2.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView')).length === 0, 'no script errors on the seeded second boot');
+
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));

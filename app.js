@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.0';
+const APP_VERSION = '4.5.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -439,7 +439,7 @@ function rescheduleReview(idea, months, today) {
 const DEFAULT_REVIEW_MONTHS = 3;
 
 function reviewAtOf(idea) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) return idea.reviewAt;
+  if (isPlausibleLocalDate(idea.reviewAt || '')) return idea.reviewAt;
   const fallback = addMonths(idea.createdAt, REVIEW_INTERVALS.includes(idea.reviewMonths) ? idea.reviewMonths : DEFAULT_REVIEW_MONTHS);
   return fallback;
 }
@@ -511,8 +511,8 @@ function normalizeTrend(raw) {
   if (typeof trend.why !== 'string') trend.why = '';
   if (typeof trend.lesson !== 'string') trend.lesson = '';
   if (typeof trend.ideaId !== 'string') trend.ideaId = null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trend.createdAt || '')) trend.createdAt = todayISO();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trend.updatedAt || '')) trend.updatedAt = trend.createdAt;
+  if (!isPlausibleLocalDate(trend.createdAt || '')) trend.createdAt = todayISO();
+  if (!isPlausibleLocalDate(trend.updatedAt || '')) trend.updatedAt = trend.createdAt;
   if (typeof trend.id !== 'string' || !trend.id) {
     trend.id = 't' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
   }
@@ -565,6 +565,7 @@ function applyReview(idea, review, today) {
   }
   if (outcome === 'resolved') next.status = 'resolved';
   const months = parseInt(review.nextMonths, 10);
+  if (idea.status === 'resolved') return next;
   return rescheduleReview(next, months, t);
 }
 
@@ -720,7 +721,11 @@ function journalToMarkdown(ideas, stamp, trends) {
     }
     if (Array.isArray(e.assumptions) && e.assumptions.length) {
       lines.push('Key assumptions:');
-      e.assumptions.forEach(a => lines.push('  - ' + a.text + ' (' + a.confidence + '% confident)'));
+      e.assumptions.forEach(a => {
+        if (typeof a === 'string') lines.push('  - ' + a);
+        else if (a && typeof a === 'object') lines.push('  - ' + (a.text || '') + (typeof a.confidence === 'number' ? ' (' + a.confidence + '% confident)' : ''));
+        else lines.push('  - ' + String(a));
+      });
       lines.push('');
     }
     if (e.priceLog && e.priceLog.length) {
@@ -730,7 +735,11 @@ function journalToMarkdown(ideas, stamp, trends) {
     }
     if (Array.isArray(e.notes) && e.notes.length) {
       lines.push('Notes:');
-      e.notes.forEach(n => lines.push('  - ' + n.date + ': ' + n.text));
+      e.notes.forEach(n => {
+        if (typeof n === 'string') lines.push('  - ' + n);
+        else if (n && typeof n === 'object') lines.push('  - ' + (n.date ? n.date + ': ' : '') + (n.text || ''));
+        else lines.push('  - ' + String(n));
+      });
       lines.push('');
     }
     lines.push('---', '');
@@ -753,7 +762,7 @@ const SCHEMA_VERSION = 3;
 function migrateV2ToV3(parsed) {
   const upgraded = blankStore();
   upgraded.ideas = (parsed.ideas || []).map(normalizeIdea);
-  upgraded.trends = (parsed.trends || []).map(normalizeTrend);
+  upgraded.trends = resetOrphanedTrends((parsed.trends || []).map(normalizeTrend), upgraded.ideas);
   upgraded.glossary = parsed.glossary || {};
   upgraded.quizProfile = parsed.quizProfile || null;
   return upgraded;
@@ -832,7 +841,7 @@ function normalizeIdea(rawIdea) {
   idea.thesis = Object.assign({ belief: '', falsify: '' }, idea.thesis);
   if (typeof idea.thesis.belief !== 'string') idea.thesis.belief = '';
   if (typeof idea.thesis.falsify !== 'string') idea.thesis.falsify = '';
-  if (idea.sealed && (typeof idea.sealed.belief !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(idea.sealed.date || ''))) delete idea.sealed;
+  if (idea.sealed && (typeof idea.sealed.belief !== 'string' || !idea.sealed.belief.trim() || !isPlausibleLocalDate(idea.sealed.date || ''))) delete idea.sealed;
   if (typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5) idea.conviction = Math.round(idea.conviction);
   else idea.conviction = null;
   if (idea.conviction === null && idea.scores && typeof idea.scores === 'object') {
@@ -846,7 +855,7 @@ function normalizeIdea(rawIdea) {
   if (!Array.isArray(idea.assumptions)) idea.assumptions = [];
   if (!Array.isArray(idea.reviewHistory)) idea.reviewHistory = [];
   idea.reviewHistory = idea.reviewHistory
-    .filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date || ''))
+    .filter(r => r && isPlausibleLocalDate(r.date || ''))
     .map(r => ({
       date: r.date,
       outcome: ['intact', 'changed', 'resolved'].includes(r.outcome) ? r.outcome : 'intact',
@@ -856,13 +865,13 @@ function normalizeIdea(rawIdea) {
       note: String(r.note || '').slice(0, 1000),
     }));
   if (!isPlausibleLocalDate(idea.createdAt || '')) idea.createdAt = todayISO();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.reviewAt || '')) idea.reviewAt = reviewAtOf(idea);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(idea.updatedAt || '')) idea.updatedAt = idea.createdAt;
+  if (!isPlausibleLocalDate(idea.reviewAt || '')) idea.reviewAt = reviewAtOf(idea);
+  if (!isPlausibleLocalDate(idea.updatedAt || '')) idea.updatedAt = idea.createdAt;
   if (!Array.isArray(idea.priceLog)) idea.priceLog = [];
   idea.priceLog = idea.priceLog
     .filter(p => p && isFinite(+p.price) && +p.price > 0)
     .map(p => ({
-      date: /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date : idea.createdAt,
+      date: isPlausibleLocalDate(p.date || '') ? p.date : idea.createdAt,
       price: +p.price,
       note: String(p.note || '').slice(0, 80),
     }));
@@ -876,11 +885,21 @@ function loadStore() {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.schema === SCHEMA_VERSION && Array.isArray(parsed.ideas)) {
       parsed.ideas = parsed.ideas.map(normalizeIdea);
-      parsed.trends = Array.isArray(parsed.trends) ? parsed.trends.map(normalizeTrend) : [];
-      parsed.glossary = parsed.glossary || {};
+      if (parsed.trends !== undefined && parsed.trends !== null && !Array.isArray(parsed.trends)) {
+        try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
+        parsed.trends = [];
+      } else {
+        parsed.trends = Array.isArray(parsed.trends) ? parsed.trends.map(normalizeTrend) : [];
+      }
+      parsed.trends = resetOrphanedTrends(parsed.trends, parsed.ideas);
+      parsed.glossary = (parsed.glossary && typeof parsed.glossary === 'object') ? parsed.glossary : {};
       return parsed;
     }
     if (parsed && parsed.schema === SCHEMA_VERSION && !Array.isArray(parsed.ideas)) {
+      try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
+      return blankStore();
+    }
+    if (parsed && parsed.schema === 2 && !Array.isArray(parsed.ideas)) {
       try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
       return blankStore();
     }
@@ -888,6 +907,9 @@ function loadStore() {
       const upgraded = migrateV2ToV3(parsed);
       saveStore(upgraded);
       return upgraded;
+    }
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.trends) && parsed.trends.length) {
+      try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
     }
 
     const migrated = migrateStore(parsed);
@@ -1025,7 +1047,7 @@ function renderQuiz() {
   if (savedAnswers) {
     QUIZ.forEach((item, qi) => {
       const a = savedAnswers[qi];
-      quizAnswers[qi] = (typeof a === 'number' && a >= 0 && a < item.options.length) ? a : null;
+      quizAnswers[qi] = (typeof a === 'number' && Number.isInteger(a) && a >= 0 && a < item.options.length) ? a : null;
     });
   } else if (store.quizProfile && !quizFreshStart) {
     quizAnswers.fill(null);
@@ -1068,8 +1090,14 @@ function renderQuiz() {
 
   if (store.quizProfile && !quizFreshStart) {
     const p = store.quizProfile;
-    const band = BANDS.find(b => b.label === p.bandLabel) ||
-      { label: p.bandLabel, index: p.index, conv: p.conv, why: '' };
+    const known = BANDS.find(b => b.label === p.bandLabel);
+    const usable = (typeof p.index === 'number' && isFinite(p.index) && p.index >= 0 && p.index <= 100 &&
+      typeof p.conv === 'number' && isFinite(p.conv) && p.conv >= 0 && p.conv <= 100);
+    const band = known ||
+      (usable ? { label: p.bandLabel, index: p.index, conv: p.conv, why: '' } : null) ||
+      (Array.isArray(savedAnswers) ? scoreRisk(savedAnswers).band : null) ||
+      (typeof p.total === 'number' ? (BANDS.find(b => p.total >= b.min) || BANDS[BANDS.length - 1]) : null) ||
+      BANDS[BANDS.length - 1];
     renderQuizResult(band, p.total, p.max, p.date, !!savedAnswers);
   }
   quizFreshStart = false;
@@ -1108,6 +1136,8 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
     renderQuiz();
     res.classList.add('hidden');
     res.innerHTML = '';
+    const first = document.querySelector('#quiz .opt-btn');
+    if (first) first.focus();
     const q = $('quiz');
     if (q && q.scrollIntoView) q.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
@@ -1334,8 +1364,19 @@ function sectionShell(title, hint) {
   return sec;
 }
 
+let pendingDetailReviewNote = null;
+let skipDetailReviewRestore = false;
+
 function renderIdeaDetail(idea) {
   const box = $('idea-detail');
+  if (!skipDetailReviewRestore && box.dataset.ideaId === idea.id) {
+    const noteEl = box.querySelector('.detail-review-wrap textarea');
+    if (noteEl && noteEl.value.trim()) pendingDetailReviewNote = { ideaId: idea.id, note: noteEl.value };
+    if (box.querySelector('.thesis-belief, .thesis-falsify, .thesis-price')) {
+      updateIdea(idea.id, i => captureThesisDraft(i));
+    }
+  }
+  skipDetailReviewRestore = false;
   box.innerHTML = '';
   box.dataset.ideaId = idea.id;
   const conv = convictionOf(idea);
@@ -1496,12 +1537,6 @@ function renderIdeaDetail(idea) {
       }
     });
     renderIdeaDetail(getIdea(idea.id));
-    const fresh = document.querySelector('#idea-detail [data-action="thesis-save"]');
-    if (fresh) {
-      fresh.textContent = 'Saved ✓';
-      fresh.disabled = true;
-      setTimeout(() => { fresh.textContent = 'Save'; fresh.disabled = false; }, 1200);
-    }
   });
   th.appendChild(saveBtn);
   }
@@ -1526,6 +1561,9 @@ function renderIdeaDetail(idea) {
     b.addEventListener('click', () => {
       updateIdea(idea.id, i => { i.conviction = n; captureThesisDraft(i); });
       renderIdeaDetail(getIdea(idea.id));
+      document.querySelectorAll('#idea-detail .conv-btn').forEach(c => {
+        if (c.textContent === String(n)) c.focus();
+      });
     });
     cvRow.appendChild(b);
   }
@@ -1634,6 +1672,16 @@ function renderIdeaDetail(idea) {
     renderIdeasHome();
   });
   box.appendChild(del);
+  if (pendingDetailReviewNote && pendingDetailReviewNote.ideaId === idea.id) {
+    const note = pendingDetailReviewNote.note;
+    pendingDetailReviewNote = null;
+    const nowBtn = box.querySelector('[data-action="checkin-now"]');
+    if (nowBtn) {
+      nowBtn.click();
+      const ta = box.querySelector('.detail-review-wrap textarea');
+      if (ta) ta.value = note;
+    }
+  }
 }
 
 function renderAnalyzeSection(box, idea) {
@@ -1951,14 +1999,19 @@ function renderReviewForm(card, idea, onDone) {
     }, todayISO());
     updateIdea(idea.id, () => { captureThesisDraft(updated); return updated; });
     renderIdeasHome();
+    skipDetailReviewRestore = true;
     renderReviews();
     if (onDone) onDone();
+    else {
+      const h = document.querySelector('#screen-reviews h1');
+      if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+    }
   });
   row.appendChild(save);
   const cancel = document.createElement('button');
   cancel.className = 'btn';
   cancel.textContent = 'Cancel';
-  cancel.addEventListener('click', () => { captureThesisDraft(getIdea(idea.id)); saveStore(store); if (onDone) { onDone(); } else { renderReviews(); } });
+  cancel.addEventListener('click', () => { captureThesisDraft(getIdea(idea.id)); saveStore(store); skipDetailReviewRestore = true; if (onDone) { onDone(); } else { renderReviews(); } });
   row.appendChild(cancel);
   form.appendChild(row);
   card.appendChild(form);
@@ -2525,6 +2578,7 @@ function renderGlossary() {
     d.appendChild(summary); d.appendChild(body);
     box.appendChild(d);
   });
+  applyGlossaryFilter();
 }
 
 function updateLessonScore(term, quizBox, picked, silent) {
@@ -2543,7 +2597,12 @@ function updateLessonScore(term, quizBox, picked, silent) {
     const prev = lessonProgress(term.abbr);
     store.glossary[term.abbr] = { best: Math.max(prev === null ? 0 : prev, correct), attempts: ((store.glossary[term.abbr] || {}).attempts || 0) + 1 };
     saveStore(store);
-    if (correct === 3) renderGlossary();
+    if (correct === 3) {
+      renderGlossary();
+      const node = lessonNodes.find(n => n.term === term);
+      const summary = node && node.el.querySelector('summary');
+      if (summary) summary.focus();
+    }
     else if (line) line.textContent = 'Answered: ' + correct + ' of 3 correct — best saved. Re-open to try again.';
   }
 }
@@ -2601,7 +2660,13 @@ function importIdeasFromJSON(text) {
   try { parsed = JSON.parse(text); } catch (e) { return { error: 'not-json' }; }
   const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.ideas) ? parsed.ideas : null);
   if (!list) return { error: 'not-a-backup' };
-  return { ideas: list.map(normalizeIdea) };
+  const seen = new Set();
+  const ideas = list.map(normalizeIdea).map(idea => {
+    while (seen.has(idea.id)) idea.id = newId('e');
+    seen.add(idea.id);
+    return idea;
+  });
+  return { ideas };
 }
 
 function resetOrphanedTrends(trends, ideas) {
@@ -2623,9 +2688,11 @@ function importJSONBackup(file) {
     } else {
       store.ideas = res.ideas;
       store.trends = resetOrphanedTrends(store.trends, res.ideas);
-      saveStore(store);
+      const saved = saveStore(store);
       reloadJournal();
-      btn.textContent = 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓';
+      btn.textContent = saved
+        ? 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓'
+        : 'Import failed — not saved';
     }
     setTimeout(() => { btn.textContent = orig; }, 2500);
   };
@@ -2683,6 +2750,7 @@ function init() {
             window.location.href = updateReloadURL(window.location.pathname, v, window.location.hash);
           } else if (manual) {
             cu.textContent = 'Update available — reload';
+            try { sessionStorage.setItem('lrl-healed-' + v, '1'); } catch (e) {}
           } else {
             try {
               if (!sessionStorage.getItem('lrl-healed-' + v)) {
@@ -2770,6 +2838,10 @@ function init() {
     quizAnswers.fill(null);
     const qr = $('quiz-result');
     if (qr) { qr.classList.add('hidden'); qr.innerHTML = ''; }
+    const gSearch = $('glossary-search');
+    if (gSearch) gSearch.value = '';
+    const corruptNote = document.getElementById('corrupt-notice');
+    if (corruptNote) corruptNote.remove();
     renderQuiz();
     renderIdeasHome();
     renderReviews();
