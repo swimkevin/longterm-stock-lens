@@ -99,6 +99,7 @@ function tabCheck(name) {
 }
 
 let chrome = null;
+let chromeStderr = '';
 function stopChrome() {
   try {
     if (chrome && !chrome.killed) chrome.kill('SIGKILL');
@@ -115,7 +116,10 @@ function stopChrome() {
     '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + PROFILE,
     'file://' + path.join(BUNDLE, 'index.html'),
-  ], { stdio: 'ignore' });
+  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  if (chrome.stderr) chrome.stderr.on('data', (d) => {
+    chromeStderr = (chromeStderr + d.toString()).slice(-2000);
+  });
   process.on('exit', stopChrome);
 
   const list = await waitFor(() => getJson('/json/list').then((l) => {
@@ -246,6 +250,7 @@ function stopChrome() {
   process.exit(results.every((r) => r.pass) && errors.length === 0 ? 0 : 1);
 })().catch((e) => {
   console.error('BROWSER-PASS FATAL: ' + e.message);
+  if (chromeStderr.trim()) console.error('BROWSER-PASS chrome stderr: ' + chromeStderr.trim().slice(-1000));
   try { ws && ws.close(); } catch (x) {}
   stopChrome();
   process.exit(2);
