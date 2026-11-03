@@ -1602,6 +1602,82 @@ async function main() {
   assert(document.getElementById('glossary-count').classList.contains('hidden'), 'delete-my-data hides the stale lesson count');
   assert(document.getElementById('corrupt-notice') === null, 'delete-my-data removes a stale corrupt-data banner');
 
+  // ---- audit round 3 (2026-11-03 fresh-eyes audit) ----
+  console.log('audit round 3 (click-through):');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#qa-name').value = 'Restore Co';
+  document.querySelector('#qa-add').click();
+  document.querySelector('#idea-detail [data-action="checkin-now"]').click();
+  const rForm = document.querySelector('#idea-detail .detail-review-wrap .review-form');
+  assert(!!rForm, 'restore-test check-in form opens');
+  Array.from(rForm.querySelectorAll('.chips')[0].querySelectorAll('.chip')).find(b => b.textContent === 'Yes — for my reasons').click();
+  Array.from(rForm.querySelectorAll('.chips')[1].querySelectorAll('.chip')).find(b => b.textContent === 'Done with this one').click();
+  rForm.querySelector('textarea').value = 'keep everything';
+  rForm.querySelector('input[type="number"]').value = '100';
+  rForm.querySelector('select').value = '12';
+  Array.from(document.querySelectorAll('#idea-detail .conv-btn')).find(b => b.textContent === '4').click();
+  const kept = document.querySelector('#idea-detail .detail-review-wrap .review-form');
+  assert(!!kept, 'open check-in form survives a conviction re-render');
+  assert(kept && kept.querySelector('textarea').value === 'keep everything', 'check-in note survives a detail re-render');
+  assert(kept && Array.from(kept.querySelectorAll('.chips')[0].querySelectorAll('.chip')).find(b => b.classList.contains('selected')).textContent === 'Yes — for my reasons', 'reason chip survives a detail re-render');
+  assert(kept && Array.from(kept.querySelectorAll('.chips')[1].querySelectorAll('.chip')).find(b => b.classList.contains('selected')).textContent === 'Done with this one', 'outcome chip survives a detail re-render');
+  assert(kept && kept.querySelector('input[type="number"]').value === '100', 'check-in price survives a detail re-render');
+  assert(kept && kept.querySelector('select').value === '12', 'check-in interval survives a detail re-render');
+  if (kept) Array.from(kept.querySelectorAll('.btn')).find(b => b.textContent === 'Cancel').click();
+  document.querySelector('#idea-detail [data-action="checkin-now"]').click();
+  Array.from(document.querySelectorAll('#idea-detail .conv-btn')).find(b => b.textContent === '3').click();
+  assert(!!document.querySelector('#idea-detail .detail-review-wrap .review-form'), 'empty check-in form also survives a detail re-render instead of vanishing');
+
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#trend-name').value = 'Focus Trend';
+  document.querySelector('#trend-add').click();
+  const fRow = Array.from(document.querySelectorAll('#trends-watching .note-card')).find(r => r.querySelector('.entry-name').textContent === 'Focus Trend');
+  assert(!!fRow, 'focus-test trend quick-added to Watching');
+  const missBtn3 = Array.from(fRow.querySelectorAll('.btn')).find(b => b.textContent === 'Missed it');
+  missBtn3.focus(); missBtn3.click();
+  const missedRow = Array.from(document.querySelectorAll('#trends-missed .note-card')).find(r => r.querySelector('.entry-name').textContent === 'Focus Trend');
+  assert(!!missedRow, 'missed-trend click moves the trend to Missed');
+  assert(document.activeElement && document.activeElement.textContent === 'Watching again', 'missed-trend click keeps keyboard focus on the trend action after re-render');
+
+  const filt = document.getElementById('idea-filter');
+  filt.value = 'zzz-no-match';
+  filt.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(document.querySelector('#ideas-list').textContent.includes('No ideas match'), 'non-matching filter shows the filtered empty message first');
+  const delBtn3 = document.getElementById('delete-data');
+  delBtn3.click(); delBtn3.click();
+  assert(!document.querySelector('#ideas-list').textContent.includes('No ideas match'), 'delete-my-data does not leave a stale filter message');
+  assert(document.querySelector('#ideas-list').textContent.includes('Your next ten-bagger starts here'), 'delete-my-data shows the first-idea empty state');
+
+  const numNorm = L.normalizeIdea({ id: 123, name: 'Num Co' });
+  assert(numNorm.id === '123', 'numeric idea id coerces to a string so detail capture matches it');
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [
+    { id: 'dup1', name: 'Dup A', createdAt: '2026-01-01', reviewAt: '2027-01-01', updatedAt: '2026-01-01' },
+    { id: 'dup1', name: 'Dup B', createdAt: '2026-01-01', reviewAt: '2027-01-01', updatedAt: '2026-01-01' },
+  ], trends: [], glossary: {}, quizProfile: 'garbage' }));
+  const loadedDup = L.loadStore();
+  assert(loadedDup.ideas.length === 2 && loadedDup.ideas[0].id !== loadedDup.ideas[1].id, 'loadStore dedupes duplicate idea ids instead of keeping both');
+  assert(loadedDup.quizProfile === null, 'garbage quizProfile is dropped on load instead of booting to a broken result');
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  assert(document.getElementById('quiz-result').classList.contains('hidden'), 'dropped quizProfile shows no result on Profile');
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { total: 13, max: 18, bandLabel: 'Balanced', index: 87, conv: 13, date: '2026-09-01', answers: [0, 1, 2] } }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const shortRes = document.getElementById('quiz-result');
+  assert(!shortRes.classList.contains('hidden') && shortRes.textContent.includes('Your band: Balanced'), 'short-answers profile still renders its band');
+  assert(shortRes.textContent.includes('before answers were kept'), 'short-answers profile does not claim answers were filled in');
+  assert(document.querySelectorAll('#quiz .opt-btn.selected').length === 0, 'short-answers profile restores no selections');
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [
+    { id: 123, name: 'Num Co', createdAt: '2026-01-01', reviewAt: '2027-01-01', updatedAt: '2026-01-01' },
+  ], trends: [], glossary: {} }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(document.querySelectorAll('#ideas-list .idea-row .idea-main')).find(b => b.getAttribute('aria-label') === 'Open research for Num Co').click();
+  document.querySelector('#idea-detail .thesis-belief').value = 'Numeric id draft';
+  Array.from(document.querySelectorAll('#idea-detail .conv-btn')).find(b => b.textContent === '5').click();
+  assert(readStore().ideas.find(i => i.name === 'Num Co').thesis.belief === 'Numeric id draft', 'typed thesis survives a re-render on a numeric-id idea');
+
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
   realErrors.forEach(e => console.error('    ' + e));

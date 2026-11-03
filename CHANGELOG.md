@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [4.5.2] — 2026-11-03
+
+### Adversarial-audit fixes, round 3
+The scheduled fresh-eyes audit (4th run since the 2026-10-30 audit) found 10 verified issues, no High severity — the same bug classes as the last round, one layer down: partial restores, focus, and dedupe. The Mediums and the actionable Lows are fixed here:
+- An open detail check-in form now survives detail re-renders whole: reason and outcome chips, price, and check-in interval are carried across conviction, date, and thesis-seal re-renders along with the note — previously only the note survived, and an empty form vanished outright. Saving or cancelling still discards it, never resurrects it.
+- A numeric idea id from a hand-edited backup no longer makes typed thesis drafts vanish: normalization coerces numeric ids to strings, so the detail page's string id comparison matches again.
+- Duplicate idea ids are now deduped on load, not just on import: a second idea sharing an id gets a fresh one, so edit/delete can no longer hit both rows.
+- Trend-row actions keep keyboard focus after re-render: "Missed it" lands on "Watching again", "Watching again" lands on "Missed it", and "Add as idea" lands on the new "Open idea" button.
+- Delete-my-data no longer leaves a stale filter message: the filter is cleared before the ideas list re-renders, so the wiped app shows the first-idea empty state instead of "No ideas match".
+- A garbage quiz profile (e.g. a stray string) is dropped on load instead of booting to Ideas with a broken result, and a short answers array no longer claims "answers filled in" — it honestly reports answers were not kept. The answers-derived band fallback is preserved: a profile with an unknown label but a full answers array still falls back to the band its answers imply.
+- 22 new assertions; 582 assertions green. Every new regression test was verified to fail on the unfixed code (15 failures in the control run).
+- Deferred, not fixed: sealing with an invalid spot price stays silent (seal UX needs its own design call); pre-spot-price check-ins gaining a retroactive % move is a journal-math semantics question; markdown export of crafted field values stays unescaped (export-only, import-path only).
+
 ## [4.5.1] — 2026-10-30
 
 ### Adversarial-audit fixes, round 2

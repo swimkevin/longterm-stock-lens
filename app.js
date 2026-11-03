@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.1';
+const APP_VERSION = '4.5.2';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -832,7 +832,8 @@ function normalizeIdea(rawIdea) {
     reviewMonths: DEFAULT_REVIEW_MONTHS,
     reviewHistory: [],
   }, rawIdea || {});
-  if (!idea.id) idea.id = newId('e');
+  if (typeof idea.id === 'number') idea.id = String(idea.id);
+  if (typeof idea.id !== 'string' || !idea.id) idea.id = newId('e');
   if (idea.name != null && typeof idea.name !== 'string') idea.name = String(idea.name);
   if (!idea.name || !idea.name.trim()) idea.name = 'Untitled idea';
   if (idea.tickers != null && typeof idea.tickers !== 'string') idea.tickers = String(idea.tickers);
@@ -885,6 +886,12 @@ function loadStore() {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.schema === SCHEMA_VERSION && Array.isArray(parsed.ideas)) {
       parsed.ideas = parsed.ideas.map(normalizeIdea);
+      const seenIdeaIds = new Set();
+      parsed.ideas = parsed.ideas.map(idea => {
+        while (seenIdeaIds.has(idea.id)) idea.id = newId('e');
+        seenIdeaIds.add(idea.id);
+        return idea;
+      });
       if (parsed.trends !== undefined && parsed.trends !== null && !Array.isArray(parsed.trends)) {
         try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
         parsed.trends = [];
@@ -893,6 +900,14 @@ function loadStore() {
       }
       parsed.trends = resetOrphanedTrends(parsed.trends, parsed.ideas);
       parsed.glossary = (parsed.glossary && typeof parsed.glossary === 'object') ? parsed.glossary : {};
+      const qp = parsed.quizProfile;
+      if (qp !== null && qp !== undefined) {
+        const knownBand = qp && typeof qp === 'object' && !Array.isArray(qp) && BANDS.some(b => b.label === qp.bandLabel);
+        const usableNums = qp && typeof qp === 'object' && typeof qp.index === 'number' && isFinite(qp.index) && qp.index >= 0 && qp.index <= 100 &&
+          typeof qp.conv === 'number' && isFinite(qp.conv) && qp.conv >= 0 && qp.conv <= 100;
+        const fullAnswers = qp && typeof qp === 'object' && Array.isArray(qp.answers) && qp.answers.length === QUIZ.length;
+        if (!knownBand && !usableNums && !fullAnswers) parsed.quizProfile = null;
+      }
       return parsed;
     }
     if (parsed && parsed.schema === SCHEMA_VERSION && !Array.isArray(parsed.ideas)) {
@@ -1042,7 +1057,8 @@ let quizFreshStart = false;
 function renderQuiz() {
   const box = $('quiz');
   box.innerHTML = '';
-  const savedAnswers = !quizFreshStart && store.quizProfile && Array.isArray(store.quizProfile.answers)
+  const savedAnswers = !quizFreshStart && store.quizProfile && Array.isArray(store.quizProfile.answers) &&
+    store.quizProfile.answers.length === QUIZ.length
     ? store.quizProfile.answers : null;
   if (savedAnswers) {
     QUIZ.forEach((item, qi) => {
@@ -1364,14 +1380,33 @@ function sectionShell(title, hint) {
   return sec;
 }
 
-let pendingDetailReviewNote = null;
+let pendingDetailReview = null;
 let skipDetailReviewRestore = false;
 
 function renderIdeaDetail(idea) {
   const box = $('idea-detail');
   if (!skipDetailReviewRestore && box.dataset.ideaId === idea.id) {
-    const noteEl = box.querySelector('.detail-review-wrap textarea');
-    if (noteEl && noteEl.value.trim()) pendingDetailReviewNote = { ideaId: idea.id, note: noteEl.value };
+    const form = box.querySelector('.detail-review-wrap .review-form');
+    if (form) {
+      const chipGroups = form.querySelectorAll('.chips');
+      const selectedIndex = group => {
+        if (!group) return null;
+        const chips = group.querySelectorAll('.chip');
+        for (let k = 0; k < chips.length; k++) if (chips[k].classList.contains('selected')) return k;
+        return null;
+      };
+      const noteEl = form.querySelector('textarea');
+      const priceEl = form.querySelector('input[type="number"]');
+      const monthsEl = form.querySelector('select');
+      pendingDetailReview = {
+        ideaId: idea.id,
+        note: noteEl ? noteEl.value : '',
+        reason: selectedIndex(chipGroups[0]),
+        outcome: selectedIndex(chipGroups[1]),
+        price: priceEl ? priceEl.value : '',
+        months: monthsEl ? monthsEl.value : '',
+      };
+    }
     if (box.querySelector('.thesis-belief, .thesis-falsify, .thesis-price')) {
       updateIdea(idea.id, i => captureThesisDraft(i));
     }
@@ -1672,14 +1707,32 @@ function renderIdeaDetail(idea) {
     renderIdeasHome();
   });
   box.appendChild(del);
-  if (pendingDetailReviewNote && pendingDetailReviewNote.ideaId === idea.id) {
-    const note = pendingDetailReviewNote.note;
-    pendingDetailReviewNote = null;
+  if (pendingDetailReview && pendingDetailReview.ideaId === idea.id) {
+    const saved = pendingDetailReview;
+    pendingDetailReview = null;
     const nowBtn = box.querySelector('[data-action="checkin-now"]');
     if (nowBtn) {
       nowBtn.click();
-      const ta = box.querySelector('.detail-review-wrap textarea');
-      if (ta) ta.value = note;
+      const form = box.querySelector('.detail-review-wrap .review-form');
+      if (form) {
+        const ta = form.querySelector('textarea');
+        if (ta) ta.value = saved.note;
+        const chipGroups = form.querySelectorAll('.chips');
+        const pick = (group, idx) => {
+          if (!group || typeof idx !== 'number') return;
+          const chips = group.querySelectorAll('.chip');
+          if (chips[idx]) chips[idx].click();
+        };
+        pick(chipGroups[0], saved.reason);
+        pick(chipGroups[1], saved.outcome);
+        const priceEl = form.querySelector('input[type="number"]');
+        if (priceEl) {
+          priceEl.value = saved.price;
+          priceEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        const monthsEl = form.querySelector('select');
+        if (monthsEl && saved.months) monthsEl.value = saved.months;
+      }
     }
   }
 }
@@ -2198,9 +2251,26 @@ function updateTrend(id, fn) {
   saveStore(store);
 }
 
+function focusTrendButton(trendId, label, prefix) {
+  const boxes = ['trends-watching', 'trends-missed', 'trends-chased'];
+  for (let b = 0; b < boxes.length; b++) {
+    const box = $(boxes[b]);
+    if (!box) continue;
+    const rows = box.querySelectorAll('[data-trend-id]');
+    for (let r = 0; r < rows.length; r++) {
+      if (rows[r].dataset.trendId !== trendId) continue;
+      const btns = rows[r].querySelectorAll('button');
+      for (let k = 0; k < btns.length; k++) {
+        if (prefix ? btns[k].textContent.indexOf(label) === 0 : btns[k].textContent === label) { btns[k].focus(); return; }
+      }
+    }
+  }
+}
+
 function trendRow(trend) {
   const row = document.createElement('div');
   row.className = 'note-card';
+  row.dataset.trendId = trend.id;
   const head = document.createElement('div');
   head.className = 'entry-head';
   const nm = document.createElement('span');
@@ -2242,6 +2312,7 @@ function trendRow(trend) {
     miss.addEventListener('click', () => {
       updateTrend(trend.id, t => markTrendMissed(t, todayISO()));
       renderTrends();
+      focusTrendButton(trend.id, 'Watching again', false);
     });
     actions.appendChild(miss);
   } else if (trend.status === 'missed') {
@@ -2272,6 +2343,7 @@ function trendRow(trend) {
     back.addEventListener('click', () => {
       updateTrend(trend.id, t => Object.assign({}, t, { status: 'watching' }));
       renderTrends();
+      focusTrendButton(trend.id, 'Missed it', false);
     });
     actions.appendChild(back);
   } else if (trend.status === 'chased') {
@@ -2368,6 +2440,7 @@ function buildDiscoverBox(trend) {
     discoverFeedback = 'Added ' + nm + ' ✓ — find it under Ideas, linked to this trend.';
     renderTrends();
     renderIdeasHome();
+    focusTrendButton(trend.id, 'Open idea', true);
   });
   form.appendChild(nameIn);
   form.appendChild(tickIn);
@@ -2843,14 +2916,14 @@ function init() {
     const corruptNote = document.getElementById('corrupt-notice');
     if (corruptNote) corruptNote.remove();
     renderQuiz();
+    ideaFilterQuery = '';
+    const ideaFilterEl = $('idea-filter');
+    if (ideaFilterEl) ideaFilterEl.value = '';
     renderIdeasHome();
     renderReviews();
     renderTrends();
     renderGlossary();
     renderTrackRecord();
-    ideaFilterQuery = '';
-    const ideaFilterEl = $('idea-filter');
-    if (ideaFilterEl) ideaFilterEl.value = '';
     delData.classList.remove('armed');
     delData.textContent = 'Deleted — everything is gone. Fresh start.';
     setTimeout(() => { delData.textContent = 'Delete my data'; }, 3000);
