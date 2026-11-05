@@ -1,5 +1,14 @@
 # Changelog — Long-Term Lens
 
+## [4.5.3] — 2026-11-05
+
+### Font-safe disclosure markers (live-browser finding)
+
+The daily live-browser verification found a boxed "?" (tofu) glyph on all 13 Learn lesson rows in that browser: the disclosure chevron was a `▸` character in a CSS `content:` value, and the font in that environment has no such glyph. The same class of glyph (`›`) marked the Profile explainer rows.
+
+- Both disclosure markers are now drawn with CSS border triangles instead of font glyphs, so they render identically in any font environment: lesson rows point right when closed and rotate down when open; explainer rows point down when closed and up when open (their previous directions, preserved).
+- 1 new assertion pins it: every CSS `content:` value must be plain ASCII. Verified to fail on the unfixed CSS (3 non-ASCII values: ▸ ▾ ›). 583 assertions green.
+
 ## [4.5.2] — 2026-11-03
 
 ### Adversarial-audit fixes, round 3

@@ -1448,6 +1448,9 @@ async function main() {
   const unusedDefined = [...defined].filter(v => !used.has(v));
   assert(undefinedUsed.length === 0, 'every var(--x) used in styles.css is defined' + (undefinedUsed.length ? ' (missing: ' + undefinedUsed.join(', ') + ')' : ''));
   assert(unusedDefined.length === 0, 'every --x defined in styles.css is used' + (unusedDefined.length ? ' (dead: ' + unusedDefined.join(', ') + ')' : ''));
+  const contentValues = [...css.matchAll(/content:\s*"([^"]*)"/g)].map(m => m[1]);
+  const nonAsciiContent = contentValues.filter(v => /[^\x00-\x7F]/.test(v));
+  assert(nonAsciiContent.length === 0, 'every CSS content value is plain ASCII (no font-dependent glyphs)' + (nonAsciiContent.length ? ' (offenders: ' + nonAsciiContent.join(', ') + ')' : ''));
 
   // ---- v4.5.1: adversarial-audit fixes, round 2 ----
   console.log('audit round 2:');

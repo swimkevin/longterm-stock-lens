@@ -269,8 +269,8 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible,
 .gloss { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 0.55rem; box-shadow: var(--shadow); }
 .gloss summary { padding: 0.8rem 1rem; cursor: pointer; font-weight: 650; list-style: none; display: flex; gap: 0.6rem; align-items: baseline; }
 .gloss summary::-webkit-details-marker { display: none; }
-.gloss summary::before { content: "▸"; color: var(--muted); }
-.gloss[open] summary::before { content: "▾"; }
+.gloss summary::before { content: ""; width: 0; height: 0; border-top: 0.32em solid transparent; border-bottom: 0.32em solid transparent; border-left: 0.45em solid var(--muted); flex-shrink: 0; align-self: center; transition: transform 0.18s ease; }
+.gloss[open] summary::before { transform: rotate(90deg); }
 .gloss .body { padding: 0 1rem 1rem; color: var(--muted); font-size: 0.95rem; }
 .gloss .body p { margin: 0.4em 0; }
 .gloss .ticker { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 700; }
@@ -324,8 +324,8 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible,
 .explainer details:last-child { border-bottom: 1px solid var(--line); }
 .explainer summary { cursor: pointer; list-style: none; padding: 0.75rem 0.1rem; font-weight: 600; font-size: 0.98rem; display: flex; justify-content: space-between; align-items: center; }
 .explainer summary::-webkit-details-marker { display: none; }
-.explainer summary::after { content: "›"; color: var(--muted); font-size: 1.25rem; line-height: 1; transform: rotate(90deg); transition: transform 0.18s ease; }
-.explainer details[open ] summary::after { transform: rotate(-90deg); }
+.explainer summary::after { content: ""; width: 0; height: 0; border-left: 0.32em solid transparent; border-right: 0.32em solid transparent; border-top: 0.45em solid var(--muted); flex-shrink: 0; transition: transform 0.18s ease; }
+.explainer details[open ] summary::after { transform: rotate(180deg); }
 .explainer-body { padding: 0 0.1rem 0.9rem; color: var(--text); }
 .explainer-body p { margin: 0.35rem 0; }
 .band-list { margin: 0.2rem 0; padding-left: 1.1rem; }
