@@ -1,5 +1,21 @@
 # Changelog — Long-Term Lens
 
+## [4.5.4] — 2026-11-07
+
+### Adversarial-audit fixes, round 4
+The scheduled fresh-eyes audit (4th run since the 2026-11-03 audit) found 10 verified issues, no High severity — the same bug classes as the last rounds, one layer down: load hardening, draft preservation, and re-render survival. All 10 are fixed here:
+- A bare-array store — exactly the shape Export JSON produces — now loads as ideas instead of wiping to blank: the load path treats an array as an ideas list (normalized, deduped, saved), and an unknown future schema with an ideas array stays preserved with no spurious corrupt backup. Any other unparseable shape still stashes a corrupt backup before being replaced, closing the one fallthrough that destroyed data without a recovery copy.
+- An unsubmitted quiz edit no longer vanishes when you navigate away and back: in-session answer changes are kept as a draft until submitted, for saved profiles and legacy no-answers profiles alike. Submitting, retaking, or deleting data clears the draft.
+- A stored quiz profile can no longer contradict itself on screen: an unknown band label is never rendered verbatim (the band is derived from the answers, then the total, then the label, then the stored allocation); full-length answers with no usable entry are dropped on load instead of counting as "filled in"; and a profile with a known band but no total/max no longer prints a blank "Score /".
+- An orphaned thesis-draft autosave timer can no longer clobber newer text: the timer is now one module-level handle, cancelled whenever the detail re-renders (the re-render already captures the current draft), so a timer left over from a previous render never writes stale words over a newer capture.
+- Re-clicking "Check in now" on the detail page keeps the open form (and focuses it) instead of rebuilding it empty, and re-clicking "Check in" on a due Check-ins card rebuilds the form with the typed note, chips, price, and interval carried over.
+- Trend-row drafts survive re-renders: a company name typed in a trend's "Find companies" box and a lesson typed on a missed trend are both kept across Ideas re-renders, and cleared on a successful add or save.
+- Completing a lesson quiz 3/3 no longer collapses every other open lesson: open lessons are remembered across the re-render that draws the completion checkmark.
+- Importing under an active idea filter clears the filter first, so the imported list shows instead of "No ideas match".
+- Duplicate 'spotted' price-log entries are deduped to the first on load/import, so the export can no longer show a second spotted price the UI never displays.
+- 21 new assertions; 604 assertions green. Every new regression test was verified to fail on the unfixed code (17 failures in the control run; 4 pass on old code as designed — they pin already-correct behavior the fix must not break). The control run also caught two vacuous guards before shipping: the L1 assert matched only a single-space "Score /" while the real output has a double space, and the first L2 probe could not distinguish stale from fresh text — both were rewritten to fail pre-fix first.
+- Deferred triage: the 2026-11-03 seal-with-invalid-spot-price item is now escalated to Kevin (the warn / block / leave-silent call is his); the retroactive-%-move item is re-deferred as likely working as intended (the math is correct — the price when spotted really was the spot price); markdown-export escaping stays re-deferred (export-only, never re-imported). Check-ins can't be backdated and trends-excluded-from-JSON-backup stay escalated to Kevin, not re-escalated.
+
 ## [4.5.3] — 2026-11-05
 
 ### Font-safe disclosure markers (live-browser finding)

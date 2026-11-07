@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.3';
+const APP_VERSION = '4.5.4';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -876,6 +876,13 @@ function normalizeIdea(rawIdea) {
       price: +p.price,
       note: String(p.note || '').slice(0, 80),
     }));
+  let spottedSeen = false;
+  idea.priceLog = idea.priceLog.filter(p => {
+    if (p.note !== 'spotted') return true;
+    if (spottedSeen) return false;
+    spottedSeen = true;
+    return true;
+  });
   return idea;
 }
 
@@ -905,8 +912,10 @@ function loadStore() {
         const knownBand = qp && typeof qp === 'object' && !Array.isArray(qp) && BANDS.some(b => b.label === qp.bandLabel);
         const usableNums = qp && typeof qp === 'object' && typeof qp.index === 'number' && isFinite(qp.index) && qp.index >= 0 && qp.index <= 100 &&
           typeof qp.conv === 'number' && isFinite(qp.conv) && qp.conv >= 0 && qp.conv <= 100;
-        const fullAnswers = qp && typeof qp === 'object' && Array.isArray(qp.answers) && qp.answers.length === QUIZ.length;
-        if (!knownBand && !usableNums && !fullAnswers) parsed.quizProfile = null;
+        const usableAnswers = qp && typeof qp === 'object' && Array.isArray(qp.answers) && qp.answers.length === QUIZ.length &&
+          qp.answers.some((a, qi) => typeof a === 'number' && Number.isInteger(a) && a >= 0 && a < QUIZ[qi].options.length);
+        if (Array.isArray(qp.answers) && qp.answers.length === QUIZ.length && !usableAnswers) qp.answers = null;
+        if (!knownBand && !usableNums && !usableAnswers) parsed.quizProfile = null;
       }
       return parsed;
     }
@@ -927,7 +936,21 @@ function loadStore() {
       try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
     }
 
+    if (Array.isArray(parsed)) {
+      const loaded = blankStore();
+      const seen = new Set();
+      loaded.ideas = parsed.map(normalizeIdea).map(idea => {
+        while (seen.has(idea.id)) idea.id = newId('e');
+        seen.add(idea.id);
+        return idea;
+      });
+      saveStore(loaded);
+      return loaded;
+    }
     const migrated = migrateStore(parsed);
+    if (!(parsed && typeof parsed === 'object' && (Array.isArray(parsed.ideas) || Array.isArray(parsed.entries)))) {
+      try { localStorage.setItem(STORE_KEY + '-corrupt-backup', raw); } catch (e2) {}
+    }
     saveStore(migrated);
     return migrated;
   } catch (e) {
@@ -1053,11 +1076,12 @@ function dueIdeas(today) {
 
 const quizAnswers = new Array(QUIZ.length).fill(null);
 let quizFreshStart = false;
+let quizDraft = false;
 
 function renderQuiz() {
   const box = $('quiz');
   box.innerHTML = '';
-  const savedAnswers = !quizFreshStart && store.quizProfile && Array.isArray(store.quizProfile.answers) &&
+  const savedAnswers = !quizFreshStart && !quizDraft && store.quizProfile && Array.isArray(store.quizProfile.answers) &&
     store.quizProfile.answers.length === QUIZ.length
     ? store.quizProfile.answers : null;
   if (savedAnswers) {
@@ -1065,9 +1089,10 @@ function renderQuiz() {
       const a = savedAnswers[qi];
       quizAnswers[qi] = (typeof a === 'number' && Number.isInteger(a) && a >= 0 && a < item.options.length) ? a : null;
     });
-  } else if (store.quizProfile && !quizFreshStart) {
+  } else if (store.quizProfile && !quizFreshStart && !quizDraft) {
     quizAnswers.fill(null);
   }
+  const restoredCount = quizAnswers.filter(a => a !== null).length;
   QUIZ.forEach((item, qi) => {
     const qDiv = document.createElement('div');
     qDiv.className = 'q';
@@ -1085,6 +1110,7 @@ function renderQuiz() {
       btn.setAttribute('aria-pressed', 'false');
       if (quizAnswers[qi] === oi) { btn.classList.add('selected'); btn.setAttribute('aria-pressed', 'true'); }
       btn.addEventListener('click', () => {
+        quizDraft = true;
         quizAnswers[qi] = oi;
         grid.querySelectorAll('.opt-btn').forEach(b => { b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); });
         btn.classList.add('selected');
@@ -1109,12 +1135,14 @@ function renderQuiz() {
     const known = BANDS.find(b => b.label === p.bandLabel);
     const usable = (typeof p.index === 'number' && isFinite(p.index) && p.index >= 0 && p.index <= 100 &&
       typeof p.conv === 'number' && isFinite(p.conv) && p.conv >= 0 && p.conv <= 100);
-    const band = known ||
-      (usable ? { label: p.bandLabel, index: p.index, conv: p.conv, why: '' } : null) ||
-      (Array.isArray(savedAnswers) ? scoreRisk(savedAnswers).band : null) ||
-      (typeof p.total === 'number' ? (BANDS.find(b => p.total >= b.min) || BANDS[BANDS.length - 1]) : null) ||
+    const restorable = Array.isArray(savedAnswers) && savedAnswers.some((a, qi) =>
+      typeof a === 'number' && Number.isInteger(a) && a >= 0 && a < QUIZ[qi].options.length);
+    const band = (restorable ? scoreRisk(savedAnswers).band : null) ||
+      (typeof p.total === 'number' && isFinite(p.total) ? (BANDS.find(b => p.total >= b.min) || BANDS[BANDS.length - 1]) : null) ||
+      known ||
+      (usable ? (BANDS.find(b => b.index === p.index && b.conv === p.conv) || null) : null) ||
       BANDS[BANDS.length - 1];
-    renderQuizResult(band, p.total, p.max, p.date, !!savedAnswers);
+    renderQuizResult(band, p.total, p.max, p.date, restoredCount > 0);
   }
   quizFreshStart = false;
 }
@@ -1123,10 +1151,12 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
   const res = $('quiz-result');
   res.classList.remove('hidden');
   const convText = esc(band.conv) + '%';
+  const hasScore = typeof total === 'number' && isFinite(total) && typeof max === 'number' && isFinite(max);
+  const scorePart = hasScore ? ' · Score ' + esc(total) + ' / ' + esc(max) : '';
   res.innerHTML =
     '<h3>Your band: ' + esc(band.label) + '</h3>' +
     '<p class="fineprint">' + (savedDate
-      ? 'Saved ' + esc(savedDate) + ' · Score ' + esc(total) + ' / ' + esc(max) + (answersRestored
+      ? 'Saved ' + esc(savedDate) + scorePart + (answersRestored
         ? ' — answers filled in below; change any and resubmit to update.'
         : ' — saved before answers were kept; answer below to store them with your result.')
       : 'Score ' + esc(total) + ' / ' + esc(max) + ' — educational starting point, not advice.') + '</p>' +
@@ -1148,6 +1178,7 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
   retake.textContent = 'Retake the quiz';
   retake.addEventListener('click', () => {
     quizFreshStart = true;
+    quizDraft = false;
     quizAnswers.fill(null);
     renderQuiz();
     res.classList.add('hidden');
@@ -1180,6 +1211,7 @@ function showQuizResult() {
   const { total, max, band } = scoreRisk(quizAnswers);
   store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO(), answers: quizAnswers.slice() };
   saveStore(store);
+  quizDraft = false;
   renderQuizResult(band, total, max, todayISO(), true);
   res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -1382,6 +1414,7 @@ function sectionShell(title, hint) {
 
 let pendingDetailReview = null;
 let skipDetailReviewRestore = false;
+let thesisDraftTimer = null;
 
 function renderIdeaDetail(idea) {
   const box = $('idea-detail');
@@ -1412,6 +1445,8 @@ function renderIdeaDetail(idea) {
     }
   }
   skipDetailReviewRestore = false;
+  clearTimeout(thesisDraftTimer);
+  thesisDraftTimer = null;
   box.innerHTML = '';
   box.dataset.ideaId = idea.id;
   const conv = convictionOf(idea);
@@ -1527,10 +1562,9 @@ function renderIdeaDetail(idea) {
   saveBtn.className = 'btn';
   saveBtn.dataset.action = 'thesis-save';
   saveBtn.textContent = 'Save';
-  let draftTimer = null;
   const queueDraftSave = () => {
-    clearTimeout(draftTimer);
-    draftTimer = setTimeout(() => {
+    clearTimeout(thesisDraftTimer);
+    thesisDraftTimer = setTimeout(() => {
       updateIdea(idea.id, i => {
         i.thesis = i.thesis || {};
         i.thesis.belief = belief.value;
@@ -1546,7 +1580,8 @@ function renderIdeaDetail(idea) {
   falsify.addEventListener('input', queueDraftSave);
   if (priceInput) priceInput.addEventListener('input', queueDraftSave);
   saveBtn.addEventListener('click', () => {
-    clearTimeout(draftTimer);
+    clearTimeout(thesisDraftTimer);
+    thesisDraftTimer = null;
     const words = belief.value.trim();
     let hint = th.querySelector('.thesis-hint');
     if (!words) {
@@ -1652,6 +1687,13 @@ function renderIdeaDetail(idea) {
   nowBtn.dataset.action = 'checkin-now';
   nowBtn.textContent = 'Check in now';
   nowBtn.addEventListener('click', () => {
+    const existing = box.querySelector('.detail-review-wrap .review-form');
+    if (existing) {
+      const ta = existing.querySelector('textarea');
+      if (ta) ta.focus();
+      else existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
     const prev = box.querySelector('.detail-review-wrap');
     if (prev) prev.remove();
     const wrap = document.createElement('div');
@@ -1907,6 +1949,26 @@ function renderReviews() {
 
 function renderReviewForm(card, idea, onDone) {
   const old = card.querySelector('.review-form');
+  let prev = null;
+  if (old) {
+    const groups = old.querySelectorAll('.chips');
+    const picked = group => {
+      if (!group) return null;
+      const chips = group.querySelectorAll('.chip');
+      for (let k = 0; k < chips.length; k++) if (chips[k].classList.contains('selected')) return k;
+      return null;
+    };
+    const noteEl = old.querySelector('textarea');
+    const priceEl = old.querySelector('input[type="number"]');
+    const monthsEl = old.querySelector('select');
+    prev = {
+      note: noteEl ? noteEl.value : '',
+      reason: picked(groups[0]),
+      outcome: picked(groups[1]),
+      price: priceEl ? priceEl.value : '',
+      months: monthsEl ? monthsEl.value : '',
+    };
+  }
   if (old) old.remove();
   const form = document.createElement('div');
   form.className = 'review-form panel';
@@ -1942,7 +2004,7 @@ function renderReviewForm(card, idea, onDone) {
   const reasonChips = document.createElement('div');
   reasonChips.className = 'chips';
   const reasonOpts = [['yes', 'Yes — for my reasons'], ['no', 'It moved, but for other reasons'], ['na', 'Too early to tell']];
-  let reasonMatch = 'na';
+  let reasonMatch = prev && typeof prev.reason === 'number' ? reasonOpts[prev.reason][0] : 'na';
   reasonOpts.forEach(opt => {
     const b = document.createElement('button');
     b.className = 'chip' + (reasonMatch === opt[0] ? ' selected' : '');
@@ -1970,7 +2032,7 @@ function renderReviewForm(card, idea, onDone) {
     ['changed', 'My thinking changed', 'New facts changed the picture — worth another look.'],
     ['resolved', 'Done with this one', 'Question answered — it goes on your scorecard.'],
   ];
-  let outcome = 'intact';
+  let outcome = prev && typeof prev.outcome === 'number' ? outcomeOpts[prev.outcome][0] : 'intact';
   outcomeOpts.forEach(opt => {
     const b = document.createElement('button');
     b.className = 'chip' + (outcome === opt[0] ? ' selected' : '');
@@ -1994,6 +2056,7 @@ function renderReviewForm(card, idea, onDone) {
   ta.rows = 2;
   ta.maxLength = 1000;
   ta.placeholder = 'What changed? What did you learn?';
+  if (prev) ta.value = prev.note;
   lab.appendChild(ta);
   form.appendChild(lab);
 
@@ -2008,6 +2071,7 @@ function renderReviewForm(card, idea, onDone) {
     if (n === (idea.reviewMonths || DEFAULT_REVIEW_MONTHS)) o.selected = true;
     sel.appendChild(o);
   });
+  if (prev && prev.months) sel.value = prev.months;
   nextLab.appendChild(sel);
   form.appendChild(nextLab);
 
@@ -2021,6 +2085,7 @@ function renderReviewForm(card, idea, onDone) {
   priceNowInput.placeholder = spotPriceOf(idea) !== null
     ? 'It was $' + spotPriceOf(idea) + ' when you spotted it — what is it now?'
     : 'What does it cost today? Worth noting next to your call.';
+  if (prev) priceNowInput.value = prev.price;
   priceLab.appendChild(priceNowInput);
   form.appendChild(priceLab);
   const spotForPreview = spotPriceOf(idea);
@@ -2037,6 +2102,7 @@ function renderReviewForm(card, idea, onDone) {
         preview.textContent = '';
       }
     });
+    if (prev && prev.price) priceNowInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   const row = document.createElement('div');
@@ -2323,7 +2389,8 @@ function trendRow(trend) {
     ta.rows = 2;
     ta.maxLength = 1000;
     ta.placeholder = 'e.g. I noticed it early but waited for a dip that never came.';
-    ta.value = trend.lesson || '';
+    ta.value = (trend.id in trendLessonDrafts) ? trendLessonDrafts[trend.id] : (trend.lesson || '');
+    ta.addEventListener('input', () => { trendLessonDrafts[trend.id] = ta.value; });
     lab.appendChild(ta);
     row.appendChild(lab);
     const save = document.createElement('button');
@@ -2331,6 +2398,7 @@ function trendRow(trend) {
     save.textContent = 'Save lesson';
     save.addEventListener('click', () => {
       updateTrend(trend.id, t => setTrendLesson(t, ta.value));
+      delete trendLessonDrafts[trend.id];
       const orig = save.textContent;
       save.textContent = 'Saved ✓';
       save.disabled = true;
@@ -2342,6 +2410,7 @@ function trendRow(trend) {
     back.textContent = 'Watching again';
     back.addEventListener('click', () => {
       updateTrend(trend.id, t => Object.assign({}, t, { status: 'watching' }));
+      delete trendLessonDrafts[trend.id];
       renderTrends();
       focusTrendButton(trend.id, 'Missed it', false);
     });
@@ -2376,6 +2445,8 @@ function trendRow(trend) {
 let openDiscoverTrendId = null;
 let ideaFilterQuery = '';
 let discoverFeedback = '';
+let discoverDraft = null;
+let trendLessonDrafts = {};
 
 function buildDiscoverBox(trend) {
   const box = document.createElement('div');
@@ -2422,10 +2493,17 @@ function buildDiscoverBox(trend) {
   nameIn.type = 'text';
   nameIn.placeholder = 'Company name';
   nameIn.setAttribute('aria-label', 'Company name for a new idea from this trend');
+  if (discoverDraft && discoverDraft.trendId === trend.id) nameIn.value = discoverDraft.name;
   const tickIn = document.createElement('input');
   tickIn.type = 'text';
   tickIn.placeholder = 'Ticker (optional)';
   tickIn.setAttribute('aria-label', 'Ticker, optional');
+  if (discoverDraft && discoverDraft.trendId === trend.id) tickIn.value = discoverDraft.ticker;
+  const saveDiscoverDraft = () => {
+    discoverDraft = { trendId: trend.id, name: nameIn.value, ticker: tickIn.value };
+  };
+  nameIn.addEventListener('input', saveDiscoverDraft);
+  tickIn.addEventListener('input', saveDiscoverDraft);
   const add = document.createElement('button');
   add.className = 'btn';
   add.textContent = 'Add as idea';
@@ -2436,6 +2514,7 @@ function buildDiscoverBox(trend) {
     idea.trendId = trend.id;
     store.ideas.push(idea);
     saveStore(store);
+    discoverDraft = null;
     updateTrend(trend.id, t => Object.assign({}, t, { status: 'chased', ideaId: idea.id }));
     discoverFeedback = 'Added ' + nm + ' ✓ — find it under Ideas, linked to this trend.';
     renderTrends();
@@ -2671,7 +2750,12 @@ function updateLessonScore(term, quizBox, picked, silent) {
     store.glossary[term.abbr] = { best: Math.max(prev === null ? 0 : prev, correct), attempts: ((store.glossary[term.abbr] || {}).attempts || 0) + 1 };
     saveStore(store);
     if (correct === 3) {
+      const openAbbrs = lessonNodes.filter(n => n.el.open).map(n => n.term.abbr);
       renderGlossary();
+      openAbbrs.forEach(ab => {
+        const openNode = lessonNodes.find(n => n.term.abbr === ab);
+        if (openNode) openNode.el.open = true;
+      });
       const node = lessonNodes.find(n => n.term === term);
       const summary = node && node.el.querySelector('summary');
       if (summary) summary.focus();
@@ -2762,6 +2846,9 @@ function importJSONBackup(file) {
       store.ideas = res.ideas;
       store.trends = resetOrphanedTrends(store.trends, res.ideas);
       const saved = saveStore(store);
+      ideaFilterQuery = '';
+      const ideaFilterEl = $('idea-filter');
+      if (ideaFilterEl) ideaFilterEl.value = '';
       reloadJournal();
       btn.textContent = saved
         ? 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓'
@@ -2909,6 +2996,7 @@ function init() {
     saveStore(store);
     lessonQuizState = {};
     quizAnswers.fill(null);
+    quizDraft = false;
     const qr = $('quiz-result');
     if (qr) { qr.classList.add('hidden'); qr.innerHTML = ''; }
     const gSearch = $('glossary-search');

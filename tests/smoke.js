@@ -1681,6 +1681,180 @@ async function main() {
   Array.from(document.querySelectorAll('#idea-detail .conv-btn')).find(b => b.textContent === '5').click();
   assert(readStore().ideas.find(i => i.name === 'Num Co').thesis.belief === 'Numeric id draft', 'typed thesis survives a re-render on a numeric-id idea');
 
+  // ---- v4.5.4: adversarial-audit fixes, round 4 ----
+  console.log('audit round 4:');
+  const bareIdea = L.makeIdea('Bare Array Co', '', L.todayISO());
+  window.localStorage.setItem(KEY, JSON.stringify([bareIdea]));
+  L.reloadJournal();
+  assert(readStore().ideas.length === 1 && readStore().ideas[0].name === 'Bare Array Co',
+    'bare-array store (the export shape) loads as ideas instead of wiping');
+  assert(window.localStorage.getItem(KEY + '-corrupt-backup') === null,
+    'bare-array store loads cleanly, so no corrupt backup is stashed');
+  const futureIdea = L.makeIdea('Future Co', '', L.todayISO());
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 99, ideas: [futureIdea], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  assert(readStore().ideas.length === 1 && readStore().ideas[0].name === 'Future Co',
+    'unknown future schema with an ideas array is preserved, not wiped');
+  assert(window.localStorage.getItem(KEY + '-corrupt-backup') === null,
+    'unknown-schema preserve stashes no corrupt backup');
+  window.localStorage.setItem(KEY, JSON.stringify('"hello"'));
+  L.reloadJournal();
+  assert(window.localStorage.getItem(KEY + '-corrupt-backup') !== null,
+    'primitive store stashes a corrupt backup before being replaced');
+  window.localStorage.removeItem(KEY + '-corrupt-backup');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { bandLabel: 'Not a band', index: 80, conv: 20, answers: [99, 99, 99, 99, 99, 99], total: 18, max: 18, date: '2026-09-01' } }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const badRes = document.getElementById('quiz-result');
+  assert(!badRes.textContent.includes('Not a band'), 'unknown band label is not rendered verbatim');
+  assert(!badRes.textContent.includes('answers filled in below'), 'all-invalid answers do not claim answers were filled in');
+  assert(badRes.textContent.includes('saved before answers were kept'), 'all-invalid answers get the honest no-answers copy');
+  assert(document.querySelectorAll('#quiz .opt-btn.selected').length === 0, 'all-invalid answers restore no selections');
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { bandLabel: 'Capital-preservation', index: 98, conv: 2, answers: [0, 0, 0, 0, 0, 0], total: 18, max: 18, date: '2026-09-01' } }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const contraRes = document.getElementById('quiz-result');
+  assert(!contraRes.textContent.includes('Capital-preservation') && contraRes.textContent.includes('Growth-leaning'),
+    'label contradicting the 18/18 answers loses to the answers-derived band');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { bandLabel: 'Balanced', index: 87, conv: 13, date: '2026-09-01' } }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const noScoreRes = document.getElementById('quiz-result');
+  assert(!/Score\s*\//.test(noScoreRes.textContent), 'known band without total/max shows no blank "Score /"');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  document.querySelectorAll('#quiz .q').forEach(q => q.querySelector('.opt-btn').click());
+  document.querySelector('#quiz .btn.primary').click();
+  const q1b = document.querySelectorAll('#quiz .q')[0].querySelectorAll('.opt-btn');
+  q1b[q1b.length - 1].click();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const q1back = document.querySelectorAll('#quiz .q')[0].querySelectorAll('.opt-btn.selected');
+  assert(q1back.length === 1 && q1back[0].textContent === q1b[q1b.length - 1].textContent,
+    'unsubmitted quiz change survives navigating away and back');
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { total: 13, max: 18, bandLabel: 'Balanced', index: 87, conv: 13, date: '2026-09-01' } }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  document.querySelectorAll('#quiz .q')[0].querySelectorAll('.opt-btn')[1].click();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  assert(document.querySelectorAll('#quiz .q')[0].querySelectorAll('.opt-btn.selected').length === 1,
+    'legacy-profile quiz edit survives navigating away and back');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Timer Co';
+  document.getElementById('qa-add').click();
+  const belief = document.querySelector('#idea-detail .thesis-belief');
+  belief.value = 'ABC';
+  belief.dispatchEvent(new window.Event('input', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 100));
+  belief.value = 'ABCD';
+  belief.dispatchEvent(new window.Event('input', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 300));
+  Array.from(document.querySelectorAll('#idea-detail .conv-btn')).find(b => b.textContent === '3').click();
+  await new Promise(r => setTimeout(r, 300));
+  const belief2 = document.querySelector('#idea-detail .thesis-belief');
+  belief2.value = 'ABCDE';
+  belief2.dispatchEvent(new window.Event('input', { bubbles: true }));
+  Array.from(document.querySelectorAll('#idea-detail .conv-btn')).find(b => b.textContent === '4').click();
+  await new Promise(r => setTimeout(r, 400));
+  assert(readStore().ideas.find(i => i.name === 'Timer Co').thesis.belief === 'ABCDE',
+    'stale thesis-draft timer does not clobber newer text after a re-render');
+
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Reclick Co';
+  document.getElementById('qa-add').click();
+  const nowBtn4 = Array.from(document.querySelectorAll('#idea-detail .review-row .btn')).find(b => b.textContent === 'Check in now');
+  nowBtn4.click();
+  document.querySelector('#idea-detail .detail-review-wrap .review-form textarea').value = 'typed note here';
+  nowBtn4.click();
+  assert(document.querySelector('#idea-detail .detail-review-wrap .review-form textarea').value === 'typed note here',
+    'typed check-in note survives re-clicking Check in now');
+  const st4 = readStore();
+  st4.ideas.find(i => i.name === 'Reclick Co').reviewAt = L.todayISO();
+  window.localStorage.setItem(KEY, JSON.stringify(st4));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  const dueCheckin4 = Array.from(document.querySelectorAll('#reviews-list .btn')).find(b => b.textContent === 'Check in');
+  dueCheckin4.click();
+  document.querySelector('#reviews-list .review-form textarea').value = 'reviews-tab note';
+  dueCheckin4.click();
+  assert(document.querySelector('#reviews-list .review-form textarea').value === 'reviews-tab note',
+    'typed check-in note survives re-clicking Check in on a due card');
+
+  const trend4 = L.makeTrend('AI everywhere', 'test trend');
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [trend4], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(document.querySelectorAll('#trends-watching .btn')).find(b => b.textContent === 'Find companies').click();
+  const discName = document.querySelector('#trends-watching .discover-box input[aria-label^="Company name"]');
+  discName.value = 'Typed Company';
+  discName.dispatchEvent(new window.Event('input', { bubbles: true }));
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(document.querySelector('#trends-watching .discover-box input[aria-label^="Company name"]').value === 'Typed Company',
+    'discover company name survives an Ideas re-render');
+  const missed4 = L.makeTrend('Missed Wave', 'why');
+  missed4.status = 'missed';
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [missed4], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const lessonTa = document.querySelector('#trends-missed textarea');
+  lessonTa.value = 'my lesson text';
+  lessonTa.dispatchEvent(new window.Event('input', { bubbles: true }));
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(document.querySelector('#trends-missed textarea').value === 'my lesson text',
+    'missed-trend lesson survives an Ideas re-render');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="learn"]').click();
+  const lessons = Array.from(document.querySelectorAll('#glossary details.gloss'));
+  const peRow = lessons.find(d => d.querySelector('summary').textContent.includes('P/E'));
+  const pegRow = lessons.find(d => d.querySelector('summary').textContent.includes('PEG'));
+  pegRow.open = true;
+  const peQuiz4 = L.GLOSSARY.find(g => g.abbr === 'P/E');
+  const peBtns = Array.from(peRow.querySelectorAll('.lesson-quiz .opt-btn'));
+  peQuiz4.quiz.forEach((item, qi) => {
+    const opts = peBtns.slice(qi * item.options.length, (qi + 1) * item.options.length);
+    if (opts[item.a]) opts[item.a].click();
+  });
+  const pegAfter = Array.from(document.querySelectorAll('#glossary details.gloss'))
+    .find(d => d.querySelector('summary').textContent.includes('PEG'));
+  assert(pegAfter && pegAfter.open === true, 'completing a lesson quiz 3/3 does not collapse other open lessons');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const filt4 = document.getElementById('idea-filter');
+  filt4.value = 'zzz-no-match';
+  filt4.dispatchEvent(new window.Event('input', { bubbles: true }));
+  const backupFile4 = new window.File([JSON.stringify([L.makeIdea('Imported Co', '', L.todayISO())])], 'backup.json', { type: 'application/json' });
+  const origConfirm4 = window.confirm;
+  window.confirm = () => true;
+  L.importJSONBackup(backupFile4);
+  await new Promise(r => setTimeout(r, 500));
+  window.confirm = origConfirm4;
+  assert(document.querySelectorAll('#ideas-list .idea-row').length === 1,
+    'import under an active filter clears the filter so the imported list shows');
+
+  const dupSpot = L.makeIdea('Dup Spot Co', '', L.todayISO());
+  dupSpot.priceLog = [
+    { date: '2026-01-01', price: 50, note: 'spotted' },
+    { date: '2026-01-02', price: 999, note: 'spotted' },
+  ];
+  assert(L.normalizeIdea(dupSpot).priceLog.filter(p => p.note === 'spotted').length === 1,
+    'normalizeIdea keeps one spotted price-log entry');
+
   const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
   realErrors.forEach(e => console.error('    ' + e));
