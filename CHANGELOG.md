@@ -1,5 +1,17 @@
 # Changelog — Long-Term Lens
 
+## [4.5.5] — 2026-11-09
+
+### Unguarded scrollIntoView calls + the test carve-out that hid them
+
+Today's edge probes caught a real robustness gap the suite was masking: clicking "Check in now" throws an uncaught `TypeError: wrap.scrollIntoView is not a function` in any environment where `Element.scrollIntoView` is absent (jsdom, older browsers, some embedded webviews). In a modern browser the call exists, so no user ever saw it — but five other call sites in the same file already guard with `if (x.scrollIntoView)`, and these did not. Worse, the suite's final error assertion filtered out every error containing `scrollIntoView`, in both `tests/smoke.js` and `tests/edge-probe.js`, so the throw was invisible to the gate that exists to catch it.
+
+- All five unguarded `scrollIntoView` calls now use the same guard the rest of the file uses: two in the "Check in now" handler (the existing-form branch and the new-form scroll) and three in `showQuizResult` (the missing-answer question scroll, its fallback result scroll, and the submitted-result scroll).
+- Both `scrollIntoView` carve-outs removed from the suite's error filters, so any future throw fails the gate instead of being filtered out.
+- 1 new assertion: clicking "Check in now" twice adds no `scrollIntoView` error. 605 assertions green.
+- Negative control (rule 14): with only the app.js fix stashed, the suite fails in three places — the new assertion, the final error filter (21 real errors: 18 `wrap.scrollIntoView`, 3 `res.scrollIntoView`), and the edge-probe second boot. The control run is what found the third unguarded site (`showQuizResult`), which the first grep had missed.
+- `window.scrollTo(0, 0)` (app.js:1040) checked and left alone: jsdom defines it (it only logs "Not implemented") and every browser defines it, so it cannot throw the way the missing method could.
+
 ## [4.5.4] — 2026-11-07
 
 ### Adversarial-audit fixes, round 4

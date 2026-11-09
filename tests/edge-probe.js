@@ -110,7 +110,7 @@ async function main() {
   document2.querySelector('#quiz .btn.primary').click();
   assert(document2.getElementById('quiz-result').textContent.includes('Please answer question 3'),
     'stored float quiz answer counts as unanswered instead of laundering into a band');
-  assert(errors2.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView')).length === 0, 'no script errors on the seeded second boot');
+  assert(errors2.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the seeded second boot');
 
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');

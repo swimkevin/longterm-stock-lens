@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.4';
+const APP_VERSION = '4.5.5';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1200,11 +1200,11 @@ function showQuizResult() {
     res.innerHTML = '<p>Please answer question ' + (missing + 1) + ' first — every answer shapes the result.</p>';
     const qEl = document.querySelector('#quiz .q[data-q="' + missing + '"]');
     if (qEl) {
-      qEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (qEl.scrollIntoView) qEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       qEl.classList.add('q-missing');
       setTimeout(() => qEl.classList.remove('q-missing'), 2400);
     } else {
-      res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (res.scrollIntoView) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     return;
   }
@@ -1213,7 +1213,7 @@ function showQuizResult() {
   saveStore(store);
   quizDraft = false;
   renderQuizResult(band, total, max, todayISO(), true);
-  res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (res.scrollIntoView) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 
@@ -1691,7 +1691,7 @@ function renderIdeaDetail(idea) {
     if (existing) {
       const ta = existing.querySelector('textarea');
       if (ta) ta.focus();
-      else existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      else if (existing.scrollIntoView) existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
     }
     const prev = box.querySelector('.detail-review-wrap');
@@ -1700,7 +1700,7 @@ function renderIdeaDetail(idea) {
     wrap.className = 'detail-review-wrap';
     box.appendChild(wrap);
     renderReviewForm(wrap, getIdea(idea.id) || idea, () => openIdea(idea.id));
-    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (wrap.scrollIntoView) wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
   revRow.appendChild(nowBtn);
   rev.appendChild(revRow);

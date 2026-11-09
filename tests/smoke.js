@@ -1053,8 +1053,10 @@ async function main() {
   document.querySelector('#qa-add').click();
   const ciBtn = document.querySelector('#idea-detail [data-action="checkin-now"]');
   assert(!!ciBtn, 'check-in button present on the new idea');
+  const scrollErrsBefore = errors.filter(e => e.includes('scrollIntoView')).length;
   ciBtn.click(); ciBtn.click();
   assert(document.querySelectorAll('#idea-detail .detail-review-wrap').length === 1, 'double-clicking Check in now yields one form, not two');
+  assert(errors.filter(e => e.includes('scrollIntoView')).length === scrollErrsBefore, 'Check in now click adds no scrollIntoView error');
   const beliefBox = document.querySelector('#idea-detail .thesis-belief');
   beliefBox.value = '';
   document.querySelector('#idea-detail [data-action="thesis-save"]').click();
@@ -1855,7 +1857,7 @@ async function main() {
   assert(L.normalizeIdea(dupSpot).priceLog.filter(p => p.note === 'spotted').length === 1,
     'normalizeIdea keeps one spotted price-log entry');
 
-  const realErrors = errors.filter(e => !e.includes('Not implemented') && !e.includes('scrollIntoView'));
+  const realErrors = errors.filter(e => !e.includes('Not implemented'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
   realErrors.forEach(e => console.error('    ' + e));
   console.log(failures === 0 ? '\nALL SMOKE TESTS PASSED' : '\n' + failures + ' FAILURES');
