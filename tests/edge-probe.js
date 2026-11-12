@@ -112,6 +112,34 @@ async function main() {
     'stored float quiz answer counts as unanswered instead of laundering into a band');
   assert(errors2.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the seeded second boot');
 
+  // 6. Third boot, clean state: the auto update check skips its reload while
+  //    the page is dirty (a field focused) and still arms the guard once idle.
+  const vc3 = new VirtualConsole();
+  const errors3 = [];
+  vc3.on('jsdomError', e => errors3.push('jsdomError: ' + e.message));
+  vc3.on('error', (...a) => errors3.push('console.error: ' + a.join(' ')));
+  const dom3 = new JSDOM(html, { url: 'http://127.0.0.1:' + port + '/index.html', resources: 'usable', runScripts: 'dangerously', virtualConsole: vc3,
+    beforeParse(window) { window.scrollTo = () => {}; } });
+  await new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('load timeout (third boot)')), 15000);
+    dom3.window.addEventListener('load', () => { clearTimeout(t); resolve(); });
+  });
+  const w3 = dom3.window;
+  const d3 = w3.document;
+  const L3 = w3.LongTermLens;
+  w3.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('9.9.9') });
+  d3.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d3.getElementById('qa-name').focus();
+  L3.checkForUpdates(false);
+  await new Promise(r => setTimeout(r, 100));
+  assert(w3.sessionStorage.getItem('lrl-healed-9.9.9') === null, 'auto-reload skips while a field has focus (dirty state kept)');
+  assert(d3.getElementById('btn-check-update').textContent === 'Update available — reload', 'skipped auto-reload still flags the update in the footer');
+  d3.getElementById('qa-name').blur();
+  L3.checkForUpdates(false);
+  await new Promise(r => setTimeout(r, 100));
+  assert(w3.sessionStorage.getItem('lrl-healed-9.9.9') === '1', 'auto-reload guard is still set once the page is idle');
+  assert(errors3.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the third boot');
+
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));

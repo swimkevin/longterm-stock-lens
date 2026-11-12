@@ -1857,6 +1857,199 @@ async function main() {
   assert(L.normalizeIdea(dupSpot).priceLog.filter(p => p.note === 'spotted').length === 1,
     'normalizeIdea keeps one spotted price-log entry');
 
+  // ---- v4.5.6: adversarial-audit fixes, round 5 ----
+  console.log('audit fixes v4.5.6:');
+  const origFetch = window.fetch;
+  const cuBtn = document.getElementById('btn-check-update');
+  window.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('v9.9.9') });
+  L.checkForUpdates(true);
+  await new Promise(r => setTimeout(r, 100));
+  assert(cuBtn.textContent === 'Check failed', 'manual update check reports Check failed for an unparseable version (got "' + cuBtn.textContent + '")');
+  window.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('') });
+  L.checkForUpdates(true);
+  await new Promise(r => setTimeout(r, 100));
+  assert(cuBtn.textContent === 'Check failed', 'manual update check reports Check failed for an empty version.txt');
+  window.fetch = origFetch;
+
+  const evilIdea = { id: 'evil1', name: 'Safe\n## INJECTED HEADING\n- injected bullet', tickers: 'EV\nIL', thesis: { belief: 'line one\n## EVIL BELIEF', falsify: '' }, reviewMonths: 3, createdAt: '2026-11-01', reviewAt: '2027-02-01', reviewHistory: [], priceLog: [], notes: [], tags: [], status: 'open' };
+  const evilMd = L.journalToMarkdown([evilIdea], '2026-11-12', [{ name: 'T\n## TREND INJECT', why: 'w\n## WHY INJECT', lesson: '', status: 'watching', createdAt: '2026-11-01' }]);
+  assert(!evilMd.split('\n').some(l => l.startsWith('## INJECTED') || l === '- injected bullet' || l.startsWith('## TREND INJECT') || l.startsWith('## WHY INJECT') || l.startsWith('## EVIL BELIEF')),
+    'markdown export flattens newlines so imported names cannot inject headings or bullets');
+  const evilPrompt = L.buildAnalyzePrompt(evilIdea);
+  assert(!evilPrompt.split('\n').some(l => /^##/.test(l)), 'analyze prompt flattens newlines so a shared backup cannot inject prompt lines');
+  const evilDiscover = L.buildDiscoverPrompt({ name: 'T\n## INJECT', why: 'w\n## WHY' });
+  assert(!evilDiscover.split('\n').some(l => /^##/.test(l)), 'discover prompt flattens newlines too');
+
+  const hostile = [{
+    name: 'Hostile Co', tickers: 'HST',
+    reviewHistory: [
+      { date: '2026-01-01', outcome: 'intact', reasonMatch: 'yes', conviction: 3, priceNow: null, note: '' },
+      { date: 'not-a-date', outcome: 'intact', reasonMatch: 'yes', conviction: 3, priceNow: null, note: '' },
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 3, priceNow: null, note: '' },
+    ],
+    sealed: { date: 'not-a-date', belief: 'locked', falsify: '' },
+    createdAt: '1999-01-01', tags: 'not-an-array',
+    priceLog: [{ date: '2026-01-01', price: 0, note: 'spotted' }, { date: '2026-01-01', price: 50, note: 'spotted' }],
+  }];
+  const hostileRes = L.importIdeasFromJSON(JSON.stringify(hostile));
+  assert(!hostileRes.error && hostileRes.ideas.length === 1 && hostileRes.ideas[0].reviewHistory.length === 1,
+    'hostile import keeps the one valid check-in');
+  const hostileSk = hostileRes.skipped || {};
+  assert(hostileSk.reviews === 2 && hostileSk.sealed === 1 && hostileSk.dates === 1 &&
+    hostileSk.lists === 1 && hostileSk.prices === 1,
+    'hostile import reports what it dropped (got ' + JSON.stringify(hostileRes.skipped) + ')');
+  assert(L.importIdeasFromJSON('[]').error === 'empty', 'import of an empty list is refused, not a silent wipe');
+  assert(L.importIdeasFromJSON('{"ideas":[]}').error === 'empty', 'import of an empty wrapped list is refused too');
+  const bigFile = new window.File(['x'.repeat(1000001)], 'big.json', { type: 'application/json' });
+  L.importJSONBackup(bigFile);
+  assert(document.getElementById('import-json').textContent === 'File too large — over 1 MB', 'oversized backup file is refused before parsing');
+
+  assert(typeof L.pctMove === 'function' && L.pctMove(55, 50) === 10 && L.pctMove(50, 50) === 0 && L.pctMove(1e308, 1) === null && L.pctMove(10, 0) === null,
+    'pctMove returns finite percents only (Infinity and divide-by-zero become null)');
+  const longName = 'x'.repeat(100000);
+  assert(L.normalizeIdea({ name: longName }).name.length === 80, 'import/load caps idea names at 80 chars');
+  const splitEmoji = L.makeTrend('x'.repeat(79) + '📈', '', '2026-11-12');
+  assert([...splitEmoji.name].length === 80 && !/[\uD800-\uDBFF]$/.test(splitEmoji.name),
+    'trend names are capped on code points, never splitting an emoji');
+  assert(L.normalizeTrend({ name: 'y'.repeat(5000), why: 'w'.repeat(5000), lesson: 'l'.repeat(5000) }).name.length === 80,
+    'loaded trends are capped too');
+  assert(L.normalizeIdea({ name: 'Obj Co', sealed: { date: '2026-01-01', belief: 'b', falsify: { evil: 1 } } }).sealed.falsify === '',
+    'non-string sealed falsify is emptied, never rendered as [object Object]');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [
+    { id: 't1', name: 'Trend A', why: '', status: 'watching', lesson: '', ideaId: null, createdAt: '2026-11-01', updatedAt: '2026-11-01' },
+    { id: 't1', name: 'Trend B', why: '', status: 'watching', lesson: '', ideaId: null, createdAt: '2026-11-01', updatedAt: '2026-11-01' },
+  ], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const trendRows = document.querySelectorAll('#trends-watching .note-card');
+  assert(trendRows.length === 2, 'both same-id trends still render');
+  assert(new Set(L.loadStore().trends.map(t => t.id)).size === 2, 'duplicate trend ids are re-rolled on load like idea ids');
+
+  const seedIdea = (name, extra) => Object.assign({ id: 'seed-' + name, name, ticker: '', thesis: { belief: 'b', falsify: '' }, sealed: { date: '2026-01-01', belief: 'b', falsify: '' }, conviction: null, reviewMonths: 3, createdAt: '2026-01-01', reviewAt: '2026-11-12', reviewHistory: [], priceLog: [], notes: [], tags: [], status: 'open' }, extra || {});
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [seedIdea('DueCo', { reviewAt: '2026-01-01' })], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  const dueCheckin5 = Array.from(document.querySelectorAll('#reviews-list .entry.due .btn')).find(b => b.textContent === 'Check in');
+  dueCheckin5.focus();
+  dueCheckin5.click();
+  const formChips = document.querySelectorAll('#reviews-list .review-form .chips');
+  assert(formChips.length === 2 && formChips[0].getAttribute('role') === 'group' &&
+    formChips[0].getAttribute('aria-label') === 'Did it play out the way you said?',
+    'check-in chip groups carry group semantics with the question as label');
+  assert(document.activeElement.classList.contains('chip'), 'opening a check-in form moves focus into it');
+  const cancelBtn = Array.from(document.querySelectorAll('#reviews-list .review-form .btn')).find(b => b.textContent === 'Cancel');
+  cancelBtn.focus();
+  cancelBtn.click();
+  assert(document.activeElement === document.querySelector('#screen-reviews h1'),
+    'cancelling a check-in on the Check-ins tab returns focus to the page heading, not body');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [seedIdea('FocusCo')], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#ideas-list .idea-row .idea-main').click();
+  const nowBtn5 = document.querySelector('#idea-detail [data-action="checkin-now"]');
+  nowBtn5.focus();
+  nowBtn5.click();
+  assert(document.activeElement.classList.contains('chip'), 'detail Check in now moves focus into the form');
+  const priceIn5 = document.querySelector('#idea-detail .review-form input[type="number"]');
+  priceIn5.value = '60';
+  priceIn5.focus();
+  priceIn5.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  assert(readStore().ideas.find(i => i.name === 'FocusCo').reviewHistory.length === 1,
+    'Enter in the check-in price field saves the check-in');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [seedIdea('ConvCo')], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#ideas-list .idea-row .idea-main').click();
+  const convBtns5 = Array.from(document.querySelectorAll('#idea-detail .conv-btn'));
+  assert(convBtns5.filter(b => b.tabIndex === 0).length === 1 && convBtns5[0].tabIndex === 0,
+    'conviction uses roving tabindex (only the first button is a tab stop before a pick)');
+  convBtns5[1].focus();
+  convBtns5[1].dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  assert(readStore().ideas.find(i => i.name === 'ConvCo').conviction === 3, 'ArrowRight on a conviction button picks the next value');
+  assert(document.activeElement.classList.contains('conv-btn') && document.activeElement.textContent === '3',
+    'ArrowRight moves focus to the newly picked conviction button');
+  assert(Array.from(document.querySelectorAll('#idea-detail .conv-btn')).filter(b => b.tabIndex === 0).length === 1,
+    'roving tabindex follows the pick (one tab stop after ArrowRight)');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [seedIdea('DoneCo', { status: 'resolved', reviewAt: '2026-04-01' })], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#ideas-list .idea-row .idea-main').click();
+  assert(document.querySelector('#idea-detail [data-action="checkin-now"]') === null,
+    'a resolved idea offers no Check in now button');
+  assert(document.querySelector('#idea-detail input[type="date"]') !== null, 'the check-in date is still visible on a resolved idea');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [seedIdea('DateCo')], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#ideas-list .idea-row .idea-main').click();
+  const dateIn = document.querySelector('#idea-detail input[type="date"]');
+  dateIn.focus();
+  dateIn.value = '1999-01-01';
+  dateIn.dispatchEvent(new window.Event('change', { bubbles: true }));
+  const dateErr = Array.from(document.querySelectorAll('#idea-detail .form-error')).find(e => !e.classList.contains('hidden'));
+  assert(!!dateErr && dateErr.textContent.includes('doesn'), 'an out-of-window check-in date shows an inline error instead of reverting silently');
+  assert(dateIn.value === '2026-11-12', 'the invalid date reverts to the stored check-in date');
+  assert(document.activeElement === dateIn, 'focus stays on the date field after the invalid date');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [seedIdea('MoonCo', {
+    priceLog: [{ date: '2026-01-01', price: 1, note: 'spotted' }],
+    reviewHistory: [{ date: '2026-04-01', outcome: 'intact', reasonMatch: 'yes', conviction: 3, priceNow: 1e308, note: '' }],
+  })], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="track"]').click();
+  assert(!document.getElementById('track-record').textContent.includes('Infinity'),
+    'Scorecard never renders Infinity% for extreme prices');
+
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [L.makeTrend('EnterTrend', 'why')], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(document.querySelectorAll('#trends-watching .btn')).find(b => b.textContent === 'Find companies').click();
+  const discName5 = document.querySelector('#trends-watching .discover-box input[aria-label^="Company name"]');
+  discName5.value = 'Enter Co';
+  discName5.dispatchEvent(new window.Event('input', { bubbles: true }));
+  discName5.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const entered = readStore().ideas.find(i => i.name === 'Enter Co');
+  assert(!!entered && entered.trendId === readStore().trends[0].id, 'Enter in the discover company field adds the idea linked to its trend');
+
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(document.querySelector('.nav-btn[data-nav="ideas"]').getAttribute('aria-current') === 'page',
+    'the active tab exposes aria-current');
+  assert(document.querySelector('.nav-btn[data-nav="profile"]').getAttribute('aria-current') === null,
+    'inactive tabs carry no aria-current');
+  const themeBtn = document.getElementById('theme-toggle');
+  assert(themeBtn.getAttribute('aria-pressed') === 'true', 'theme toggle exposes its state (dark on by default)');
+  themeBtn.click();
+  assert(themeBtn.getAttribute('aria-pressed') === 'false', 'theme toggle state follows the click');
+  themeBtn.click();
+
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  const retakeBtn5 = Array.from(document.querySelectorAll('#quiz-result .btn')).find(b => b.textContent === 'Retake the quiz');
+  if (retakeBtn5) retakeBtn5.click();
+  const q1opts5 = document.querySelectorAll('#quiz .q')[0].querySelectorAll('.opt-btn');
+  q1opts5[0].click();
+  const submit5 = document.querySelector('#quiz .btn.primary');
+  submit5.focus();
+  submit5.click();
+  const q2title = document.querySelectorAll('#quiz .q')[1].querySelector('.q-title');
+  assert(document.activeElement === q2title, 'an incomplete quiz submit moves focus to the first unanswered question');
+  document.querySelectorAll('#quiz .q').forEach((q, qi) => {
+    if (qi === 0) return;
+    q.querySelectorAll('.opt-btn')[0].click();
+  });
+  submit5.focus();
+  submit5.click();
+  assert(document.activeElement === document.querySelector('#quiz-result h3'),
+    'a completed quiz submit moves focus to the result heading');
+
+  const cssSrc = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+  assert(cssSrc.includes('overflow-wrap: break-word'), 'long unbroken tokens wrap instead of overflowing panels');
+  assert(cssSrc.includes('#idea-filter:focus-visible') && cssSrc.includes('.analyze-prompt:focus-visible') && cssSrc.includes('a:focus-visible'),
+    'the focus-visible ring covers the filter, prompt textareas, and plain links too');
+
   const realErrors = errors.filter(e => !e.includes('Not implemented'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
   realErrors.forEach(e => console.error('    ' + e));

@@ -1,5 +1,30 @@
 # Changelog — Long-Term Lens
 
+## [4.5.6] — 2026-11-12
+
+### Adversarial-audit fixes, round 5
+
+The scheduled fresh-eyes audit (4th run since the 2026-11-07 audit) found 25 verified issues — 1 High, 13 Medium, 11 Low — probing new surfaces this round: keyboard/ARIA flows, the update-check path, and hostile import/export round-trips. 20 are fixed here; 5 are triaged below.
+
+- Reviews-screen Cancel no longer drops focus to `<body>`: it now returns focus to the Check-ins heading, mirroring the Save path in the same form.
+- The update check no longer reports "Up to date ✓" for garbage: a fetched version string must match `^\d+\.\d+\.\d+$` first, and anything else is "Check failed" on a manual check.
+- The auto-reload skips itself while the page holds unsaved work — a pending thesis-draft autosave, an unsubmitted quiz edit, a discover/trend-lesson draft, unsubmitted lesson-quiz picks, or a focused input — and still flags the update in the footer for a manual reload.
+- Markdown export and the AI prompts are now newline-safe: every user string is flattened to one line before it is interpolated, so an imported name can no longer inject a `##` heading or a bullet into the `.md` file, or a line into the prompt pasted into an AI chat. The JSON export still carries the original text verbatim.
+- Import now reports what it drops or changes: a hostile batch returns per-category skipped counts (check-ins, locked theses, dates, lists, prices), shown in the import confirmation line. Importing an empty list is refused instead of silently wiping the ideas, and files over 1 MB are refused before parsing.
+- Conviction buttons are real radios now: roving tabindex (one tab stop) plus Arrow-key selection, matching the `role=radiogroup` they already claimed.
+- Opening a check-in form moves focus into it, on the detail page and on the Check-ins tab; chip groups now carry `role=group` with the question as their label.
+- A resolved idea no longer offers "Check in now": the button is hidden (the check-in date stays visible). The underlying rule — a check-in on a resolved idea is recorded but never reschedules — is unchanged and still pinned by its existing test.
+- Import/load lengths are capped: idea names 80 chars, tickers 60, trend name 80 / why and lesson 1000, all sliced on code-point boundaries so an emoji is never split into a lone surrogate.
+- Scorecard math can no longer print `Infinity%`: a shared `pctMove` helper returns null for non-finite moves, and the average, history lines, and price preview all skip nulls.
+- Duplicate trend ids are re-rolled on load, exactly like idea ids — two trends sharing an id no longer both flip to "missed" from one click.
+- Quiz submit moves focus: an incomplete submit focuses the first unanswered question; a completed submit focuses the result heading.
+- The active tab exposes `aria-current="page"` and the theme toggle exposes `aria-pressed`.
+- An out-of-window check-in date now shows an inline error instead of reverting silently, and focus stays on the date field.
+- Enter saves from the check-in price field and adds from the discover-box company field.
+- Long unbroken tokens wrap (`overflow-wrap: break-word` on `body`), and the `:focus-visible` ring now covers the idea filter, prompt textareas, and plain links.
+- 45 new assertions; 650 assertions green (634 smoke + 16 edge probes). Negative control (rule 14): with the app.js/styles.css fixes stashed, the suite fails in 40 places in smoke (including 5 version-mismatch artifacts from the stash) plus the edge-probe dirty-guard check — every new guard failed pre-fix, and both suites reported fully. The first control run aborted early on two unguarded test expressions (`hostileRes.skipped`, `L.pctMove`); both tests were null-guarded and the control re-run completed.
+- Deferred triage (rule 15): the auto-reload stale-cache item is re-deferred — a reload navigates to a fresh `?v=` URL, so the HTML fetch is uncached and references the new versioned script, and the footer manual reload remains; the sessionStorage-loop item was NOT reproduced (the `setItem` throw already prevents the navigation in the same `try` block — the auditor's repro was a probe artifact, verified by a standalone probe); JSON backup omitting trends stays escalated to Kevin (the trends-excluded-from-JSON-backup item, not re-escalated); the lesson/profile quiz-option radio conversion is re-deferred (needs a shared roving-radio helper; the conviction group is the priority fix this round); the mobile DOM/visual tab-order mismatch is re-deferred as cosmetic.
+
 ## [4.5.5] — 2026-11-09
 
 ### Unguarded scrollIntoView calls + the test carve-out that hid them
