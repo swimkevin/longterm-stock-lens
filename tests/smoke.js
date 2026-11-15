@@ -1037,6 +1037,8 @@ async function main() {
   const beforeSave = window.localStorage.getItem(KEY);
   assert(L.saveStore(JSON.parse(beforeSave)) === true, 'saveStore reports success');
   assert(window.localStorage.getItem(KEY) === beforeSave, 'saveStore round-trip leaves the stored bytes unchanged');
+  assert(L.saveStore() === false, 'saveStore with no store refuses instead of writing');
+  assert(window.localStorage.getItem(KEY) === beforeSave, 'bare saveStore leaves the stored bytes untouched');
 
   document.querySelector('#trend-name').value = 'Orphan Audit Trend';
   document.querySelector('#trend-add').click();

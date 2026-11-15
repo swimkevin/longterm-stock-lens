@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.6';
+const APP_VERSION = '4.5.7';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -974,6 +974,7 @@ function loadStore() {
   }
 }
 function saveStore(store) {
+  if (!store || typeof store !== 'object') return false;
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); return true; } catch (e) { showSaveFailure(); return false; }
 }
 function showSaveFailure() {

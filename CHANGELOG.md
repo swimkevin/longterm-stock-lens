@@ -1,5 +1,14 @@
 # Changelog — Long-Term Lens
 
+## [4.5.7] — 2026-11-15
+
+### saveStore bare-call guard
+
+Found by this run's edge probe, not by an audit: `saveStore()` called with no argument wrote the literal string `"undefined"` into localStorage (`JSON.stringify(undefined)`), and the next `loadStore()` threw parsing it — the catch stashed the useless `"undefined"` string as the corrupt-backup and booted blank, so the user's ideas were silently gone. No shipped code path calls `saveStore()` bare (all four call sites pass the store), so this was a latent footgun, not a live bug — but it is the worst failure class for this app (silent data loss on next load), so it gets the guard now.
+
+- `saveStore` refuses a missing or non-object argument (`return false`) instead of writing; the store is left untouched.
+- 2 new assertions; 652 assertions green (636 smoke + 16 edge probes). Negative control (rule 14): both new assertions fail on the unfixed code (bare call writes `"undefined"`); both suites reported fully.
+
 ## [4.5.6] — 2026-11-12
 
 ### Adversarial-audit fixes, round 5
