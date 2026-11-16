@@ -1,5 +1,21 @@
 # Changelog — Long-Term Lens
 
+## [4.5.8] — 2026-11-16
+
+### Adversarial-audit fixes, round 6 + check-in price-preview guard
+
+The scheduled fresh-eyes audit (4 runs since the Nov 12 audit) found 7 verified issues — 2 Medium, 5 Low — probing keyboard flows, check-in math edges, trend/idea lifecycle, hostile import round-trips, and mobile-width layout. All 7 were re-verified with the loop's own probes before fixing; 5 are fixed here, 2 re-deferred with reasons below. A probe-found preview bug joins them.
+
+- Drafts and open forms survive switching ideas: a thesis draft typed in one idea was lost when another idea opened inside the 800ms autosave window, and an open check-in form was lost the same way. `renderIdeaDetail` now captures transient state for any previously displayed idea, and a shared `fillReviewForm` helper restores it on return.
+- A typed check-in on the Check-ins tab survives re-clicking the tab: `renderReviews` captures an open form before wiping the list and restores it after the rebuild while the idea is still due. Save/Cancel still close for good (a skip flag, set only when the form lives on the reviews screen).
+- Import feedback uses plain language: "1 locked thesis dropped" is now "1 locked-in record dropped".
+- The 98/2 allocation bar no longer clips its label: slices under 8% render the percent as a caption under the bar ("2% in individual stocks"); 13%+ still label inside.
+- Imports cap at 1,000 ideas (`MAX_IMPORT_IDEAS`), with the skipped count reported in the feedback.
+- A resolved idea's "Check in on" date is now read-only (still visible): the date drives nothing once resolved.
+- Check-in price preview ignores $0 and negative prices (it showed −100%/−105% for prices the save discards as no price); it now only previews for finite positive prices.
+- 18 new assertions; 672 assertions green (656 smoke + 16 edge probes). Negative control (rule 14): all 13 new behavior guards fail on the unfixed code; both suites reported fully.
+- Re-deferred: no reopen/undo for resolved ideas (Kevin's design call — resolve is a deliberate two-step action and nothing is destroyed); no live-region announcements yet (button-text feedback needs a shared live region, not a one-line attribute — a small feature for a later round).
+
 ## [4.5.7] — 2026-11-15
 
 ### saveStore bare-call guard

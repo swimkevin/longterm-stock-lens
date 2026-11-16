@@ -416,6 +416,18 @@ async function main() {
   assert(res.getAttribute('role') === 'status', 'quiz result announced via role=status');
   assert(res.querySelector('.alloc-bar').getAttribute('aria-label').includes('20 percent individual stocks'),
     'aria-label carries full wording');
+  const tinyBand = L.BANDS.find(b => b.conv === 2);
+  L.renderQuizResult(tinyBand, 0, 18, null, false);
+  assert(document.querySelector('#quiz-result .alloc-conv').textContent === '', '2% slice carries no label inside the bar (it would clip)');
+  assert(document.querySelector('#quiz-result').textContent.includes('2% in individual stocks'), '2% label appears under the bar instead');
+  const smallBand = L.BANDS.find(b => b.conv === 7);
+  L.renderQuizResult(smallBand, 6, 18, null, false);
+  assert(document.querySelector('#quiz-result .alloc-conv').textContent === '', '7% slice also labels outside the bar');
+  assert(document.querySelector('#quiz-result').textContent.includes('7% in individual stocks'), '7% label appears under the bar');
+  const wideBand = L.BANDS.find(b => b.conv === 13);
+  L.renderQuizResult(wideBand, 10, 18, null, false);
+  assert(document.querySelector('#quiz-result .alloc-conv').textContent === '13%', '13% slice still labels inside the bar');
+  assert(!document.querySelector('#quiz-result').textContent.includes('% in individual stocks'), 'wide slices get no caption line');
   const prof = readStore().quizProfile;
   assert(prof && prof.bandLabel === 'Growth-leaning' && prof.total === 18, 'quiz result persisted to store (quizProfile)');
   assert(Array.isArray(prof.answers) && prof.answers.length === 6 && prof.answers.every(a => a === 0),
@@ -691,6 +703,42 @@ async function main() {
   assert(document.getElementById('reviews-badge').classList.contains('hidden'), 'badge clears when nothing due');
   assert(document.querySelector('#due-queue .idea-row') === null, 'due queue empty after review');
 
+  // ---- v4.5.8: a typed check-in on the Check-ins tab survives re-clicking the tab ----
+  console.log('check-in form survives tab re-click:');
+  const m2PrevStore = window.localStorage.getItem(KEY);
+  const dueAgain = L.makeIdea('Due Again', '', '2026-01-01');
+  dueAgain.reviewMonths = 1;
+  window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [dueAgain], trends: [], glossary: {}, quizProfile: null }));
+  L.reloadJournal();
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  const againBtn = Array.from(document.querySelectorAll('#reviews-list .btn.primary')).find(b => b.textContent === 'Check in');
+  assert(!!againBtn, 'due card offers Check in for the re-click test');
+  againBtn.click();
+  const againForm = document.querySelector('#reviews-list .review-form');
+  againForm.querySelector('textarea').value = 'DUE-AGAIN-NOTE';
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  const againRestored = document.querySelector('#reviews-list .review-form');
+  assert(!!againRestored && againRestored.querySelector('textarea').value === 'DUE-AGAIN-NOTE',
+    'typed check-in note survives re-clicking the Check-ins tab');
+  const cancelCheckBtn = Array.from(document.querySelectorAll('#reviews-list .btn.primary')).find(b => b.textContent === 'Check in');
+  cancelCheckBtn.click();
+  const cancelForm = document.querySelector('#reviews-list .review-form');
+  cancelForm.querySelector('textarea').value = 'CANCEL-NOTE';
+  Array.from(cancelForm.querySelectorAll('button')).find(b => b.textContent === 'Cancel').click();
+  assert(!document.querySelector('#reviews-list .review-form'), 'cancel closes the form');
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  assert(!document.querySelector('#reviews-list .review-form'), 'cancelled form does not come back on the next tab click');
+  const againBtn2 = Array.from(document.querySelectorAll('#reviews-list .btn.primary')).find(b => b.textContent === 'Check in');
+  againBtn2.click();
+  const againForm2 = document.querySelector('#reviews-list .review-form');
+  againForm2.querySelector('textarea').value = 'SAVED-NOTE';
+  Array.from(againForm2.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
+  assert(readStore().ideas.find(i => i.name === 'Due Again').reviewHistory.length === 1, 're-click test check-in saved');
+  document.querySelector('.nav-btn[data-nav="reviews"]').click();
+  assert(!document.querySelector('#reviews-list .review-form'), 'saved form does not come back on the next tab click');
+  window.localStorage.setItem(KEY, m2PrevStore);
+  L.reloadJournal();
+
   console.log('due queue sorting:');
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
   document.getElementById('qa-name').value = 'Second Co';
@@ -940,6 +988,20 @@ async function main() {
   await new Promise(r => setTimeout(r, 2600));
   const impNameless = L.importIdeasFromJSON(JSON.stringify([{ tickers: 'AAA' }]));
   assert(!impNameless.error && impNameless.ideas[0].name === 'Untitled idea', 'import defaults a nameless idea instead of crashing the sort');
+  const manyIdeas = Array.from({ length: 1001 }, (_, i) => ({ name: 'Bulk ' + i }));
+  const capped = L.importIdeasFromJSON(JSON.stringify(manyIdeas));
+  assert(!capped.error && capped.ideas.length === 1000 && capped.skipped.ideas === 1, 'import caps at 1000 ideas and reports the skipped count');
+  const exactIdeas = Array.from({ length: 1000 }, (_, i) => ({ name: 'Exact ' + i }));
+  const exact = L.importIdeasFromJSON(JSON.stringify(exactIdeas));
+  assert(!exact.error && exact.ideas.length === 1000 && exact.skipped.ideas === 0, 'exactly 1000 ideas import with nothing skipped');
+  window.confirm = () => true;
+  const badSealFile = new window.File([JSON.stringify([{ name: 'Bad Seal', sealed: { belief: 'b', falsify: 'f', date: 'not-a-date' } }])], 'backup.json', { type: 'application/json' });
+  L.importJSONBackup(badSealFile);
+  await new Promise(r => setTimeout(r, 500));
+  const importBtnText = document.querySelector('#import-json').textContent;
+  assert(importBtnText.includes('locked-in record') && !/thesis|theses/.test(importBtnText), 'import feedback uses plain language, no thesis wording (got: ' + importBtnText + ')');
+  window.confirm = origConfirm;
+  await new Promise(r => setTimeout(r, 2600));
   const rt = L.importIdeasFromJSON(L.journalToJSON([{ name: 'Round Trip', id: 'rt1', thesis: { belief: 'b', falsify: 'f' } }]));
   assert(!rt.error && rt.ideas[0].name === 'Round Trip' && rt.ideas[0].thesis.belief === 'b', 'export → import round-trips ideas');
   assert(typeof L.normalizeIdea({ name: 'No Id' }).id === 'string', 'normalizeIdea assigns a missing id');
@@ -1266,6 +1328,14 @@ async function main() {
   pnA.value = '105';
   pnA.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert(rfA.querySelector('.price-preview').textContent.includes('+25%'), 'typing a price previews the move vs spotted (+25%)');
+  pnA.value = '0';
+  pnA.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(rfA.querySelector('.price-preview').textContent === '', 'price 0 previews no move (save discards it as no price)');
+  pnA.value = '-5';
+  pnA.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(rfA.querySelector('.price-preview').textContent === '', 'negative price previews no move (save discards it as no price)');
+  pnA.value = '105';
+  pnA.dispatchEvent(new window.Event('input', { bubbles: true }));
   Array.from(rfA.querySelectorAll('.chip')).find(c => c.textContent.includes('Yes — for my reasons')).click();
   rfA.querySelector('textarea').value = 'On track.';
   Array.from(rfA.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
@@ -1416,6 +1486,33 @@ async function main() {
   const aStored = readStore().ideas.find(i => i.name === 'Draft A');
   assert(aStored.thesis.belief === 'A DRAFT WORDS', 'detail-page check-in still captures the same idea\'s draft');
   assert(aStored.reviewHistory.length === 1, 'A\'s check-in saved');
+
+  // ---- v4.5.8: transient state survives switching ideas ----
+  console.log('transient state survives switching ideas:');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Switch A';
+  document.getElementById('qa-add').click();
+  const switchBelief = document.querySelector('#idea-detail .thesis-belief');
+  switchBelief.value = 'SWITCH-A-DRAFT';
+  switchBelief.dispatchEvent(new window.Event('input', { bubbles: true }));
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.getElementById('qa-name').value = 'Switch B';
+  document.getElementById('qa-add').click();
+  const switchA = readStore().ideas.find(i => i.name === 'Switch A');
+  assert(switchA && switchA.thesis.belief === 'SWITCH-A-DRAFT', 'thesis draft typed in A is saved when B opens inside the autosave window');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(document.querySelectorAll('.idea-main'))
+    .find(b => b.getAttribute('aria-label') === 'Open research for Switch A').click();
+  document.querySelector('#idea-detail [data-action="checkin-now"]').click();
+  const switchForm = document.querySelector('#idea-detail .review-form');
+  switchForm.querySelector('textarea').value = 'SWITCH-A-NOTE';
+  Array.from(document.querySelectorAll('.idea-main'))
+    .find(b => b.getAttribute('aria-label') === 'Open research for Switch B').click();
+  Array.from(document.querySelectorAll('.idea-main'))
+    .find(b => b.getAttribute('aria-label') === 'Open research for Switch A').click();
+  const switchRestored = document.querySelector('#idea-detail .review-form');
+  assert(!!switchRestored && switchRestored.querySelector('textarea').value === 'SWITCH-A-NOTE',
+    'open check-in form survives switching ideas and back');
 
   console.log('screen navigation moves focus:');
   document.querySelector('.nav-btn[data-nav="track"]').click();
@@ -1983,6 +2080,7 @@ async function main() {
   assert(document.querySelector('#idea-detail [data-action="checkin-now"]') === null,
     'a resolved idea offers no Check in now button');
   assert(document.querySelector('#idea-detail input[type="date"]') !== null, 'the check-in date is still visible on a resolved idea');
+  assert(document.querySelector('#idea-detail input[type="date"]').disabled, 'the check-in date is read-only on a resolved idea (it no longer drives anything)');
 
   window.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [seedIdea('DateCo')], trends: [], glossary: {}, quizProfile: null }));
   L.reloadJournal();

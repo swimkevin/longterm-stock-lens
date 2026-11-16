@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.7';
+const APP_VERSION = '4.5.8';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -437,6 +437,7 @@ function rescheduleReview(idea, months, today) {
 }
 
 const DEFAULT_REVIEW_MONTHS = 3;
+const MAX_IMPORT_IDEAS = 1000;
 
 function reviewAtOf(idea) {
   if (isPlausibleLocalDate(idea.reviewAt || '')) return idea.reviewAt;
@@ -1175,6 +1176,7 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
   const res = $('quiz-result');
   res.classList.remove('hidden');
   const convText = esc(band.conv) + '%';
+  const tinyConv = band.conv < 8;
   const hasScore = typeof total === 'number' && isFinite(total) && typeof max === 'number' && isFinite(max);
   const scorePart = hasScore ? ' · Score ' + esc(total) + ' / ' + esc(max) : '';
   res.innerHTML =
@@ -1186,8 +1188,9 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
       : 'Score ' + esc(total) + ' / ' + esc(max) + ' — educational starting point, not advice.') + '</p>' +
     '<div class="alloc-bar" role="img" aria-label="Suggested allocation: ' + esc(band.index) + ' percent index funds, ' + esc(band.conv) + ' percent individual stocks">' +
       '<div class="alloc-index" style="width:' + esc(band.index) + '%">' + esc(band.index) + '% index</div>' +
-      '<div class="alloc-conv" style="width:' + esc(band.conv) + '%">' + convText + '</div>' +
+      '<div class="alloc-conv" style="width:' + esc(band.conv) + '%">' + (tinyConv ? '' : convText) + '</div>' +
     '</div>' +
+    (tinyConv ? '<p class="fineprint">' + esc(band.conv) + '% in individual stocks</p>' : '') +
     '<p>' + esc(band.why) + '</p>' +
     '<p class="fineprint">Higher individual-stock % = higher risk, always. Retake this when life changes.</p>';
   const retakeRow = document.createElement('div');
@@ -1441,12 +1444,15 @@ function sectionShell(title, hint) {
 }
 
 let pendingDetailReview = null;
+let pendingReviewsForm = null;
+let skipReviewsFormRestore = false;
 let skipDetailReviewRestore = false;
 let thesisDraftTimer = null;
 
 function renderIdeaDetail(idea) {
   const box = $('idea-detail');
-  if (!skipDetailReviewRestore && box.dataset.ideaId === idea.id) {
+  const prevId = box.dataset.ideaId;
+  if (!skipDetailReviewRestore && prevId) {
     const form = box.querySelector('.detail-review-wrap .review-form');
     if (form) {
       const chipGroups = form.querySelectorAll('.chips');
@@ -1460,7 +1466,7 @@ function renderIdeaDetail(idea) {
       const priceEl = form.querySelector('input[type="number"]');
       const monthsEl = form.querySelector('select');
       pendingDetailReview = {
-        ideaId: idea.id,
+        ideaId: prevId,
         note: noteEl ? noteEl.value : '',
         reason: selectedIndex(chipGroups[0]),
         outcome: selectedIndex(chipGroups[1]),
@@ -1469,7 +1475,7 @@ function renderIdeaDetail(idea) {
       };
     }
     if (box.querySelector('.thesis-belief, .thesis-falsify, .thesis-price')) {
-      updateIdea(idea.id, i => captureThesisDraft(i));
+      updateIdea(prevId, i => captureThesisDraft(i));
     }
   }
   skipDetailReviewRestore = false;
@@ -1711,6 +1717,7 @@ function renderIdeaDetail(idea) {
   const revDate = document.createElement('input');
   revDate.type = 'date';
   revDate.value = reviewAtOf(idea) || '';
+  revDate.disabled = idea.status === 'resolved';
   revDate.setAttribute('aria-label', 'Check-in date for this idea');
   const revErr = document.createElement('p');
   revErr.className = 'form-error hidden';
@@ -1808,27 +1815,29 @@ function renderIdeaDetail(idea) {
     if (nowBtn) {
       nowBtn.click();
       const form = box.querySelector('.detail-review-wrap .review-form');
-      if (form) {
-        const ta = form.querySelector('textarea');
-        if (ta) ta.value = saved.note;
-        const chipGroups = form.querySelectorAll('.chips');
-        const pick = (group, idx) => {
-          if (!group || typeof idx !== 'number') return;
-          const chips = group.querySelectorAll('.chip');
-          if (chips[idx]) chips[idx].click();
-        };
-        pick(chipGroups[0], saved.reason);
-        pick(chipGroups[1], saved.outcome);
-        const priceEl = form.querySelector('input[type="number"]');
-        if (priceEl) {
-          priceEl.value = saved.price;
-          priceEl.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        const monthsEl = form.querySelector('select');
-        if (monthsEl && saved.months) monthsEl.value = saved.months;
-      }
+      if (form) fillReviewForm(form, saved);
     }
   }
+}
+
+function fillReviewForm(form, saved) {
+  const ta = form.querySelector('textarea');
+  if (ta) ta.value = saved.note;
+  const chipGroups = form.querySelectorAll('.chips');
+  const pick = (group, idx) => {
+    if (!group || typeof idx !== 'number') return;
+    const chips = group.querySelectorAll('.chip');
+    if (chips[idx]) chips[idx].click();
+  };
+  pick(chipGroups[0], saved.reason);
+  pick(chipGroups[1], saved.outcome);
+  const priceEl = form.querySelector('input[type="number"]');
+  if (priceEl) {
+    priceEl.value = saved.price;
+    priceEl.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  const monthsEl = form.querySelector('select');
+  if (monthsEl && saved.months) monthsEl.value = saved.months;
 }
 
 function renderAnalyzeSection(box, idea) {
@@ -1886,6 +1895,31 @@ function renderReviews() {
   const today = todayISO();
   const due = dueIdeas(today);
   const box = $('reviews-list');
+  if (!skipReviewsFormRestore) {
+    const openForm = box.querySelector('.review-form');
+    if (openForm) {
+      const card = openForm.closest('.entry');
+      const groups = openForm.querySelectorAll('.chips');
+      const picked = group => {
+        if (!group) return null;
+        const chips = group.querySelectorAll('.chip');
+        for (let k = 0; k < chips.length; k++) if (chips[k].classList.contains('selected')) return k;
+        return null;
+      };
+      const noteEl = openForm.querySelector('textarea');
+      const priceEl = openForm.querySelector('input[type="number"]');
+      const monthsEl = openForm.querySelector('select');
+      pendingReviewsForm = {
+        ideaId: card && card.dataset.ideaId,
+        note: noteEl ? noteEl.value : '',
+        reason: picked(groups[0]),
+        outcome: picked(groups[1]),
+        price: priceEl ? priceEl.value : '',
+        months: monthsEl ? monthsEl.value : '',
+      };
+    }
+  }
+  skipReviewsFormRestore = false;
   box.innerHTML = '';
   const upcoming = openIdeas(today).filter(i => !isReviewDue(i, today))
     .sort((a, b) => (reviewAtOf(a) || '').localeCompare(reviewAtOf(b) || ''));
@@ -1899,6 +1933,7 @@ function renderReviews() {
   due.forEach(idea => {
     const card = document.createElement('div');
     card.className = 'entry due';
+    card.dataset.ideaId = idea.id;
     const head = document.createElement('div');
     head.className = 'entry-head';
     const nm = document.createElement('span');
@@ -1996,6 +2031,19 @@ function renderReviews() {
       card.appendChild(actions);
       box.appendChild(card);
     });
+  }
+  if (pendingReviewsForm) {
+    const saved = pendingReviewsForm;
+    pendingReviewsForm = null;
+    const idea = due.find(i => i.id === saved.ideaId);
+    if (idea) {
+      const card = box.querySelector('.entry[data-idea-id="' + idea.id + '"]');
+      if (card) {
+        renderReviewForm(card, idea);
+        const form = card.querySelector('.review-form');
+        if (form) fillReviewForm(form, saved);
+      }
+    }
   }
 }
 
@@ -2151,7 +2199,7 @@ function renderReviewForm(card, idea, onDone) {
     form.appendChild(preview);
     priceNowInput.addEventListener('input', () => {
       const v = parseFloat(priceNowInput.value);
-      const pct = pctMove(v, spotForPreview);
+      const pct = (isFinite(v) && v > 0) ? pctMove(v, spotForPreview) : null;
       if (pct !== null) {
         preview.textContent = 'That\u2019s ' + (pct >= 0 ? '+' : '') + pct + '% vs $' + spotForPreview + ' when you spotted it.';
       } else {
@@ -2175,6 +2223,7 @@ function renderReviewForm(card, idea, onDone) {
     updateIdea(idea.id, () => { captureThesisDraft(updated); return updated; });
     renderIdeasHome();
     skipDetailReviewRestore = true;
+    if (card.closest('#reviews-list')) skipReviewsFormRestore = true;
     renderReviews();
     if (onDone) onDone();
     else {
@@ -2187,7 +2236,7 @@ function renderReviewForm(card, idea, onDone) {
   const cancel = document.createElement('button');
   cancel.className = 'btn';
   cancel.textContent = 'Cancel';
-  cancel.addEventListener('click', () => { captureThesisDraft(getIdea(idea.id)); saveStore(store); skipDetailReviewRestore = true; if (onDone) { onDone(); } else { renderReviews(); const h = document.querySelector('#screen-reviews h1'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); } } });
+  cancel.addEventListener('click', () => { captureThesisDraft(getIdea(idea.id)); saveStore(store); skipDetailReviewRestore = true; if (card.closest('#reviews-list')) skipReviewsFormRestore = true; if (onDone) { onDone(); } else { renderReviews(); const h = document.querySelector('#screen-reviews h1'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); } } });
   row.appendChild(cancel);
   form.appendChild(row);
   card.appendChild(form);
@@ -2888,7 +2937,7 @@ function importIdeasFromJSON(text) {
     seen.add(idea.id);
     return idea;
   });
-  const skipped = { reviews: 0, sealed: 0, dates: 0, lists: 0, prices: 0 };
+  const skipped = { reviews: 0, sealed: 0, dates: 0, lists: 0, prices: 0, ideas: 0 };
   list.forEach((raw, i) => {
     if (!raw || typeof raw !== 'object') return;
     const n = ideas[i];
@@ -2902,6 +2951,10 @@ function importIdeasFromJSON(text) {
       skipped.prices += raw.priceLog.length - n.priceLog.length;
     }
   });
+  if (ideas.length > MAX_IMPORT_IDEAS) {
+    skipped.ideas = ideas.length - MAX_IMPORT_IDEAS;
+    ideas.splice(MAX_IMPORT_IDEAS);
+  }
   return { ideas, skipped };
 }
 
@@ -2948,10 +3001,11 @@ function importJSONBackup(file) {
       const sk = res.skipped || {};
       const parts = [];
       if (sk.reviews) parts.push(sk.reviews + ' check-in' + (sk.reviews === 1 ? '' : 's') + ' skipped');
-      if (sk.sealed) parts.push(sk.sealed + ' locked ' + (sk.sealed === 1 ? 'thesis' : 'theses') + ' dropped');
+      if (sk.sealed) parts.push(sk.sealed + ' locked-in record' + (sk.sealed === 1 ? '' : 's') + ' dropped');
       if (sk.dates) parts.push(sk.dates + ' date' + (sk.dates === 1 ? '' : 's') + ' reset');
       if (sk.lists) parts.push(sk.lists + ' list' + (sk.lists === 1 ? '' : 's') + ' reset');
       if (sk.prices) parts.push(sk.prices + ' price' + (sk.prices === 1 ? '' : 's') + ' skipped');
+      if (sk.ideas) parts.push(sk.ideas + ' idea' + (sk.ideas === 1 ? '' : 's') + ' skipped — import takes at most ' + MAX_IMPORT_IDEAS + ' ideas');
       btn.textContent = saved
         ? 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓' + (parts.length ? ' — ' + parts.join(', ') : '')
         : 'Import failed — not saved';
