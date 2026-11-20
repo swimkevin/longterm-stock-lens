@@ -75,6 +75,10 @@ async function main() {
   assert(r.total === 18 && r.band.index === 80 && r.band.conv === 20, 'max score -> 80/20 growth band');
   r = L.scoreRisk([3, 3, 3, 3, 3, 3]);
   assert(r.total === 0 && r.band.index === 98 && r.band.conv === 2, 'min score -> 98/2 preservation band');
+  r = L.scoreRisk([0, '1', '1', '1', '1', '1']);
+  assert(r.total === 3 && r.band.label === 'Capital-preservation', 'string quiz answers are ignored, not laundered into the score');
+  r = L.scoreRisk([0, 99, 2, null, 'x', 3]);
+  assert(r.total === 4 && r.band.label === 'Capital-preservation', 'out-of-range and non-integer answers are ignored');
   assert(L.BANDS.every(b => b.index + b.conv === 100), 'every band sums to 100%');
 
   console.log('conviction (single 1-5 scale):');

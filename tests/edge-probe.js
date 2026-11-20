@@ -140,6 +140,125 @@ async function main() {
   assert(w3.sessionStorage.getItem('lrl-healed-9.9.9') === '1', 'auto-reload guard is still set once the page is idle');
   assert(errors3.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the third boot');
 
+  // 7. Later boots share one helper (fresh JSDOM each, suite's own seams).
+  async function bootLater(seedFn) {
+    const vc = new VirtualConsole();
+    const errs = [];
+    vc.on('jsdomError', e => errs.push('jsdomError: ' + e.message));
+    vc.on('error', (...a) => errs.push('console.error: ' + a.join(' ')));
+    const dom = new JSDOM(html, { url: 'http://127.0.0.1:' + port + '/index.html', resources: 'usable', runScripts: 'dangerously', virtualConsole: vc,
+      beforeParse(window) { window.scrollTo = () => {}; if (seedFn) seedFn(window); } });
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('load timeout (later boot)')), 15000);
+      dom.window.addEventListener('load', () => { clearTimeout(t); resolve(); });
+    });
+    return { w: dom.window, d: dom.window.document, L: dom.window.LongTermLens, errs };
+  }
+
+  // 8. Fourth boot: the thesis-draft autosave must clear its timer, or the
+  //    auto self-heal stays disabled for the rest of the session.
+  const b4 = await bootLater();
+  const w4 = b4.w, d4 = b4.d, L4 = b4.L;
+  w4.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('4.5.8') });
+  async function autoCheck4(stub) {
+    const prev = w4.fetch;
+    w4.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve(stub) });
+    L4.checkForUpdates(false);
+    await new Promise(r => setTimeout(r, 120));
+    w4.fetch = prev;
+  }
+  const readStore4 = () => JSON.parse(w4.localStorage.getItem(KEY));
+  const draft4 = L4.makeIdea('DraftCo', '', '2026-01-01');
+  w4.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [draft4], trends: [], glossary: {}, quizProfile: null }));
+  L4.reloadJournal();
+  d4.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(d4.querySelectorAll('#ideas-list .idea-row').length === 1, 'autosave boot: seeded idea renders (probe booted)');
+  d4.querySelector('#ideas-list .idea-main').click();
+  const belief4 = d4.querySelector('#idea-detail .thesis-belief');
+  assert(!!belief4, 'autosave boot: detail page shows thesis fields');
+  belief4.value = 'draft thesis text';
+  belief4.dispatchEvent(new w4.Event('input', { bubbles: true }));
+  w4.sessionStorage.removeItem('lrl-healed-9.9.9');
+  await autoCheck4('9.9.9');
+  assert(w4.sessionStorage.getItem('lrl-healed-9.9.9') === null, 'auto-reload skips while the thesis draft timer is pending');
+  await new Promise(r => setTimeout(r, 950));
+  assert(readStore4().ideas[0].thesis && readStore4().ideas[0].thesis.belief === 'draft thesis text', 'thesis draft autosaved into the store after 800ms');
+  await autoCheck4('9.9.9');
+  assert(w4.sessionStorage.getItem('lrl-healed-9.9.9') === '1', 'auto-reload arms once the draft autosave has cleared its timer');
+  assert(b4.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the autosave boot');
+
+  // 9. Fifth boot: the dirty check must see unsaved work that has no focus —
+  //    a typed check-in note with focus on a chip, and typed quick-add names.
+  const b5 = await bootLater();
+  const w5 = b5.w, d5 = b5.d, L5 = b5.L;
+  w5.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('4.5.8') });
+  async function autoCheck5(stub) {
+    const prev = w5.fetch;
+    w5.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve(stub) });
+    L5.checkForUpdates(false);
+    await new Promise(r => setTimeout(r, 120));
+    w5.fetch = prev;
+  }
+  const readStore5 = () => JSON.parse(w5.localStorage.getItem(KEY));
+  const due5 = L5.makeIdea('DueCo', '', '2026-01-01');
+  w5.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [due5], trends: [], glossary: {}, quizProfile: null }));
+  L5.reloadJournal();
+  d5.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(d5.querySelectorAll('#ideas-list .idea-row').length === 1, 'dirty-check boot: seeded due idea renders (probe booted)');
+  d5.getElementById('qa-name').value = 'Unsaved Name';
+  d5.querySelector('.nav-btn[data-nav="ideas"]').focus();
+  w5.sessionStorage.removeItem('lrl-healed-9.9.9');
+  await autoCheck5('9.9.9');
+  assert(w5.sessionStorage.getItem('lrl-healed-9.9.9') === null, 'auto-reload skips with a typed-but-unsubmitted quick-add name');
+  assert(!JSON.stringify(readStore5()).includes('Unsaved Name'), 'typed quick-add name is not in the store');
+  d5.getElementById('qa-name').value = '';
+  d5.getElementById('trend-name').value = 'Unsaved Trend';
+  d5.querySelector('.nav-btn[data-nav="ideas"]').focus();
+  await autoCheck5('9.9.9');
+  assert(w5.sessionStorage.getItem('lrl-healed-9.9.9') === null, 'auto-reload skips with a typed-but-unsubmitted trend name');
+  d5.getElementById('trend-name').value = '';
+  d5.querySelector('.nav-btn[data-nav="reviews"]').click();
+  Array.from(d5.querySelectorAll('#reviews-list .btn')).find(b => b.textContent === 'Check in').click();
+  const form5 = d5.querySelector('#reviews-list .review-form');
+  assert(!!form5, 'dirty-check boot: check-in form opened inline on the Check-ins screen');
+  form5.querySelector('textarea').value = 'Probe note';
+  form5.querySelector('input[type="number"]').value = '123';
+  form5.querySelector('.chip').focus();
+  assert(d5.activeElement && d5.activeElement.tagName === 'BUTTON', 'dirty-check boot: focus is on a chip button, not a field');
+  assert(!JSON.stringify(readStore5()).includes('Probe note'), 'typed check-in note lives only in the DOM, nowhere in the store');
+  await autoCheck5('9.9.9');
+  assert(w5.sessionStorage.getItem('lrl-healed-9.9.9') === null, 'auto-reload skips with a typed check-in note open and focus off the fields');
+  Array.from(form5.querySelectorAll('.btn')).find(b => b.textContent === 'Cancel').click();
+  assert(d5.querySelector('.review-form') === null, 'dirty-check boot: cancelling the form removes it');
+  await autoCheck5('9.9.9');
+  assert(w5.sessionStorage.getItem('lrl-healed-9.9.9') === '1', 'auto-reload arms once the page is idle (positive control)');
+  assert(b5.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the dirty-check boot');
+
+  // 10. Sixth boot: a mixed-validity profile shows the band AND the score
+  //     from the same restored answers — never the stored total.
+  const q2Seed = { schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { total: 13, max: 18, bandLabel: 'Balanced', answers: [0, 99, 2, null, 'x', 3], date: '2026-09-01' } };
+  const b6 = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify(q2Seed)));
+  const d6 = b6.d;
+  d6.querySelector('.nav-btn[data-nav="profile"]').click();
+  const res6 = d6.getElementById('quiz-result').textContent;
+  assert(res6.includes('Capital-preservation'), 'mixed-validity profile shows the band its valid answers imply');
+  assert(res6.includes('Score 4 / 18'), 'mixed-validity profile shows the score recomputed from those same answers');
+  assert(!res6.includes('Score 13 / 18'), 'mixed-validity profile never shows the stored total that contradicts its band');
+  assert(b6.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the mixed-validity boot');
+
+  // 11. Seventh boot: string quiz answers never launder into a higher band.
+  const q3Seed = { schema: 3, ideas: [], trends: [], glossary: {},
+    quizProfile: { total: 3, max: 18, bandLabel: 'Capital-preservation', answers: [0, '1', '1', '1', '1', '1'] } };
+  const b7 = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify(q3Seed)));
+  const d7 = b7.d;
+  d7.querySelector('.nav-btn[data-nav="profile"]').click();
+  const res7 = d7.getElementById('quiz-result').textContent;
+  assert(res7.includes('Capital-preservation'), 'string quiz answers do not change the band');
+  assert(res7.includes('Score 3 / 18'), 'string-answer profile shows the score from its numeric answers only');
+  assert(!res7.includes('Balanced'), 'string answers never launder into a higher band');
+  assert(b7.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the string-answers boot');
+
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));

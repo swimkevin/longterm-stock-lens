@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.8';
+const APP_VERSION = '4.5.9';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -89,8 +89,10 @@ const BANDS = [
 function scoreRisk(answers) {
   let total = 0;
   answers.forEach((optIdx, qi) => {
-    const opt = QUIZ[qi] && QUIZ[qi].options[optIdx];
-    if (opt) total += opt.s;
+    if (typeof optIdx !== 'number' || !Number.isInteger(optIdx)) return;
+    const opts = QUIZ[qi] && QUIZ[qi].options;
+    if (!opts || optIdx < 0 || optIdx >= opts.length) return;
+    total += opts[optIdx].s;
   });
   const band = BANDS.find(b => total >= b.min) || BANDS[BANDS.length - 1];
   return { total, max: QUIZ.length * 3, band };
@@ -1162,12 +1164,13 @@ function renderQuiz() {
       typeof p.conv === 'number' && isFinite(p.conv) && p.conv >= 0 && p.conv <= 100);
     const restorable = Array.isArray(savedAnswers) && savedAnswers.some((a, qi) =>
       typeof a === 'number' && Number.isInteger(a) && a >= 0 && a < QUIZ[qi].options.length);
-    const band = (restorable ? scoreRisk(savedAnswers).band : null) ||
+    const restoredScore = restorable ? scoreRisk(savedAnswers) : null;
+    const band = (restoredScore ? restoredScore.band : null) ||
       (typeof p.total === 'number' && isFinite(p.total) ? (BANDS.find(b => p.total >= b.min) || BANDS[BANDS.length - 1]) : null) ||
       known ||
       (usable ? (BANDS.find(b => b.index === p.index && b.conv === p.conv) || null) : null) ||
       BANDS[BANDS.length - 1];
-    renderQuizResult(band, p.total, p.max, p.date, restoredCount > 0);
+    renderQuizResult(band, restoredScore ? restoredScore.total : p.total, restoredScore ? restoredScore.max : p.max, p.date, restoredCount > 0);
   }
   quizFreshStart = false;
 }
@@ -1608,6 +1611,7 @@ function renderIdeaDetail(idea) {
           else delete i.thesis.priceDraft;
         }
       });
+      thesisDraftTimer = null;
     }, 800);
   };
   belief.addEventListener('input', queueDraftSave);
@@ -3080,7 +3084,10 @@ function init() {
             const dirty = thesisDraftTimer !== null || quizDraft || !!discoverDraft ||
               Object.keys(trendLessonDrafts).some(k => trendLessonDrafts[k]) ||
               Object.values(lessonQuizState).some(a => Array.isArray(a) && a.some(x => x !== null)) ||
-              (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
+              (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) ||
+              !!document.querySelector('.review-form') ||
+              ($('qa-name') && $('qa-name').value.trim() !== '') ||
+              ($('trend-name') && $('trend-name').value.trim() !== '');
             if (dirty) return;
             try {
               if (!sessionStorage.getItem('lrl-healed-' + v)) {

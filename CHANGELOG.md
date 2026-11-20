@@ -1,5 +1,18 @@
 # Changelog — Long-Term Lens
 
+## [4.5.9] — 2026-11-20
+
+### Adversarial-audit fixes, round 7 — self-heal and quiz hostile data
+
+The scheduled fresh-eyes audit (4 runs since the Nov 16 audit) probed the two surfaces the Nov 17 director review slated — self-heal under stale cache, quiz under hostile profile data — with 60/60 probe assertions. It found 1 Medium and 4 Lows; all 5 were re-verified with the loop's own probe run before fixing. The stale-cache auto-reload disposition changes: it is no longer purely "designed behavior" — two real gaps in it are fixed here.
+
+- The thesis-draft autosave now clears its timer when it fires, so the auto self-heal is no longer silently disabled for the rest of the session after the most common editing action on the site (the stale timer handle kept the dirty check true until the next detail re-render or Save click).
+- The update dirty check now sees unsaved work that has no focus: an open check-in form (`.review-form` present in the DOM) and typed-but-unsubmitted quick-add names (`#qa-name`, `#trend-name`) both skip the auto-reload instead of letting it wipe a note that lives only in the DOM.
+- `scoreRisk` ignores non-integer and out-of-range answer indices — string answers like `'1'` no longer launder into the score through array-index coercion (a hostile profile scored 13/Balanced from strings while showing only 1 restored selection).
+- A restored quiz result now shows the score recomputed from the same answers its band comes from, so a mixed-validity profile can no longer show a Capital-preservation band next to a Balanced "Score 13 / 18".
+- 27 new assertions; 699 assertions green (658 smoke + 41 edge probes). Negative control (rule 14): 9 of the new behavior guards fail on the unfixed code (string-score, autosave-timer arming, all three dirty-check skips, both mixed-validity score pins, both string-band pins); both suites reported fully. Two companion pins pass on unfixed code by design — out-of-range indices were already skipped by the old falsy-option check, and the Q2 band was already answers-derived; only the displayed score contradicted it.
+- Re-deferred: no reopen/undo for resolved ideas (Kevin's design call — deliberate two-step, nothing destroyed); no live-region announcements yet (needs a shared live region, a small feature for a later round); mobile DOM/visual tab-order mismatch (cosmetic, unchanged). JSON backup still exports ideas only — stays escalated to Kevin, not re-escalated.
+
 ## [4.5.8] — 2026-11-16
 
 ### Adversarial-audit fixes, round 6 + check-in price-preview guard
