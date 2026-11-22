@@ -7,7 +7,6 @@ recommendations — see AGENTS.md. The roadmap respects that boundary.
 
 - **Calibration depth, only if the data earns it** — review-punctuality stats, per-trend calibration. No speculative stats before the reviews exist.
 - **Back-button navigation** — the app pushes no history entries today, so the browser back button exits the site instead of returning to the Ideas list (the in-app back button works). Hash-based routing would fix it, but it touches every navigation path including boot and the self-heal reload — needs its own careful release, not a drive-by.
-- **README screenshots** — landed 2026-10-25 (real Chromium renders; desktop uses sample data, disclosed in the caption; real-device phone captures would still be an upgrade).
 
 ## Shipped
 
@@ -26,8 +25,6 @@ AI-verify prompt generator as the final gate; quiet secondary nav (Ideas hero, e
 ### v1.0 — Ideas → Research → Review redesign (2026-10-09)
 
 Full redesign from a 10-product research report (Stockxy, Journalytic, Simply Wall St, Stockopedia, Stock Rover, Morningstar, Fatebook, Metaculus, Zogo, Finimize). Journal → Ideas home with due-for-review queue and quick-add; "did it move for your stated reason?" reviews; track-record calibration (the seed of v3.0); glossary → micro-lessons. v0.x journal data migrates automatically — nothing lost, localStorage key unchanged.
-
-## Shipped
 
 ### v3.1 → v4.3.1 — Loop hardening, consolidation, audits (2026-10-11/13)
 

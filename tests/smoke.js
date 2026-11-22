@@ -79,6 +79,14 @@ async function main() {
   assert(r.total === 3 && r.band.label === 'Capital-preservation', 'string quiz answers are ignored, not laundered into the score');
   r = L.scoreRisk([0, 99, 2, null, 'x', 3]);
   assert(r.total === 4 && r.band.label === 'Capital-preservation', 'out-of-range and non-integer answers are ignored');
+  r = L.scoreRisk([0, 0, 0, 3, 0, 0]);
+  assert(r.total === 15 && r.band.label === 'Cautious' && r.capped, 'high-interest debt caps the band at Cautious even at 15/18');
+  r = L.scoreRisk([3, 0, 0, 0, 0, 0]);
+  assert(r.total === 15 && r.band.label === 'Growth-leaning' && !r.capped, 'age alone never caps the band');
+  r = L.scoreRisk([0, 3, 0, 0, 0, 0]);
+  assert(r.band.label === 'Cautious' && r.capped, 'money needed within a year caps the band too');
+  r = L.scoreRisk([0, 0]);
+  assert(r.total === 6 && r.band.label === 'Cautious', 'short answer lists score the answers given (missing counts as 0)');
   assert(L.BANDS.every(b => b.index + b.conv === 100), 'every band sums to 100%');
 
   console.log('conviction (single 1-5 scale):');
@@ -228,12 +236,27 @@ async function main() {
   assert(cal.hiRate === 100 && cal.loRate === 0, 'hi/lo rates computed');
   assert(cal.yesCount === 4, 'yesCount exposed for honest n-of-m display (got ' + cal.yesCount + ')');
   assert(cal.legacyAnswered === 1, 'legacy review without conviction counted separately (got ' + cal.legacyAnswered + ')');
-  assert(typeof cal.insight === 'string' && cal.insight.includes('your gut means something'),
-    'positive insight when hi >> lo (got: ' + cal.insight + ')');
+  assert(typeof cal.insight === 'string' && cal.insight.includes('starts to show'),
+    'five answered check-ins only earn the generic pattern line, not a directional call (got: ' + cal.insight + ')');
   const calEmpty = L.calibration([]);
   assert(calEmpty.overallRate === null && calEmpty.answered === 0 && calEmpty.insight === null, 'empty -> nulls, no insight');
   const calFloat = L.calibration([{ reviewHistory: [{ outcome: 'intact', reasonMatch: 'yes', conviction: 4.5 }] }]);
   assert(calFloat.answered === 1 && calFloat.levels[5].n === 0, 'calibration never throws on a fractional conviction');
+  const calBig = L.calibration([
+    { reviewHistory: [
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 5 },
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 5 },
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 4 },
+      { outcome: 'changed', reasonMatch: 'no', conviction: 1 },
+      { outcome: 'changed', reasonMatch: 'no', conviction: 2 },
+      { outcome: 'changed', reasonMatch: 'no', conviction: 1 },
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 3 },
+      { outcome: 'intact', reasonMatch: 'yes', conviction: 3 },
+    ] },
+  ]);
+  assert(calBig.answered === 8 && calBig.hiRate === 100 && calBig.loRate === 0, 'eight answered with 3 hi and 3 lo earns the directional insight');
+  assert(typeof calBig.insight === 'string' && calBig.insight.includes('your gut means something'),
+    'directional insight only fires at 8+ answered with 3+ on each side (got: ' + calBig.insight + ')');
   const arConv = L.applyReview(Object.assign({}, idea0, { conviction: 4 }),
     { outcome: 'intact', reasonMatch: 'yes', nextMonths: '3' }, '2026-10-09');
   assert(arConv.reviewHistory[0].conviction === 4, 'applyReview records conviction snapshot');
@@ -373,6 +396,7 @@ async function main() {
   assert(L.WISDOM.length === 10, '10 wisdom quotes');
   assert(L.WISDOM.every(q => q.text && q.who && q.source), 'every quote carries text, attribution, and a primary source');
   assert(L.WISDOM.every(q => !/warren buffett.{0,20}warren buffett/i.test(q.who)), 'no doubled attributions');
+  assert(L.WISDOM.some(q => q.text.includes('level of 125')), 'temperament quote carries the verified 125 IQ figure (BusinessWeek, 5 June 1999)');
   const w1 = L.wisdomFor('2026-10-18');
   assert(L.wisdomFor('2026-10-18') === w1, 'wisdomFor is deterministic for a date');
   assert(L.wisdomFor('not-a-date') === L.WISDOM[0], 'wisdomFor falls back to the first quote on bad input');
@@ -656,6 +680,8 @@ async function main() {
     'review form opens inline on the detail page');
   assert(document.querySelector('#idea-detail .detail-review-wrap .review-form').textContent.includes('Did it play out the way you said?'),
     'detail check-in asks the play-out question');
+  const detailForm = document.querySelector('#idea-detail .detail-review-wrap .review-form');
+  assert(!detailForm.querySelectorAll('.chips')[1].querySelector('.chip.selected'), 'detail check-in form pre-selects no outcome');
   Array.from(document.querySelectorAll('#idea-detail .detail-review-wrap .review-form .chip'))
     .find(b => b.textContent === 'Still holds up').click();
   document.querySelector('#idea-detail .detail-review-wrap .review-form textarea').value = 'Detail-page review.';
@@ -690,13 +716,20 @@ async function main() {
   assert(document.querySelector('#reviews-list .review-form'), 'review form renders inline');
   assert(document.querySelector('#reviews-list .review-form').textContent.includes('Did it play out the way you said?'),
     'check-in asks the play-out question');
+  const freshForm = document.querySelector('#reviews-list .review-form');
+  assert(!freshForm.querySelectorAll('.chips')[1].querySelector('.chip.selected'), 'fresh check-in form pre-selects no outcome');
+  Array.from(freshForm.querySelectorAll('.btn.primary')).find(b => b.textContent === 'Save check-in').click();
+  assert(readStore().ideas.find(i => i.id === firstId).reviewHistory.length === 0, 'save with no outcome chosen records nothing');
+  const pickHint = freshForm.querySelector('.form-error');
+  assert(pickHint && !pickHint.classList.contains('hidden'), 'save with no outcome shows the pick-first hint');
   Array.from(document.querySelectorAll('#reviews-list .review-form .chip'))
-    .find(b => b.textContent === 'Yes — for my reasons').click();
+    .find(b => b.textContent === 'Yes — for my reasons')?.click();
   Array.from(document.querySelectorAll('#reviews-list .review-form .chip'))
-    .find(b => b.textContent === 'Done with this one').click();
-  document.querySelector('#reviews-list .review-form textarea').value = 'Thesis played out.';
+    .find(b => b.textContent === 'Done with this one')?.click();
+  const reviewNote = document.querySelector('#reviews-list .review-form textarea');
+  if (reviewNote) reviewNote.value = 'Thesis played out.';
   Array.from(document.querySelectorAll('#reviews-list .review-form .btn.primary'))
-    .find(b => b.textContent === 'Save check-in').click();
+    .find(b => b.textContent === 'Save check-in')?.click();
   st = readStore();
   const reviewed = st.ideas.find(i => i.id === firstId);
   assert(reviewed.status === 'resolved', 'resolved outcome flips idea status');
@@ -736,6 +769,7 @@ async function main() {
   againBtn2.click();
   const againForm2 = document.querySelector('#reviews-list .review-form');
   againForm2.querySelector('textarea').value = 'SAVED-NOTE';
+  Array.from(againForm2.querySelectorAll('.chip')).find(b => b.textContent === 'Still holds up').click();
   Array.from(againForm2.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
   assert(readStore().ideas.find(i => i.name === 'Due Again').reviewHistory.length === 1, 're-click test check-in saved');
   document.querySelector('.nav-btn[data-nav="reviews"]').click();
@@ -892,6 +926,15 @@ async function main() {
     '3/3 on the lesson quiz shows the completed badge');
   assert(readStore().glossary['P/E'] && readStore().glossary['P/E'].best === 3,
     'lesson progress persisted (P/E best = 3)');
+  // v4.6.0: re-answering a completed lesson does not inflate the attempt count
+  const caseTerm = L.GLOSSARY.find(g => g.abbr === 'Case');
+  const caseEl = Array.from(document.querySelectorAll('#glossary .gloss')).find(d => d.textContent.includes('Case study'));
+  const caseQuiz = caseEl.querySelectorAll('.lesson-quiz .q');
+  caseQuiz.forEach((q, qi) => q.querySelectorAll('.opt-btn')[caseTerm.quiz[qi].a].click());
+  assert(readStore().glossary['Case'] && readStore().glossary['Case'].attempts === 1, 'completing a lesson quiz counts one attempt');
+  caseQuiz[0].querySelectorAll('.opt-btn')[(caseTerm.quiz[0].a + 1) % 4].click();
+  assert(readStore().glossary['Case'].attempts === 1, 'changing one answer after completing does not count a second attempt');
+  assert(readStore().glossary['Case'].best === 3, 'best score survives the re-answer');
   // new v1.5.0 lessons: valuation, trend-reading, illustration-labeled case study
   assert(L.GLOSSARY.length === EXPECTED_LESSONS, EXPECTED_LESSONS + ' lessons total (got ' + L.GLOSSARY.length + ')');
   assert(L.GLOSSARY.every(g => g.quiz.length === 3 && g.quiz.every(q => q.options.length === 4)),
@@ -900,6 +943,8 @@ async function main() {
     'valuation-methods lesson present');
   assert(L.GLOSSARY.some(g => g.abbr === 'Case' && /illustration/i.test(g.name + ' ' + g.what)),
     'case study labeled as illustration');
+  assert(L.GLOSSARY.some(g => g.abbr === 'Case' && g.what.includes('Starting in the mid-2010s')),
+    'AMD case study dates the Zen story correctly (Zen launched 2017)');
   gSearch.value = 'reverse-engineering';
   fireInput();
   const valLessons = Array.from(document.querySelectorAll('#glossary .gloss'))
@@ -1004,6 +1049,15 @@ async function main() {
   await new Promise(r => setTimeout(r, 500));
   const importBtnText = document.querySelector('#import-json').textContent;
   assert(importBtnText.includes('locked-in record') && !/thesis|theses/.test(importBtnText), 'import feedback uses plain language, no thesis wording (got: ' + importBtnText + ')');
+  window.confirm = origConfirm;
+  await new Promise(r => setTimeout(r, 2600));
+  let sealedConfirmMsg = '';
+  window.confirm = (msg) => { sealedConfirmMsg = msg; return false; };
+  const sealedFile = new window.File([JSON.stringify([{ name: 'Sealed Co', sealed: { belief: 'It goes up', falsify: 'It does not', date: '2026-11-01' } }])], 'backup.json', { type: 'application/json' });
+  L.importJSONBackup(sealedFile);
+  await new Promise(r => setTimeout(r, 500));
+  assert(sealedConfirmMsg.includes('locked-in record') && sealedConfirmMsg.includes('will replace your current locked records'),
+    'import confirm names the sealed records the file would replace (got: ' + sealedConfirmMsg + ')');
   window.confirm = origConfirm;
   await new Promise(r => setTimeout(r, 2600));
   const rt = L.importIdeasFromJSON(L.journalToJSON([{ name: 'Round Trip', id: 'rt1', thesis: { belief: 'b', falsify: 'f' } }]));
@@ -1211,6 +1265,7 @@ async function main() {
   const pnIn = document.querySelector('#idea-detail .review-form input[type="number"]');
   assert(pnIn, 'check-in form offers a price-now field');
   pnIn.value = '60.50';
+  Array.from(document.querySelectorAll('#idea-detail .review-form .chip')).find(b => b.textContent === 'Still holds up').click();
   Array.from(document.querySelectorAll('#idea-detail .review-form .btn.primary'))
     .find(b => b.textContent === 'Save check-in').click();
   st = readStore();
@@ -1341,6 +1396,7 @@ async function main() {
   pnA.value = '105';
   pnA.dispatchEvent(new window.Event('input', { bubbles: true }));
   Array.from(rfA.querySelectorAll('.chip')).find(c => c.textContent.includes('Yes — for my reasons')).click();
+  Array.from(rfA.querySelectorAll('.chip')).find(c => c.textContent === 'Still holds up').click();
   rfA.querySelector('textarea').value = 'On track.';
   Array.from(rfA.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
   // a second, too-early check-in for the denominator line
@@ -1349,6 +1405,7 @@ async function main() {
   ciBtn2.click();
   const rfB = document.querySelector('#idea-detail .review-form');
   rfB.querySelector('textarea').value = 'Too soon.';
+  Array.from(rfB.querySelectorAll('.chip')).find(c => c.textContent === 'Still holds up').click();
   Array.from(rfB.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
   const scHist = readStore().ideas.find(i => i.name === 'Seal Corp').reviewHistory;
   assert(scHist.length === 2 && scHist[0].priceNow === 105, 'both check-ins saved on the fixture');
@@ -1362,6 +1419,7 @@ async function main() {
   const trackTxt2 = document.getElementById('track-record').textContent;
   assert(trackTxt2.includes('The price side of your record'), 'scorecard shows the price-side summary');
   assert(trackTxt2.includes('+25% on average'), 'scorecard averages the priced moves (+25% on the single sample)');
+  assert(trackTxt2.includes('simple average of the individual % moves, not a portfolio return'), 'price-side average is labeled as a simple average, not a return');
 
   console.log('scorecard empty states:');
   // check-ins with no verdicts must not claim "No check-ins yet."
@@ -1479,6 +1537,7 @@ async function main() {
   const bForm = bCheckinBtn.closest('.entry').querySelector('.review-form');
   assert(!!bForm, 'check-in form mounts inside the Check-ins tab card');
   bForm.querySelector('textarea').value = 'B note.';
+  Array.from(bForm.querySelectorAll('.chip')).find(c => c.textContent === 'Still holds up').click();
   Array.from(bForm.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
   const bStored = readStore().ideas.find(i => i.name === 'Checkin B');
   assert(bStored.reviewHistory.length === 1, 'the check-in itself saved on B');
@@ -1486,6 +1545,7 @@ async function main() {
   document.querySelector('#idea-detail [data-action="checkin-now"]').click();
   const aForm = document.querySelector('#idea-detail .review-form');
   aForm.querySelector('textarea').value = 'A note.';
+  Array.from(aForm.querySelectorAll('.chip')).find(c => c.textContent === 'Still holds up').click();
   Array.from(aForm.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
   const aStored = readStore().ideas.find(i => i.name === 'Draft A');
   assert(aStored.thesis.belief === 'A DRAFT WORDS', 'detail-page check-in still captures the same idea\'s draft');
@@ -1633,7 +1693,10 @@ async function main() {
   assert(document.querySelector('#idea-detail .sealed-words') !== null, 'thesis seals after the note-preservation flow');
   const sealedForm = document.querySelector('#idea-detail .detail-review-wrap');
   assert(!!sealedForm && sealedForm.querySelector('textarea').value === 'do not lose me', 'typed check-in note survives sealing the thesis');
-  if (sealedForm) sealedForm.querySelector('.btn.primary').click();
+  if (sealedForm) {
+    Array.from(sealedForm.querySelectorAll('.chip')).find(b => b.textContent === 'Still holds up').click();
+    sealedForm.querySelector('.btn.primary').click();
+  }
   assert(document.querySelector('#idea-detail .detail-review-wrap') === null, 'saving a check-in does not resurrect the form');
   assert(readStore().ideas.find(i => i.name === 'Focus Note Co').reviewHistory.length === 1, 'the saved check-in is recorded');
   document.querySelector('.nav-btn[data-nav="profile"]').click();
@@ -1654,6 +1717,7 @@ async function main() {
   const dueCheckin = Array.from(document.querySelectorAll('#reviews-list .btn')).find(b => b.getAttribute('aria-label') === 'Check in on Due Focus Co');
   assert(!!dueCheckin, 'past-due idea offers a check-in on the Check-ins tab');
   dueCheckin.click();
+  Array.from(document.querySelectorAll('#reviews-list .review-form .chip')).find(b => b.textContent === 'Still holds up').click();
   const tabSaveBtn = document.querySelector('#reviews-list .review-form .btn.primary');
   tabSaveBtn.focus();
   tabSaveBtn.click();
@@ -1754,7 +1818,7 @@ async function main() {
   const delBtn3 = document.getElementById('delete-data');
   delBtn3.click(); delBtn3.click();
   assert(!document.querySelector('#ideas-list').textContent.includes('No ideas match'), 'delete-my-data does not leave a stale filter message');
-  assert(document.querySelector('#ideas-list').textContent.includes('Your next ten-bagger starts here'), 'delete-my-data shows the first-idea empty state');
+  assert(document.querySelector('#ideas-list').textContent.includes('Your next good call starts here'), 'delete-my-data shows the first-idea empty state');
 
   const numNorm = L.normalizeIdea({ id: 123, name: 'Num Co' });
   assert(numNorm.id === '123', 'numeric idea id coerces to a string so detail capture matches it');
@@ -2007,8 +2071,8 @@ async function main() {
   L.importJSONBackup(bigFile);
   assert(document.getElementById('import-json').textContent === 'File too large — over 1 MB', 'oversized backup file is refused before parsing');
 
-  assert(typeof L.pctMove === 'function' && L.pctMove(55, 50) === 10 && L.pctMove(50, 50) === 0 && L.pctMove(1e308, 1) === null && L.pctMove(10, 0) === null,
-    'pctMove returns finite percents only (Infinity and divide-by-zero become null)');
+  assert(typeof L.pctMove === 'function' && L.pctMove(55, 50) === 10 && L.pctMove(50, 50) === 0 && L.pctMove(1e308, 1) === null && L.pctMove(10, 0) === null && L.pctMove(100, -50) === null,
+    'pctMove returns finite percents only (Infinity, divide-by-zero, and non-positive spot prices become null)');
   const longName = 'x'.repeat(100000);
   assert(L.normalizeIdea({ name: longName }).name.length === 80, 'import/load caps idea names at 80 chars');
   const splitEmoji = L.makeTrend('x'.repeat(79) + '📈', '', '2026-11-12');
@@ -2058,6 +2122,7 @@ async function main() {
   const priceIn5 = document.querySelector('#idea-detail .review-form input[type="number"]');
   priceIn5.value = '60';
   priceIn5.focus();
+  Array.from(document.querySelectorAll('#idea-detail .review-form .chip')).find(b => b.textContent === 'Still holds up').click();
   priceIn5.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   assert(readStore().ideas.find(i => i.name === 'FocusCo').reviewHistory.length === 1,
     'Enter in the check-in price field saves the check-in');

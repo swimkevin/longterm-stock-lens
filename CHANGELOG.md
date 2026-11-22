@@ -1,5 +1,22 @@
 # Changelog — Long-Term Lens
 
+## [4.6.0] — 2026-11-22
+
+### Deep-review fixes + eval upgrades (fresh-eyes audit + 2026 AI-practices research)
+
+Kevin asked for the same deep review the poker project got: re-evaluate the latest changes against what makes someone a better long-term investor, recheck the whole project as FANG directors and recruiters would, and fold in the latest AI-engineering practices. A fresh-eyes audit (31-assertion probe, IRS sources re-verified) found 2 High, 5 Medium, 4 Low findings; all but one are fixed here. The one exception stays with Kevin: sealing with an invalid spot price is still silent (warn / block / leave-silent, escalated 2026-11-07).
+
+- The quiz can no longer contradict the user's own answers: any disqualifying 0-score answer — money needed within a year, panic-selling a drop, unstable income or high-interest debt, no experience, selling before three years — caps the band at Cautious, and the result says why in plain language. Age alone never caps. (A user with unstable income was landing Growth-leaning 80/20 and being told their situation featured "stable income.")
+- The Scorecard's directional insight ("Trust the strong calls sooner") now needs 8+ answered check-ins with 3+ high-conviction and 3+ low-conviction verdicts; below that only the generic pattern line shows. (It fired at n=3 — a 1-vs-1 split presented as a pattern.)
+- A check-in form no longer pre-selects "Still holds up": Save is blocked with an inline hint until an outcome is picked, so a no-touch Save can't fabricate a positive outcome in the scoreboard.
+- The price-side average is now labeled "a simple average of the individual % moves, not a portfolio return." (+100% and −50% averaged +25% while the money was back where it started.)
+- Import now names sealed records in its confirm ("this file contains N locked-in records, which will replace your current locked records") — the only path that could rewrite sealed history.
+- `pctMove` returns null for non-positive spot prices; lesson-quiz attempts count only the transition from fewer than 3 answered to 3; the AMD case study now reads "Starting in the mid-2010s" (Zen launched 2017); "Your next ten-bagger starts here" is now "Your next good call starts here"; the quiz dip-buying option is now "Buy more of the index funds."
+- Content correction: the temperament quote now reads "above the level of 125" — the app had 25, a documented misquote of the BusinessWeek interview (5 June 1999). Quotes 7 and 10 are now both verified against their attributions.
+- Dedupe: one `captureReviewFormState` helper now serves all three form-capture sites (two inline copies plus the form's own re-open path), and one `wireCopyButton` helper wires both copy-prompt buttons. The claimed sealed-box duplication did not reproduce (`sealed-words` renders once) and was struck, not fixed.
+- Eval upgrades from 2026 AI-practices research: a held-out golden suite (`tests/golden.js`, 24 assertions, audit-owned — the loop runs it but never edits it); seeded property tests (`tests/properties.js`, 13 assertions, 200 generated cases each over the pure functions); playbook rules 27–32 (golden ownership, state-bound evidence, drift control with a pause gate, reproduction-required findings, micro-specs for new features, dead-man's switch + idempotency). MIT LICENSE added; AI-WORKFLOW.md rewritten to describe the real gates (it claimed 114 assertions and human-approval-only pushes); ARCHITECTURE/ROADMAP/TESTING counts fixed; CI gains `timeout-minutes: 10`; `engines` aligned to Node >=24.
+- 54 new assertions; 753 assertions green (675 smoke + 41 edge + 24 golden + 13 properties). Negative controls (rule 14): 26 guards fail on the unfixed code across all four suites, both suites reported fully — the first control run aborted on an unguarded test expression (rule 17's exact failure mode) and the test was restructured so the control completes. Not shipped: seal-with-invalid-price warning (Kevin's call); sealed-box dedupe (claim did not reproduce); GLOSSARY rename; live-region announcements (still needs its own round); mutation testing, spec tooling, and multi-agent swarms (researched, explicitly not adopted — rule 14 already covers mutation testing at zero cost).
+
 ## [4.5.9] — 2026-11-20
 
 ### Adversarial-audit fixes, round 7 — self-heal and quiz hostile data

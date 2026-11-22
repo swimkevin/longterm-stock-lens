@@ -32,17 +32,33 @@ guide — it binds behavior:
 
 ## What agents may never do
 
-- Push or deploy without explicit human approval.
+- Push or deploy outside the loop's standing grant (see below).
 - Invent metrics, dates, events, or performance claims.
 - Touch the compliance boundary — or reinterpret it.
 - Expand scope beyond the brief ("helpful" additions are reverted).
 
-## Verification
+## The daily loop (the actual shipping model)
 
-Every agent change goes through the same pipeline: full `npm test`
-(114 assertions), then a human reads the complete diff before commit.
-The suite catches regressions; the diff review catches judgment calls
-the suite can't (wording, scope creep, honest labeling).
+A scheduled improvement loop runs daily under the owner's standing
+grant (2026-10-14): it may ship fixes directly to `main`, but only
+through three gates — local `npm test` green on the exact pushed tree,
+CI green on the pushed SHA, live bundle byte-identical and verified on
+the deployed URL. The operating manual is
+[docs/loop-playbook.md](loop-playbook.md); the per-run record is
+[docs/loop-log.md](loop-log.md).
+
+What keeps an autonomous loop honest:
+
+- **Held-out golden suite** (`tests/golden.js`) — owned by fresh-eyes
+  audit runs; the loop runs it but never edits it, so a fix can't
+  certify itself.
+- **Negative controls** — every regression test must be seen failing
+  on the unfixed code before it ships.
+- **Fresh-eyes audits** every ~4 runs and **director reviews** every
+  ~8 runs — the loop cannot audit itself.
+- **Counts are machine-pinned** — `tests/run.js` fails the build if
+  the README badge or per-suite split disagrees with runtime counts
+  (see [docs/TESTING.md](TESTING.md) for the method).
 
 ## Authorship
 

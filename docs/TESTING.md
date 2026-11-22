@@ -2,15 +2,16 @@
 
 ## What the suite is
 
-Two files, run by `npm test` via `tests/run.js`: `tests/smoke.js` (658 assertions) and
-`tests/edge-probe.js` (41 assertions) — **699 assertions**, all
+Four files, run by `npm test` via `tests/run.js`: `tests/smoke.js` (675 assertions),
+`tests/edge-probe.js` (41 assertions), `tests/golden.js` (24 assertions), and
+`tests/properties.js` (13 assertions) — **753 assertions**, all
 passing. Counts are runtime assertion executions: every `assert()` call
 that runs prints one `  ok` line, and looped assertions count each
 execution, so the number tracks executed checks, not distinct
 `assert()` statements in source. The published numbers are pinned by the runner:
-`tests/run.js` (the `npm test` entry point) spawns both suites, streams their
+`tests/run.js` (the `npm test` entry point) spawns all four suites, streams their
 output, counts runtime `ok` lines per suite, and fails the build if the README
-badge (`tests-N%20assertions`) or the `(smoke A + edge probes B)` split disagrees
+badge (`tests-N%20assertions`) or the `(smoke A + edge probes B + golden C + properties D)` split disagrees
 with the counts. The runner's own confirmation line is deliberately not
 `ok`-prefixed so it can't pollute the count. This exists because v4.4.4 shipped
 with a stale 453 badge and a stale per-suite split — the second assertion-count

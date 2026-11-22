@@ -34,9 +34,9 @@ function runSuite(file) {
 
 (async () => {
   const results = [];
-  for (const f of ['smoke.js', 'edge-probe.js']) results.push(await runSuite(f));
+  for (const f of ['smoke.js', 'edge-probe.js', 'golden.js', 'properties.js']) results.push(await runSuite(f));
   const total = results.reduce((n, r) => n + r.okCount, 0);
-  const [smoke, edge] = results;
+  const [smoke, edge, golden, properties] = results;
 
   if (results.some(r => r.failed)) {
     console.error('RUNNER: suite failed — badge/count checks skipped');
@@ -45,17 +45,18 @@ function runSuite(file) {
 
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
   const badge = readme.match(/tests-(\d+)%20assertions/);
-  const split = readme.match(/\(smoke (\d+) \+ edge probes (\d+)\)/);
+  const split = readme.match(/\(smoke (\d+) \+ edge probes (\d+) \+ golden (\d+) \+ properties (\d+)\)/);
   const problems = [];
   if (!badge) problems.push('tests badge missing from README');
   else if (parseInt(badge[1], 10) !== total) problems.push('badge says ' + badge[1] + ', suites counted ' + total);
   if (!split) problems.push('per-suite split missing from README');
-  else if (parseInt(split[1], 10) !== smoke.okCount || parseInt(split[2], 10) !== edge.okCount) {
-    problems.push('README split (' + split[1] + '+' + split[2] + ') disagrees with suites (' + smoke.okCount + '+' + edge.okCount + ')');
+  else if (parseInt(split[1], 10) !== smoke.okCount || parseInt(split[2], 10) !== edge.okCount ||
+    parseInt(split[3], 10) !== golden.okCount || parseInt(split[4], 10) !== properties.okCount) {
+    problems.push('README split (' + split[1] + '+' + split[2] + '+' + split[3] + '+' + split[4] + ') disagrees with suites (' + smoke.okCount + '+' + edge.okCount + '+' + golden.okCount + '+' + properties.okCount + ')');
   }
   if (problems.length) {
     problems.forEach(p => console.error('RUNNER FAIL - ' + p));
     process.exit(1);
   }
-  console.log('RUNNER: README badge and split match runtime counts (' + total + ' = ' + smoke.okCount + ' + ' + edge.okCount + ')');
+  console.log('RUNNER: README badge and split match runtime counts (' + total + ' = ' + smoke.okCount + ' + ' + edge.okCount + ' + ' + golden.okCount + ' + ' + properties.okCount + ')');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.5.9';
+const APP_VERSION = '4.6.0';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -40,7 +40,7 @@ const QUIZ = [
   {
     q: 'Your portfolio drops 20% in a year. You…',
     options: [
-      { t: 'Buy more — it\'s on sale', s: 3 },
+      { t: 'Buy more of the index funds — it\'s on sale', s: 3 },
       { t: 'Hold and do nothing', s: 2 },
       { t: 'Feel anxious but stay invested', s: 1 },
       { t: 'Sell to stop the pain', s: 0 },
@@ -86,16 +86,32 @@ const BANDS = [
     why: 'Right now, safety and learning matter more than stock-picking. Build the index core first; revisit individual stocks as your situation changes.' },
 ];
 
+const VETO_REASONS = {
+  1: 'you said you may need this money within a year',
+  2: 'you said a 20% drop would make you sell to stop the pain',
+  3: 'you said your income is unstable or you carry high-interest debt',
+  4: 'you said investing is all new to you',
+  5: 'you said you would have sold well before three years of underperformance',
+};
+
 function scoreRisk(answers) {
   let total = 0;
+  let veto = null;
   answers.forEach((optIdx, qi) => {
     if (typeof optIdx !== 'number' || !Number.isInteger(optIdx)) return;
     const opts = QUIZ[qi] && QUIZ[qi].options;
     if (!opts || optIdx < 0 || optIdx >= opts.length) return;
     total += opts[optIdx].s;
+    if (qi !== 0 && opts[optIdx].s === 0 && !veto) veto = VETO_REASONS[qi] || 'one of your answers points to caution first';
   });
-  const band = BANDS.find(b => total >= b.min) || BANDS[BANDS.length - 1];
-  return { total, max: QUIZ.length * 3, band };
+  let band = BANDS.find(b => total >= b.min) || BANDS[BANDS.length - 1];
+  const cautious = BANDS.find(b => b.label === 'Cautious');
+  let capped = null;
+  if (veto && band.min > cautious.min) {
+    band = cautious;
+    capped = veto;
+  }
+  return { total, max: QUIZ.length * 3, band, capped };
 }
 
 const WISDOM = [
@@ -117,7 +133,7 @@ const WISDOM = [
     who: 'Ben Graham, via Warren Buffett', source: 'Berkshire Hathaway letter, 1987' },
   { text: "What counts for most people in investing is not how much they know, but rather how realistically they define what they don't know.",
     who: 'Warren Buffett', source: 'Berkshire Hathaway letter, 1992' },
-  { text: "Success in investing doesn't correlate with IQ once you're above the level of 25. Once you have ordinary intelligence, what you need is the temperament to control the urges that get other people into trouble in investing.",
+  { text: "Success in investing doesn't correlate with IQ once you're above the level of 125. Once you have ordinary intelligence, what you need is the temperament to control the urges that get other people into trouble in investing.",
     who: 'Warren Buffett', source: 'BusinessWeek interview, 1999' },
 ];
 
@@ -348,7 +364,7 @@ const GLOSSARY = [
         a: 2, why: 'Misses become a pattern library only if you revisit them — that\'s what the log is for.' },
     ] },
   { abbr: 'Case', name: 'Case study: an incumbent stumbles (illustration)',
-    what: 'Illustration only — the past is not a prediction. In the mid-2010s, Intel, the dominant CPU maker, repeatedly delayed its next manufacturing process while AMD bet on a new chip architecture (Zen). When Zen delivered competitive performance, AMD regained share in PCs and data centers over several years.',
+    what: 'Illustration only — the past is not a prediction. Starting in the mid-2010s, Intel, the dominant CPU maker, repeatedly delayed its next manufacturing process while AMD bet on a new chip architecture (Zen). When Zen delivered competitive performance, AMD regained share in PCs and data centers over several years.',
     healthy: 'Asking "what was knowable at the time?" — the pattern was an incumbent stumble plus a credible alternative, not a guaranteed outcome.',
     flag: 'Reading this as "I should have bought AMD" — hindsight makes every past winner look obvious. The lesson is the pattern, not the pick.',
     quiz: [
@@ -612,7 +628,7 @@ function spotPriceOf(idea) {
 }
 
 function pctMove(now, spot) {
-  if (!isFinite(now) || !isFinite(spot) || !spot) return null;
+  if (!isFinite(now) || !isFinite(spot) || spot <= 0) return null;
   const p = Math.round(((now - spot) / spot) * 100);
   return isFinite(p) ? p : null;
 }
@@ -686,7 +702,7 @@ function calibration(ideas) {
   const hiRate = hi.n ? Math.round((hi.yes / hi.n) * 100) : null;
   const loRate = lo.n ? Math.round((lo.yes / lo.n) * 100) : null;
   let insight = null;
-  if (answered >= 3 && hiRate !== null && loRate !== null) {
+  if (answered >= 8 && hi.n >= 3 && lo.n >= 3 && hiRate !== null && loRate !== null) {
     if (hiRate - loRate >= 20) insight = 'When you\'re sure (4–5), you\'re usually right — your gut means something. Trust the strong calls sooner.';
     else if (loRate - hiRate >= 20) insight = 'Heads up: your surest calls (4–5) have been your weakest, and your maybes (1–2) are doing better. Worth a second look before the next big one.';
     else insight = 'So far, your sure calls and your maybes land about the same. The gap between them is the thing to watch as you check in more.';
@@ -1170,12 +1186,12 @@ function renderQuiz() {
       known ||
       (usable ? (BANDS.find(b => b.index === p.index && b.conv === p.conv) || null) : null) ||
       BANDS[BANDS.length - 1];
-    renderQuizResult(band, restoredScore ? restoredScore.total : p.total, restoredScore ? restoredScore.max : p.max, p.date, restoredCount > 0);
+    renderQuizResult(band, restoredScore ? restoredScore.total : p.total, restoredScore ? restoredScore.max : p.max, p.date, restoredCount > 0, restoredScore ? restoredScore.capped : null);
   }
   quizFreshStart = false;
 }
 
-function renderQuizResult(band, total, max, savedDate, answersRestored) {
+function renderQuizResult(band, total, max, savedDate, answersRestored, capNote) {
   const res = $('quiz-result');
   res.classList.remove('hidden');
   const convText = esc(band.conv) + '%';
@@ -1195,6 +1211,7 @@ function renderQuizResult(band, total, max, savedDate, answersRestored) {
     '</div>' +
     (tinyConv ? '<p class="fineprint">' + esc(band.conv) + '% in individual stocks</p>' : '') +
     '<p>' + esc(band.why) + '</p>' +
+    (capNote ? '<p class="fineprint">Capped at Cautious — ' + esc(capNote) + '. Sort that out first, then retake the quiz.</p>' : '') +
     '<p class="fineprint">Higher individual-stock % = higher risk, always. Retake this when life changes.</p>';
   const retakeRow = document.createElement('div');
   retakeRow.className = 'btn-row';
@@ -1240,11 +1257,11 @@ function showQuizResult() {
     }
     return;
   }
-  const { total, max, band } = scoreRisk(quizAnswers);
+  const { total, max, band, capped } = scoreRisk(quizAnswers);
   store.quizProfile = { total, max, bandLabel: band.label, index: band.index, conv: band.conv, date: todayISO(), answers: quizAnswers.slice() };
   saveStore(store);
   quizDraft = false;
-  renderQuizResult(band, total, max, todayISO(), true);
+  renderQuizResult(band, total, max, todayISO(), true, capped);
   const resH = res.querySelector('h3');
   if (resH) { resH.setAttribute('tabindex', '-1'); resH.focus(); }
   if (res.scrollIntoView) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1372,7 +1389,7 @@ function renderIdeasHome() {
     list.appendChild(none);
   } else if (!all.length) {
     list.appendChild(emptyState({
-      title: 'Your next ten-bagger starts here',
+      title: 'Your next good call starts here',
       body: 'Spot a trend, name a company, write two sentences about why. The app handles the rest — how sure you are, a second opinion from AI, and a nudge when it\'s time to check in.',
       actionId: 'qa-name',
       actionLabel: 'Add your first idea'
@@ -1457,26 +1474,7 @@ function renderIdeaDetail(idea) {
   const prevId = box.dataset.ideaId;
   if (!skipDetailReviewRestore && prevId) {
     const form = box.querySelector('.detail-review-wrap .review-form');
-    if (form) {
-      const chipGroups = form.querySelectorAll('.chips');
-      const selectedIndex = group => {
-        if (!group) return null;
-        const chips = group.querySelectorAll('.chip');
-        for (let k = 0; k < chips.length; k++) if (chips[k].classList.contains('selected')) return k;
-        return null;
-      };
-      const noteEl = form.querySelector('textarea');
-      const priceEl = form.querySelector('input[type="number"]');
-      const monthsEl = form.querySelector('select');
-      pendingDetailReview = {
-        ideaId: prevId,
-        note: noteEl ? noteEl.value : '',
-        reason: selectedIndex(chipGroups[0]),
-        outcome: selectedIndex(chipGroups[1]),
-        price: priceEl ? priceEl.value : '',
-        months: monthsEl ? monthsEl.value : '',
-      };
-    }
+    if (form) pendingDetailReview = Object.assign({ ideaId: prevId }, captureReviewFormState(form));
     if (box.querySelector('.thesis-belief, .thesis-falsify, .thesis-price')) {
       updateIdea(prevId, i => captureThesisDraft(i));
     }
@@ -1824,6 +1822,52 @@ function renderIdeaDetail(idea) {
   }
 }
 
+function selectedChipIndex(group) {
+  if (!group) return null;
+  const chips = group.querySelectorAll('.chip');
+  for (let k = 0; k < chips.length; k++) if (chips[k].classList.contains('selected')) return k;
+  return null;
+}
+
+function captureReviewFormState(form) {
+  const groups = form.querySelectorAll('.chips');
+  const noteEl = form.querySelector('textarea');
+  const priceEl = form.querySelector('input[type="number"]');
+  const monthsEl = form.querySelector('select');
+  return {
+    note: noteEl ? noteEl.value : '',
+    reason: selectedChipIndex(groups[0]),
+    outcome: selectedChipIndex(groups[1]),
+    price: priceEl ? priceEl.value : '',
+    months: monthsEl ? monthsEl.value : '',
+  };
+}
+
+function wireCopyButton(btn, ta, label) {
+  if (label) btn.setAttribute('aria-label', label);
+  btn.addEventListener('click', () => {
+    const done = () => {
+      btn.textContent = 'Copied';
+      btn.disabled = true;
+      setTimeout(() => { btn.textContent = 'Copy prompt'; btn.disabled = false; }, 1600);
+    };
+    const fallbackCopy = () => {
+      try {
+        ta.focus(); ta.select();
+        if (document.execCommand('copy')) { done(); return; }
+      } catch (e) {  }
+      ta.focus(); ta.select();
+    };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(done, () => fallbackCopy());
+      } else {
+        fallbackCopy();
+      }
+    } catch (e) { fallbackCopy(); }
+  });
+}
+
 function fillReviewForm(form, saved) {
   const ta = form.querySelector('textarea');
   if (ta) ta.value = saved.note;
@@ -1863,29 +1907,7 @@ function renderAnalyzeSection(box, idea) {
   const copyBtn = document.createElement('button');
   copyBtn.className = 'btn primary';
   copyBtn.textContent = 'Copy prompt';
-  copyBtn.setAttribute('aria-label', 'Copy the analysis prompt to the clipboard');
-  copyBtn.addEventListener('click', () => {
-    const done = () => {
-      copyBtn.textContent = 'Copied';
-      copyBtn.disabled = true;
-      setTimeout(() => { copyBtn.textContent = 'Copy prompt'; copyBtn.disabled = false; }, 1600);
-    };
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(ta.value).then(done, () => fallbackCopy());
-      } else {
-        fallbackCopy();
-      }
-    } catch (e) { fallbackCopy(); }
-    function fallbackCopy() {
-      try {
-        ta.focus(); ta.select();
-        if (document.execCommand('copy')) { done(); return; }
-      } catch (e) {  }
-
-      ta.focus(); ta.select();
-    }
-  });
+  wireCopyButton(copyBtn, ta, 'Copy the analysis prompt to the clipboard');
   row.appendChild(copyBtn);
   sec.appendChild(row);
   const fp = document.createElement('p');
@@ -1903,24 +1925,7 @@ function renderReviews() {
     const openForm = box.querySelector('.review-form');
     if (openForm) {
       const card = openForm.closest('.entry');
-      const groups = openForm.querySelectorAll('.chips');
-      const picked = group => {
-        if (!group) return null;
-        const chips = group.querySelectorAll('.chip');
-        for (let k = 0; k < chips.length; k++) if (chips[k].classList.contains('selected')) return k;
-        return null;
-      };
-      const noteEl = openForm.querySelector('textarea');
-      const priceEl = openForm.querySelector('input[type="number"]');
-      const monthsEl = openForm.querySelector('select');
-      pendingReviewsForm = {
-        ideaId: card && card.dataset.ideaId,
-        note: noteEl ? noteEl.value : '',
-        reason: picked(groups[0]),
-        outcome: picked(groups[1]),
-        price: priceEl ? priceEl.value : '',
-        months: monthsEl ? monthsEl.value : '',
-      };
+      pendingReviewsForm = Object.assign({ ideaId: card && card.dataset.ideaId }, captureReviewFormState(openForm));
     }
   }
   skipReviewsFormRestore = false;
@@ -2054,25 +2059,7 @@ function renderReviews() {
 function renderReviewForm(card, idea, onDone) {
   const old = card.querySelector('.review-form');
   let prev = null;
-  if (old) {
-    const groups = old.querySelectorAll('.chips');
-    const picked = group => {
-      if (!group) return null;
-      const chips = group.querySelectorAll('.chip');
-      for (let k = 0; k < chips.length; k++) if (chips[k].classList.contains('selected')) return k;
-      return null;
-    };
-    const noteEl = old.querySelector('textarea');
-    const priceEl = old.querySelector('input[type="number"]');
-    const monthsEl = old.querySelector('select');
-    prev = {
-      note: noteEl ? noteEl.value : '',
-      reason: picked(groups[0]),
-      outcome: picked(groups[1]),
-      price: priceEl ? priceEl.value : '',
-      months: monthsEl ? monthsEl.value : '',
-    };
-  }
+  if (old) prev = captureReviewFormState(old);
   if (old) old.remove();
   const form = document.createElement('div');
   form.className = 'review-form panel';
@@ -2140,7 +2127,10 @@ function renderReviewForm(card, idea, onDone) {
     ['changed', 'My thinking changed', 'New facts changed the picture — worth another look.'],
     ['resolved', 'Done with this one', 'Question answered — it goes on your scorecard.'],
   ];
-  let outcome = prev && typeof prev.outcome === 'number' ? outcomeOpts[prev.outcome][0] : 'intact';
+  let outcome = prev && typeof prev.outcome === 'number' ? outcomeOpts[prev.outcome][0] : null;
+  const outErr = document.createElement('p');
+  outErr.className = 'form-error hidden';
+  outErr.setAttribute('role', 'alert');
   outcomeOpts.forEach(opt => {
     const b = document.createElement('button');
     b.className = 'chip' + (outcome === opt[0] ? ' selected' : '');
@@ -2149,6 +2139,7 @@ function renderReviewForm(card, idea, onDone) {
     b.setAttribute('aria-pressed', outcome === opt[0] ? 'true' : 'false');
     b.addEventListener('click', () => {
       outcome = opt[0];
+      outErr.classList.add('hidden');
       outcomeChips.querySelectorAll('.chip').forEach(c => { c.classList.remove('selected'); c.setAttribute('aria-pressed', 'false'); });
       b.classList.add('selected');
       b.setAttribute('aria-pressed', 'true');
@@ -2156,6 +2147,7 @@ function renderReviewForm(card, idea, onDone) {
     outcomeChips.appendChild(b);
   });
   form.appendChild(outcomeChips);
+  form.appendChild(outErr);
 
   const lab = document.createElement('label');
   lab.className = 'field';
@@ -2219,6 +2211,11 @@ function renderReviewForm(card, idea, onDone) {
   save.className = 'btn primary';
   save.textContent = 'Save check-in';
   save.addEventListener('click', () => {
+    if (!outcome) {
+      outErr.textContent = 'Pick where it stands first — that\u2019s the call the scorecard keeps.';
+      outErr.classList.remove('hidden');
+      return;
+    }
     const pn = parseFloat(priceNowInput.value);
     const updated = applyReview(getIdea(idea.id), {
       outcome, reasonMatch, note: ta.value.trim(), nextMonths: sel.value,
@@ -2367,7 +2364,7 @@ function renderTrackRecord() {
     const mt = document.createElement('p');
     mt.textContent = 'Across the ' + moves.length + ' check-in' + (moves.length === 1 ? '' : 's') +
       ' where you noted prices, the things you spotted moved ' + (avg >= 0 ? '+' : '') + avg +
-      '% on average between spotting them and checking in. That\u2019s your own journal math — no benchmark, no live feed — just what your record says.';
+      '% on average between spotting them and checking in. That\u2019s a simple average of the individual % moves, not a portfolio return — your own journal math, no benchmark, no live feed.';
     mp.appendChild(mt);
     box.appendChild(mp);
   }
@@ -2584,18 +2581,7 @@ function buildDiscoverBox(trend) {
   const copy = document.createElement('button');
   copy.className = 'btn primary';
   copy.textContent = 'Copy prompt';
-  copy.addEventListener('click', () => {
-    const done = () => {
-      copy.textContent = 'Copied';
-      copy.disabled = true;
-      setTimeout(() => { copy.textContent = 'Copy prompt'; copy.disabled = false; }, 1600);
-    };
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(ta.value).then(done, done);
-      } else { ta.select(); document.execCommand('copy'); done(); }
-    } catch (e) { ta.select(); }
-  });
+  wireCopyButton(copy, ta);
   row.appendChild(copy);
   box.appendChild(row);
   const addH = document.createElement('p');
@@ -2850,9 +2836,13 @@ function renderGlossary() {
   applyGlossaryFilter();
 }
 
+const lessonLastAnswered = {};
+
 function updateLessonScore(term, quizBox, picked, silent) {
   const answered = picked.filter(p => p !== null).length;
   const correct = picked.filter((p, i) => p === term.quiz[i].a).length;
+  const wasComplete = (lessonLastAnswered[term.abbr] || 0) === 3;
+  lessonLastAnswered[term.abbr] = answered;
   const line = quizBox.querySelector('.lesson-score');
   const best = lessonProgress(term.abbr);
   if (line && answered === 0 && best !== null) {
@@ -2864,7 +2854,8 @@ function updateLessonScore(term, quizBox, picked, silent) {
   if (answered === 3 && !silent) {
     store.glossary = store.glossary || {};
     const prev = lessonProgress(term.abbr);
-    store.glossary[term.abbr] = { best: Math.max(prev === null ? 0 : prev, correct), attempts: ((store.glossary[term.abbr] || {}).attempts || 0) + 1 };
+    const prevAttempts = (store.glossary[term.abbr] || {}).attempts || 0;
+    store.glossary[term.abbr] = { best: Math.max(prev === null ? 0 : prev, correct), attempts: wasComplete ? prevAttempts : prevAttempts + 1 };
     saveStore(store);
     if (correct === 3) {
       const openAbbrs = lessonNodes.filter(n => n.el.open).map(n => n.term.abbr);
@@ -2988,11 +2979,12 @@ function importJSONBackup(file) {
   const rd = new FileReader();
   rd.onload = () => {
     const res = importIdeasFromJSON(String(rd.result || ''));
+    const sealedInFile = res.ideas ? res.ideas.filter(i => i.sealed && i.sealed.belief).length : 0;
     if (res.error) {
       btn.textContent = res.error === 'not-json' ? 'Not a JSON file'
         : res.error === 'empty' ? 'Nothing to import — no ideas in file'
         : 'Not a Lens backup file';
-    } else if (!confirm('Replace your ' + store.ideas.length + ' idea' + (store.ideas.length === 1 ? '' : 's') + ' with the ' + res.ideas.length + ' from this file? This cannot be undone.')) {
+    } else if (!confirm('Replace your ' + store.ideas.length + ' idea' + (store.ideas.length === 1 ? '' : 's') + ' with the ' + res.ideas.length + ' from this file?' + (sealedInFile ? ' This file contains ' + sealedInFile + ' locked-in record' + (sealedInFile === 1 ? '' : 's') + ', which will replace your current locked records.' : '') + ' This cannot be undone.')) {
       btn.textContent = orig;
     } else {
       store.ideas = res.ideas;

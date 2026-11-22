@@ -2,7 +2,7 @@
   "author": "Kevin Song",
   "description": "Educational long-term investing research hub \u2014 vanilla JS, zero runtime dependencies. Risk profiler, fundamentals glossary, conviction journal, account explainers.",
   "engines": {
-    "node": ">=16"
+    "node": ">=24"
   },
   "keywords": [
     "investing",
@@ -17,7 +17,7 @@
     "test": "node tests/run.js",
     "browser-pass": "node tests/browser-pass.js"
   },
-  "version": "4.5.9",
+  "version": "4.6.0",
   "devDependencies": {
     "jsdom": "^30.1.2"
   }
