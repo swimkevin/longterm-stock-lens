@@ -2214,10 +2214,162 @@ async function main() {
   assert(document.activeElement === document.querySelector('#quiz-result h3'),
     'a completed quiz submit moves focus to the result heading');
 
+  // ---- v4.6.1: shared live region + director-critique polish ----
+  console.log('live region + polish:');
+  const liveEl = document.getElementById('live-region');
+  assert(!!liveEl && liveEl.getAttribute('role') === 'status' && liveEl.getAttribute('aria-live') === 'polite',
+    'a shared live region exists with role=status and aria-live=polite');
+  assert(liveEl.classList.contains('visually-hidden'), 'the live region is visually hidden');
+  assert(document.querySelector('#qa-add').closest('.quick-add').querySelector('.fineprint').textContent.includes('Names cap at 80 characters'),
+    'quick-add names the 80-character cap instead of truncating silently');
+  assert(document.querySelector('#trend-add').closest('.quick-add').querySelector('.fineprint').textContent.includes('Trend names cap at 80 characters'),
+    'trend form names the 80-character cap');
+
+  document.querySelector('.nav-btn[data-nav="profile"]').click();
+  assert(Array.from(document.querySelectorAll('#quiz .fineprint')).some(p => p.textContent.includes('One answer can cap your band at Cautious')),
+    'quiz names the cap rule before the user can trip it');
+
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#qa-name').value = 'Draft Status Co';
+  document.querySelector('#qa-add').click();
+  const beliefBox2 = document.querySelector('#idea-detail .thesis-belief');
+  assert(!!beliefBox2, 'thesis belief box present on the new idea');
+  beliefBox2.value = 'Draft status words';
+  beliefBox2.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(document.querySelector('#idea-detail .thesis-draft-status')?.classList.contains('hidden') === true,
+    'draft status stays hidden while typing');
+  await new Promise(r => setTimeout(r, 950));
+  const draftStatus = document.querySelector('#idea-detail .thesis-draft-status');
+  assert(!!draftStatus && !draftStatus.classList.contains('hidden') && draftStatus.textContent === 'Draft saved ✓',
+    'draft status shows Draft saved after the autosave fires');
+  beliefBox2.value = 'Draft status words, revised';
+  beliefBox2.dispatchEvent(new window.Event('input', { bubbles: true }));
+  assert(document.querySelector('#idea-detail .thesis-draft-status')?.classList.contains('hidden') === true,
+    'draft status hides again on the next keystroke');
+
+  document.querySelector('#idea-detail [data-action="thesis-save"]').click();
+  assert(document.getElementById('live-region').textContent === 'What you think is saved and locked in',
+    'sealing a thesis announces it in the live region');
+
+  const origExec = document.execCommand;
+  document.execCommand = () => true;
+  const copyBtn2 = Array.from(document.querySelectorAll('#idea-detail .btn')).find(b => b.textContent === 'Copy prompt');
+  assert(!!copyBtn2, 'copy prompt button present on the sealed detail');
+  copyBtn2.click();
+  assert(document.getElementById('live-region').textContent === 'Prompt copied',
+    'copying the prompt announces it in the live region');
+  if (origExec === undefined) delete document.execCommand; else document.execCommand = origExec;
+
+  const ciBtnLR = document.querySelector('#idea-detail [data-action="checkin-now"]');
+  assert(!!ciBtnLR, 'check-in button present after sealing');
+  ciBtnLR.click();
+  const reviewForm2 = document.querySelector('#idea-detail .review-form');
+  assert(!!reviewForm2, 'check-in form opens on the sealed idea');
+  assert(reviewForm2.querySelector('.hint').textContent.includes("starts at 'Too early to tell'"),
+    'check-in hint names the reason default instead of leaving it a mystery');
+  Array.from(reviewForm2.querySelectorAll('.chips')[1].querySelectorAll('.chip')).find(c => c.textContent === 'Still holds up').click();
+  reviewForm2.querySelector('.btn.primary').click();
+  assert(document.getElementById('live-region').textContent === 'Check-in saved',
+    'saving a check-in announces it in the live region');
+
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  document.querySelector('#trend-name').value = 'Live Region Trend';
+  document.querySelector('#trend-add').click();
+  const watchRow2 = Array.from(document.querySelectorAll('#trends-watching .note-card')).find(r => r.textContent.includes('Live Region Trend'));
+  assert(!!watchRow2, 'new trend row renders in Watching');
+  Array.from(watchRow2.querySelectorAll('.btn')).find(b => b.textContent === 'Find companies').click();
+  const discBox2 = document.querySelector('#trends-watching .discover-box');
+  assert(!!discBox2 && discBox2.textContent.includes('whose business you already understand'),
+    'discover box nudges toward the company you already understand');
+  const discName2 = discBox2.querySelector('input[aria-label^="Company name"]');
+  discName2.value = 'Live Region Co';
+  Array.from(discBox2.querySelectorAll('.btn')).find(b => b.textContent === 'Add as idea').click();
+  assert(document.getElementById('live-region').textContent.includes('Added Live Region Co ✓'),
+    'adding an idea from a trend announces it in the live region');
+
+  document.querySelector('#trend-name').value = 'Lesson Trend';
+  document.querySelector('#trend-add').click();
+  const lessonRow = Array.from(document.querySelectorAll('#trends-watching .note-card')).find(r => r.textContent.includes('Lesson Trend'));
+  Array.from(lessonRow.querySelectorAll('.btn')).find(b => b.textContent === 'Missed it').click();
+  const missedRowLR = Array.from(document.querySelectorAll('#trends-missed .note-card')).find(r => r.textContent.includes('Lesson Trend'));
+  assert(!!missedRowLR, 'missed trend row renders in the pattern library');
+  missedRowLR.querySelector('textarea').value = 'Waited too long to look.';
+  Array.from(missedRowLR.querySelectorAll('.btn')).find(b => b.textContent === 'Save lesson').click();
+  assert(document.getElementById('live-region').textContent === 'Lesson saved',
+    'saving a missed-wave lesson announces it in the live region');
+
+  const createdURLs2 = [];
+  window.URL.createObjectURL = blob => { createdURLs2.push(blob); return 'blob:mock-' + createdURLs2.length; };
+  document.getElementById('export-json').click();
+  assert(document.getElementById('live-region').textContent === 'JSON backup downloaded',
+    'JSON export announces in the live region');
+  document.getElementById('export-md').click();
+  assert(document.getElementById('live-region').textContent === 'Markdown notes downloaded',
+    'Markdown export announces in the live region');
+
+  const snapBeforeImport = window.localStorage.getItem(KEY);
+  const impFile2 = new window.File([JSON.stringify([{ name: 'Live Region Import Co' }])], 'backup.json', { type: 'application/json' });
+  const origConfirm2 = window.confirm;
+  window.confirm = () => true;
+  L.importJSONBackup(impFile2);
+  await new Promise(r => setTimeout(r, 500));
+  assert(document.getElementById('live-region').textContent === 'Imported 1 idea ✓',
+    'import success announces in the live region');
+  const badFile2 = new window.File(['not json'], 'bad.json', { type: 'application/json' });
+  L.importJSONBackup(badFile2);
+  await new Promise(r => setTimeout(r, 500));
+  assert(document.getElementById('live-region').textContent === 'Not a JSON file',
+    'import failure announces in the live region');
+  window.confirm = origConfirm2;
+  window.localStorage.setItem(KEY, snapBeforeImport);
+  L.reloadJournal();
+
+  const cuBtn2 = document.getElementById('btn-check-update');
+  const hadFetch2 = 'fetch' in window;
+  const origFetch2 = window.fetch;
+  const origConfirm3 = window.confirm;
+  window.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('4.6.0') });
+  L.checkForUpdates(true);
+  await new Promise(r => setTimeout(r, 100));
+  assert(cuBtn2.textContent === 'Up to date ✓', 'manual check reports up to date for the current version');
+  assert(document.getElementById('live-region').textContent === 'Up to date',
+    'up-to-date check announces in the live region');
+  L.checkForUpdates(true);
+  await new Promise(r => setTimeout(r, 100));
+  assert(document.getElementById('live-region').textContent.trim() === 'Up to date',
+    'a repeated identical announcement still lands in the live region');
+  window.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('9.9.9') });
+  window.confirm = () => false;
+  L.checkForUpdates(true);
+  await new Promise(r => setTimeout(r, 100));
+  assert(cuBtn2.textContent === 'Update available — reload', 'manual check reports the newer version when the reload is declined');
+  assert(document.getElementById('live-region').textContent === 'Update available — reload',
+    'update-available check announces in the live region');
+  window.sessionStorage.removeItem('lrl-healed-9.9.9');
+  window.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('v9.9.9') });
+  L.checkForUpdates(true);
+  await new Promise(r => setTimeout(r, 100));
+  assert(cuBtn2.textContent === 'Check failed', 'manual check reports Check failed for an unparseable version');
+  assert(document.getElementById('live-region').textContent === 'Update check failed',
+    'failed check announces in the live region');
+  if (hadFetch2) window.fetch = origFetch2; else delete window.fetch;
+  window.confirm = origConfirm3;
+
+  const snapBeforeDelete = window.localStorage.getItem(KEY);
+  const delBtnLR = document.getElementById('delete-data');
+  delBtnLR.click();
+  assert(document.getElementById('live-region').textContent.startsWith('Click again to delete everything'),
+    'arming delete-my-data announces in the live region');
+  delBtnLR.click();
+  assert(document.getElementById('live-region').textContent === 'Deleted — everything is gone. Fresh start.',
+    'confirming delete-my-data announces in the live region');
+  window.localStorage.setItem(KEY, snapBeforeDelete);
+  L.reloadJournal();
+
   const cssSrc = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
   assert(cssSrc.includes('overflow-wrap: break-word'), 'long unbroken tokens wrap instead of overflowing panels');
-  assert(cssSrc.includes('#idea-filter:focus-visible') && cssSrc.includes('.analyze-prompt:focus-visible') && cssSrc.includes('a:focus-visible'),
-    'the focus-visible ring covers the filter, prompt textareas, and plain links too');
+  assert(cssSrc.includes('#idea-filter:focus-visible') && cssSrc.includes('.analyze-prompt:focus-visible') && cssSrc.includes('a:focus-visible') && cssSrc.includes('.discover-box input:focus-visible'),
+    'the focus-visible ring covers the filter, prompt textareas, plain links, and discover inputs too');
 
   const realErrors = errors.filter(e => !e.includes('Not implemented'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');

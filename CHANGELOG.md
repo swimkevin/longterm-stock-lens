@@ -1,5 +1,17 @@
 # Changelog — Long-Term Lens
 
+## [4.6.1] — 2026-11-22
+
+### Fixes-and-verification session: 10 full feature tests, live-region announcements, director-critique polish
+
+Kevin asked for the recommended fixes from the v4.6.0 deep review, 10 full live tests of each feature, and a FANG-director critique of each — with the biggest fixes first and zero noticeable bugs. Two tester subagents drove all 10 feature areas through the real UI (jsdom click-through + throwaway edge probes, 140 + 144 checks): Profile quiz/bands, Ideas quick-add/filter, thesis autosave/seal, Trends funnel, Check-ins flow, Scorecard grading, Learn/Roth figures, import/export round-trips, sealed/delete/corrupt recovery, update-check/self-heal/mobile. **All 10 passed with zero product findings** — the app's core is sound; what the critiques surfaced was polish and one real accessibility gap.
+
+- Shared live region (the biggest deferred item, from the v4.5.8 audit): a visually-hidden `#live-region` (`role="status"`, `aria-live="polite"`) now announces every confirmation that used to live only in button text — thesis seal, check-in save, lesson save, copy-prompt, add-as-idea, import success/failure, both exports, update-check results, and both delete-my-data steps. A repeated identical message still announces (non-breaking-space variation). The quiz result already had `role="status"` and needed nothing.
+- Draft-saved indicator: the thesis autosave is no longer silent — "Draft saved ✓" appears when the 800 ms autosave fires and hides on the next keystroke (no new timer; the existing callback drives it).
+- Quiz now names the cap rule up front ("One answer can cap your band at Cautious — that's deliberate"), so a user who lands in Cautious doesn't feel the quiz ignored their other five answers.
+- Discover box nudges toward the company you already understand; the check-in hint now names the reason default ("It starts at 'Too early to tell' — change it if you know"); quick-add and trend forms name the 80-character cap instead of truncating pasted names silently; the two trend Find-companies inputs join the `:focus-visible` ring.
+- 34 new assertions; 787 assertions green (709 smoke + 41 edge + 24 golden + 13 properties). Negative control (rule 14): 21 new behavior guards fail on the unfixed code (5 version-mismatch artifacts from the stash); both suites reported fully. Not shipped: sort control for the Ideas list and export preview (features, not fixes); mobile tab-order mismatch re-checked in static review — DOM order matches the visual strip order, no mismatch found, real-phone eyeball still pending. Standing Kevin decisions untouched (JSON backup trends exclusion, seal-with-invalid-price, check-in backdating).
+
 ## [4.6.0] — 2026-11-22
 
 ### Deep-review fixes + eval upgrades (fresh-eyes audit + 2026 AI-practices research)

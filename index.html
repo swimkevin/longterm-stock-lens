@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Long-Term Lens — Your ideas about what's next</title>
 <meta name="description" content="An educational hub for beginner long-term investors: investor profile, ideas research loop, fundamentals micro-lessons, and account explainers. Educational only — not financial advice.">
-<link rel="stylesheet" href="styles.css?v=4.6.0">
+<link rel="stylesheet" href="styles.css?v=4.6.1">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d1117">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
@@ -24,6 +24,7 @@
 </header>
 
 <main>
+  <div id="live-region" class="visually-hidden" role="status" aria-live="polite"></div>
 
   <section id="screen-ideas" class="screen">
     <div class="wrap">
@@ -54,7 +55,7 @@
         <div class="btn-row">
           <button id="qa-add" class="btn primary">Add idea</button>
         </div>
-        <p class="fineprint">Just a name is enough — the idea opens as a draft you research one section at a time. Tip: press <kbd>⌘K</kbd> anywhere to jump here.</p>
+        <p class="fineprint">Just a name is enough — the idea opens as a draft you research one section at a time. Tip: press <kbd>⌘K</kbd> anywhere to jump here. Names cap at 80 characters.</p>
       </div>
 
       <div id="trends-part">
@@ -76,7 +77,7 @@
         <div class="btn-row">
           <button id="trend-add" class="btn primary">Log trend</button>
         </div>
-        <p class="fineprint">No company needed — that's the point. When a candidate emerges, one tap turns the trend into a research idea.</p>
+        <p class="fineprint">No company needed — that's the point. When a candidate emerges, one tap turns the trend into a research idea. Trend names cap at 80 characters.</p>
       </div>
 
       <h3>Watching <span class="hint" id="trends-count"></span></h3>
@@ -332,9 +333,9 @@
 <footer class="footer">
   <p><strong>Educational only, not financial advice.</strong> Long-Term Lens teaches research skills; it does not recommend
     securities. All examples are historical illustrations. Do your own research.</p>
-  <p class="fineprint">Long-Term Lens <span id="app-version">v4.6.0</span> · Your data stays in this browser. · <a href="https://github.com/swimkevin/longterm-stock-lens">View the code on GitHub</a> · <button id="btn-check-update" class="linklike">Check for updates</button></p>
+  <p class="fineprint">Long-Term Lens <span id="app-version">v4.6.1</span> · Your data stays in this browser. · <a href="https://github.com/swimkevin/longterm-stock-lens">View the code on GitHub</a> · <button id="btn-check-update" class="linklike">Check for updates</button></p>
 </footer>
 
-<script src="app.js?v=4.6.0"></script>
+<script src="app.js?v=4.6.1"></script>
 </body>
 </html>

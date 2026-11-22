@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.6.0';
+const APP_VERSION = '4.6.1';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1041,6 +1041,14 @@ function oneLine(s) {
   return String(s == null ? '' : s).replace(/[\r\n]+/g, ' ').trim();
 }
 function $(id) { return document.getElementById(id); }
+
+let lastAnnounce = '';
+function announce(msg) {
+  const el = document.getElementById('live-region');
+  if (!el || !msg) return;
+  el.textContent = msg === lastAnnounce ? msg + ' ' : msg;
+  lastAnnounce = msg;
+}
 function emptyState({ title, body, actionId, actionLabel }) {
   const d = document.createElement('div');
   d.className = 'empty rich';
@@ -1164,6 +1172,10 @@ function renderQuiz() {
     qDiv.appendChild(grid);
     box.appendChild(qDiv);
   });
+  const capFootnote = document.createElement('p');
+  capFootnote.className = 'fineprint';
+  capFootnote.textContent = 'One answer can cap your band at Cautious — that\u2019s deliberate: some situations rule out a riskier mix.';
+  box.appendChild(capFootnote);
   const row = document.createElement('div');
   row.className = 'btn-row';
   const btn = document.createElement('button');
@@ -1597,7 +1609,10 @@ function renderIdeaDetail(idea) {
   saveBtn.className = 'btn';
   saveBtn.dataset.action = 'thesis-save';
   saveBtn.textContent = 'Save';
+  const draftStatus = document.createElement('p');
+  draftStatus.className = 'fineprint thesis-draft-status hidden';
   const queueDraftSave = () => {
+    draftStatus.classList.add('hidden');
     clearTimeout(thesisDraftTimer);
     thesisDraftTimer = setTimeout(() => {
       updateIdea(idea.id, i => {
@@ -1610,6 +1625,8 @@ function renderIdeaDetail(idea) {
         }
       });
       thesisDraftTimer = null;
+      draftStatus.textContent = 'Draft saved ✓';
+      draftStatus.classList.remove('hidden');
     }, 800);
   };
   belief.addEventListener('input', queueDraftSave);
@@ -1643,7 +1660,9 @@ function renderIdeaDetail(idea) {
       }
     });
     renderIdeaDetail(getIdea(idea.id));
+    announce('What you think is saved and locked in');
   });
+  th.appendChild(draftStatus);
   th.appendChild(saveBtn);
   }
   box.appendChild(th);
@@ -1848,6 +1867,7 @@ function wireCopyButton(btn, ta, label) {
   btn.addEventListener('click', () => {
     const done = () => {
       btn.textContent = 'Copied';
+      announce('Prompt copied');
       btn.disabled = true;
       setTimeout(() => { btn.textContent = 'Copy prompt'; btn.disabled = false; }, 1600);
     };
@@ -2089,7 +2109,7 @@ function renderReviewForm(card, idea, onDone) {
   q1.appendChild(q1t);
   const q1h = document.createElement('span');
   q1h.className = 'hint';
-  q1h.textContent = ' Compare what actually happened to the reasons you wrote down — that\'s how you tell a good eye from a lucky guess.';
+  q1h.textContent = ' Compare what actually happened to the reasons you wrote down — that\'s how you tell a good eye from a lucky guess. It starts at \'Too early to tell\' — change it if you know.';
   q1.appendChild(q1h);
   form.appendChild(q1);
   const reasonChips = document.createElement('div');
@@ -2222,6 +2242,7 @@ function renderReviewForm(card, idea, onDone) {
       priceNow: isFinite(pn) && pn > 0 ? pn : null,
     }, todayISO());
     updateIdea(idea.id, () => { captureThesisDraft(updated); return updated; });
+    announce('Check-in saved');
     renderIdeasHome();
     skipDetailReviewRestore = true;
     if (card.closest('#reviews-list')) skipReviewsFormRestore = true;
@@ -2513,6 +2534,7 @@ function trendRow(trend) {
       delete trendLessonDrafts[trend.id];
       const orig = save.textContent;
       save.textContent = 'Saved ✓';
+      announce('Lesson saved');
       save.disabled = true;
       setTimeout(() => { save.textContent = orig; save.disabled = false; }, 1200);
     });
@@ -2586,7 +2608,7 @@ function buildDiscoverBox(trend) {
   box.appendChild(row);
   const addH = document.createElement('p');
   addH.className = 'fineprint';
-  addH.textContent = 'Spot a company you like? Add it here — it stays linked to this trend:';
+  addH.textContent = 'Spot a company you like? Add it here — it stays linked to this trend: start with the one whose business you already understand.';
   box.appendChild(addH);
   const form = document.createElement('div');
   form.className = 'review-row';
@@ -2620,6 +2642,7 @@ function buildDiscoverBox(trend) {
     discoverDraft = null;
     updateTrend(trend.id, t => Object.assign({}, t, { status: 'chased', ideaId: idea.id }));
     discoverFeedback = 'Added ' + nm + ' ✓ — find it under Ideas, linked to this trend.';
+    announce(discoverFeedback);
     renderTrends();
     renderIdeasHome();
     focusTrendButton(trend.id, 'Open idea', true);
@@ -2910,6 +2933,7 @@ function exportJSON() {
     new Blob([journalToJSON(store.ideas || [])], { type: 'application/json' }),
     'longterm-lens-ideas-' + stamp + '.json'
   );
+  announce('JSON backup downloaded');
 }
 
 function exportMarkdown() {
@@ -2918,6 +2942,7 @@ function exportMarkdown() {
     new Blob([journalToMarkdown(store.ideas || [], stamp, store.trends || [])], { type: 'text/markdown' }),
     'longterm-lens-ideas-' + stamp + '.md'
   );
+  announce('Markdown notes downloaded');
 }
 
 function importIdeasFromJSON(text) {
@@ -2973,6 +2998,7 @@ function importJSONBackup(file) {
   const orig = btn.textContent;
   if (file && typeof file.size === 'number' && file.size > 1000000) {
     btn.textContent = 'File too large — over 1 MB';
+    announce('File too large — over 1 MB');
     setTimeout(() => { btn.textContent = orig; }, 2500);
     return;
   }
@@ -2984,6 +3010,7 @@ function importJSONBackup(file) {
       btn.textContent = res.error === 'not-json' ? 'Not a JSON file'
         : res.error === 'empty' ? 'Nothing to import — no ideas in file'
         : 'Not a Lens backup file';
+      announce(btn.textContent);
     } else if (!confirm('Replace your ' + store.ideas.length + ' idea' + (store.ideas.length === 1 ? '' : 's') + ' with the ' + res.ideas.length + ' from this file?' + (sealedInFile ? ' This file contains ' + sealedInFile + ' locked-in record' + (sealedInFile === 1 ? '' : 's') + ', which will replace your current locked records.' : '') + ' This cannot be undone.')) {
       btn.textContent = orig;
     } else {
@@ -3005,6 +3032,7 @@ function importJSONBackup(file) {
       btn.textContent = saved
         ? 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓' + (parts.length ? ' — ' + parts.join(', ') : '')
         : 'Import failed — not saved';
+      announce(btn.textContent);
     }
     setTimeout(() => { btn.textContent = orig; }, 2500);
   };
@@ -3012,6 +3040,7 @@ function importJSONBackup(file) {
     const btn = $('import-json');
     const orig = btn.textContent;
     btn.textContent = 'Could not read file';
+    announce('Could not read file');
     setTimeout(() => { btn.textContent = orig; }, 2500);
   };
   rd.readAsText(file);
@@ -3049,6 +3078,7 @@ function init() {
     if (typeof fetch !== 'function') {
       if (manual) {
         cu.textContent = 'Check failed';
+        announce('Update check failed');
         setTimeout(() => { cu.textContent = 'Check for updates'; }, 2000);
       }
       return;
@@ -3061,6 +3091,7 @@ function init() {
         if (!/^\d+\.\d+\.\d+$/.test(v)) {
           if (manual) {
             cu.textContent = 'Check failed';
+            announce('Update check failed');
             setTimeout(() => { cu.textContent = 'Check for updates'; }, 2000);
           }
           return;
@@ -3071,6 +3102,7 @@ function init() {
             window.location.href = updateReloadURL(window.location.pathname, v, window.location.hash);
           } else if (manual) {
             cu.textContent = 'Update available — reload';
+            announce('Update available — reload');
             try { sessionStorage.setItem('lrl-healed-' + v, '1'); } catch (e) {}
           } else {
             const dirty = thesisDraftTimer !== null || quizDraft || !!discoverDraft ||
@@ -3090,12 +3122,14 @@ function init() {
           }
         } else if (manual) {
           cu.textContent = 'Up to date ✓';
+          announce('Up to date');
           setTimeout(() => { cu.textContent = 'Check for updates'; }, 2000);
         }
       })
       .catch(() => {
         if (manual) {
           cu.textContent = 'Check failed';
+          announce('Update check failed');
           setTimeout(() => { cu.textContent = 'Check for updates'; }, 2000);
         }
       });
@@ -3153,6 +3187,7 @@ function init() {
     if (!delData.classList.contains('armed')) {
       delData.classList.add('armed');
       delData.textContent = 'Click again to delete everything — ideas, check-ins, trends, profile';
+      announce(delData.textContent);
       delArmTimer = setTimeout(() => {
         delData.classList.remove('armed');
         delData.textContent = 'Delete my data';
@@ -3183,6 +3218,7 @@ function init() {
     renderTrackRecord();
     delData.classList.remove('armed');
     delData.textContent = 'Deleted — everything is gone. Fresh start.';
+    announce('Deleted — everything is gone. Fresh start.');
     setTimeout(() => { delData.textContent = 'Delete my data'; }, 3000);
   });
 
