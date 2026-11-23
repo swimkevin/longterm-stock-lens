@@ -259,6 +259,69 @@ async function main() {
   assert(!res7.includes('Balanced'), 'string answers never launder into a higher band');
   assert(b7.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the string-answers boot');
 
+  // 12. Markdown export carries the price log and notes, not just names.
+  const mdIdea = { id: 'e-md', name: 'MdCo', tickers: 'MD', status: 'open', createdAt: '2026-11-01', reviewMonths: 3, reviewHistory: [],
+    thesis: { belief: 'Pricing power compounds.', falsify: '' },
+    sealed: { belief: 'Pricing power compounds.', falsify: '', date: '2026-11-02' },
+    priceLog: [{ date: '2026-11-01', price: 100, note: 'spotted' }, { date: '2026-11-20', price: 125 }],
+    notes: [{ date: '2026-11-03', text: 'moat widening, pricing power intact' }] };
+  const md12 = L.journalToMarkdown([mdIdea], '2026-11-24', []);
+  assert(md12.includes('Price log (manually entered):') && md12.includes('2026-11-01: 100 — spotted') && md12.includes('2026-11-20: 125'), 'markdown export carries the price log with its note');
+  assert(md12.includes('moat widening, pricing power intact'), 'markdown export carries the note text');
+
+  // 13. Eighth boot: delete-my-data clears the quiz profile in the store, not just the rendered result.
+  const wipeSeed = { schema: 3, ideas: [{ id: 'e-wipe', name: 'WipeCo', status: 'open', createdAt: '2026-11-01', reviewMonths: 3, reviewHistory: [], thesis: { belief: '', falsify: '' } }], trends: [], glossary: {},
+    quizProfile: { total: 18, max: 18, bandLabel: 'Growth-leaning', index: 80, conv: 20, date: '2026-11-20', answers: [0, 0, 0, 0, 0, 0] } };
+  const b8 = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify(wipeSeed)));
+  const d8 = b8.d, w8 = b8.w;
+  const del8 = d8.getElementById('delete-data');
+  del8.click();
+  assert(JSON.parse(w8.localStorage.getItem(KEY)).quizProfile !== null, 'wipe boot: first click only arms, profile intact');
+  del8.click();
+  assert(JSON.parse(w8.localStorage.getItem(KEY)).quizProfile === null, 'wipe boot: second click clears the quiz profile from the store');
+  assert(b8.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the wipe boot');
+
+  // 14. Ninth boot: a check-in on an idea with no spot price shows no preview element and still records a typed price.
+  const npSeed = { schema: 3, ideas: [{ id: 'e-np', name: 'NoPriceCo', tickers: 'NP', status: 'open', createdAt: '2026-11-24', reviewMonths: 3, reviewHistory: [], thesis: { belief: 'Cheap for a reason, or a bargain.', falsify: '' } }], trends: [], glossary: {}, quizProfile: null };
+  const b9 = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify(npSeed)));
+  const d9 = b9.d, w9 = b9.w;
+  d9.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d9.querySelector('.idea-row .idea-main').click();
+  const now9 = Array.from(d9.querySelectorAll('button')).find(b => b.textContent === 'Check in now');
+  assert(now9, 'no-spot boot: Check in now button on the detail page');
+  now9.click();
+  const form9 = d9.querySelector('#idea-detail .review-form');
+  assert(form9, 'no-spot boot: check-in form opened');
+  assert(!form9.querySelector('.price-preview'), 'no-spot boot: no price-preview element without a spotted price');
+  const price9 = form9.querySelector('input[type="number"]');
+  price9.value = '50';
+  price9.dispatchEvent(new w9.Event('input', { bubbles: true }));
+  assert(!form9.querySelector('.price-preview'), 'no-spot boot: typing a price still creates no preview element');
+  const chip9 = Array.from(form9.querySelectorAll('.chips[aria-label="So where does it stand?"] .chip')).find(c => c.textContent.includes('Still holds up'));
+  chip9.click();
+  Array.from(form9.querySelectorAll('button')).find(b => b.textContent === 'Save check-in').click();
+  const saved9 = JSON.parse(w9.localStorage.getItem(KEY)).ideas.find(i => i.id === 'e-np');
+  assert(saved9.priceLog && saved9.priceLog.some(p => p.price === 50), 'no-spot boot: typed price is recorded in the price log on save');
+  assert(b9.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the no-spot boot');
+
+  // 15. Tenth boot: the discover box refuses an empty company name (and focuses it) and adds on Enter.
+  const discSeed = { schema: 3, ideas: [], trends: [{ id: 't-robo', name: 'Robotaxis', status: 'watching', createdAt: '2026-11-01', updatedAt: '2026-11-01', why: 'Cars without drivers.' }], glossary: {}, quizProfile: null };
+  const b10 = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify(discSeed)));
+  const d10 = b10.d, w10 = b10.w;
+  d10.querySelector('.nav-btn[data-nav="ideas"]').click();
+  Array.from(d10.querySelectorAll('button')).find(b => b.textContent === 'Find companies').click();
+  const box10 = d10.querySelector('.discover-box');
+  assert(box10, 'discover boot: box opens');
+  const name10 = box10.querySelector('input[aria-label^="Company name"]');
+  Array.from(box10.querySelectorAll('button')).find(b => b.textContent === 'Add as idea').click();
+  assert(JSON.parse(w10.localStorage.getItem(KEY)).ideas.length === 0, 'discover boot: empty company name adds nothing');
+  assert(d10.activeElement === name10, 'discover boot: empty add focuses the name input');
+  name10.value = 'RoboCo';
+  name10.dispatchEvent(new w10.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const added10 = JSON.parse(w10.localStorage.getItem(KEY)).ideas.find(i => i.name === 'RoboCo');
+  assert(added10 && added10.trendId === 't-robo', 'discover boot: Enter adds the company, linked to its trend');
+  assert(b10.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the discover boot');
+
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));
