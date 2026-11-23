@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.6.2] — 2026-11-23
+
+### Screen headings no longer show a focus box on load
+
+Two independent live-browser checks (2026-11-22 and this run) saw the same thing on the boot screen: a dark rectangular outline around the "Spot what's next." heading, spanning the full content width, present on load and after reload, gone only after a mouse click. The cause is the designed focus management — `showScreen` moves focus to the screen's `h1` on every navigation including boot (app.js:1079), so a returning user lands on Ideas with the heading focused — and the browser draws its default outline for that programmatic focus (on load there is no prior pointer interaction, so `:focus-visible` matches; after a mouse click it doesn't, which is why the box vanishes on revisit). Screen headings are focus targets for screen readers, not tab stops (`tabindex="-1"`), so no keyboard user needs the ring: `.screen h1:focus { outline: none; }` removes it while focus still lands on the heading exactly as before. 3 new assertions (790 green); negative control verified — the stylesheet pin fails on the unfixed code, and the two focus-landing assertions pass there by design (they pin the unchanged behavior).
+
 ## [4.6.1] — 2026-11-22
 
 ### Fixes-and-verification session: 10 full feature tests, live-region announcements, director-critique polish

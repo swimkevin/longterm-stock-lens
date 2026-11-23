@@ -115,6 +115,8 @@ details summary:focus-visible, .chip:focus-visible, .conv-btn:focus-visible,
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
+.screen h1:focus { outline: none; }
+
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;

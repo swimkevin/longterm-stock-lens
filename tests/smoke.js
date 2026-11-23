@@ -1583,6 +1583,10 @@ async function main() {
   const trackH = document.querySelector('#screen-track h1');
   assert(document.activeElement === trackH, 'opening Scorecard moves focus to its heading');
   assert(trackH.getAttribute('tabindex') === '-1', 'screen heading is focusable without joining the tab order');
+  document.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const ideasH = document.querySelector('#screen-ideas h1');
+  assert(document.activeElement === ideasH, 'opening Ideas moves focus to its heading');
+  assert(ideasH.getAttribute('tabindex') === '-1', 'Ideas heading is focusable without joining the tab order');
 
   console.log('trend Enter key:');
   document.querySelector('.nav-btn[data-nav="ideas"]').click();
@@ -2370,6 +2374,8 @@ async function main() {
   assert(cssSrc.includes('overflow-wrap: break-word'), 'long unbroken tokens wrap instead of overflowing panels');
   assert(cssSrc.includes('#idea-filter:focus-visible') && cssSrc.includes('.analyze-prompt:focus-visible') && cssSrc.includes('a:focus-visible') && cssSrc.includes('.discover-box input:focus-visible'),
     'the focus-visible ring covers the filter, prompt textareas, plain links, and discover inputs too');
+  assert(cssSrc.includes('.screen h1:focus { outline: none; }'),
+    'screen headings take no focus ring when showScreen lands focus on them (they are not tab stops)');
 
   const realErrors = errors.filter(e => !e.includes('Not implemented'));
   assert(realErrors.length === 0, 'no script errors across the whole run (' + realErrors.length + ' real of ' + errors.length + ')');
