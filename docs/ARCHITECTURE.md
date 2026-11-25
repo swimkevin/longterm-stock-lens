@@ -17,8 +17,8 @@ computes per-conviction hit rates. The architecture exists to serve that one loo
 | `index.html` | App shell. Five always-visible tabs toggled by `data-nav` buttons: `profile` (investor quiz — first screen for new visitors), `ideas` (home; Trends live here inside the Ideas tab), `idea` (detail), `reviews` (Check-ins), `track` (Scorecard), `learn` (micro-lessons; Accounts closes out this tab). No More menu, no separate Trends/Accounts screens. Content sections are static HTML; dynamic regions are empty containers filled by `app.js`. |
 | `styles.css` | Calm research theme via CSS custom properties (dark + light themes). Responsive, `prefers-reduced-motion` support, `:focus-visible` states, generous touch targets. |
 | `app.js` | All logic in one IIFE. DOM-free pure functions (`scoreRisk`, `makeIdea`, `convictionOf`, `sealThesis`, `applyReview`, `calibration`, `trackRecord`, `migrateStore`, `buildAnalyzePrompt`, …) are exposed on `globalThis.LongTermLens` for the Node test suite. |
-| `tests/smoke.js` | Node + jsdom suite (675 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
-| `tests/edge-probe.js` | Edge-case harness (41 assertions, also run by `npm test`): rapid-click idempotency, oversized/emoji names, legacy-store migration, export contents. |
+| `tests/smoke.js` | Node + jsdom suite (712 assertions): pure-logic assertions, then a boot of the real page clicking through nav, quiz, idea CRUD, review flow, calibration, exports, and `localStorage` round-trips. |
+| `tests/edge-probe.js` | Edge-case harness (57 assertions, also run by `npm test`): rapid-click idempotency, oversized/emoji names, legacy-store migration, export contents. |
 | `tests/golden.js` | Held-out proof set (24 assertions, also run by `npm test`): one end-to-end pass over the core loop plus the never-regress invariants. Audit-owned — the daily loop runs it but never edits it. |
 | `tests/properties.js` | Seeded property tests (13 assertions, also run by `npm test`): deterministic invariants over the pure functions, 200 generated cases each. |
 

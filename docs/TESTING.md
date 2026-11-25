@@ -11,8 +11,8 @@ execution, so the number tracks executed checks, not distinct
 `assert()` statements in source. The published numbers are pinned by the runner:
 `tests/run.js` (the `npm test` entry point) spawns all four suites, streams their
 output, counts runtime `ok` lines per suite, and fails the build if the README
-badge (`tests-N%20assertions`) or the `(smoke A + edge probes B + golden C + properties D)` split disagrees
-with the counts. The runner's own confirmation line is deliberately not
+badge (`tests-N%20assertions`), the `(smoke A + edge probes B + golden C + properties D)` split,
+or the per-suite counts in `docs/ARCHITECTURE.md` disagrees with the counts. The runner's own confirmation line is deliberately not
 `ok`-prefixed so it can't pollute the count. This exists because v4.4.4 shipped
 with a stale 453 badge and a stale per-suite split — the second assertion-count
 drift incident. Numbers Kevin can see are numbers the suite owns.

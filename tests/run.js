@@ -54,9 +54,20 @@ function runSuite(file) {
     parseInt(split[3], 10) !== golden.okCount || parseInt(split[4], 10) !== properties.okCount) {
     problems.push('README split (' + split[1] + '+' + split[2] + '+' + split[3] + '+' + split[4] + ') disagrees with suites (' + smoke.okCount + '+' + edge.okCount + '+' + golden.okCount + '+' + properties.okCount + ')');
   }
+  const arch = fs.readFileSync(path.join(ROOT, 'docs/ARCHITECTURE.md'), 'utf8');
+  const archCount = (file) => {
+    const m = arch.match(new RegExp('`tests/' + file.replace(/\./g, '\\.') + '`[^\\n]*?\\((\\d+) assertions'));
+    return m ? parseInt(m[1], 10) : null;
+  };
+  const archCounts = { smoke: archCount('smoke.js'), edge: archCount('edge-probe.js'), golden: archCount('golden.js'), properties: archCount('properties.js') };
+  for (const [key, runtime] of [['smoke', smoke.okCount], ['edge', edge.okCount], ['golden', golden.okCount], ['properties', properties.okCount]]) {
+    if (archCounts[key] === null) problems.push('ARCHITECTURE.md count missing for ' + key);
+    else if (archCounts[key] !== runtime) problems.push('ARCHITECTURE.md ' + key + ' says ' + archCounts[key] + ', suites counted ' + runtime);
+  }
   if (problems.length) {
     problems.forEach(p => console.error('RUNNER FAIL - ' + p));
     process.exit(1);
   }
   console.log('RUNNER: README badge and split match runtime counts (' + total + ' = ' + smoke.okCount + ' + ' + edge.okCount + ' + ' + golden.okCount + ' + ' + properties.okCount + ')');
+  console.log('RUNNER: ARCHITECTURE.md suite counts match runtime counts');
 })().catch((e) => { console.error(e); process.exit(1); });
