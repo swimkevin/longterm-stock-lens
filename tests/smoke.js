@@ -1638,8 +1638,8 @@ async function main() {
   window.localStorage.setItem(KEY, unknownRaw);
   const unknownLoaded = L.loadStore();
   assert(unknownLoaded.ideas.length === 1 && unknownLoaded.ideas[0].name === 'Kept', 'unknown-schema ideas survive the fallthrough migration');
-  assert(unknownLoaded.trends.length === 0, 'unknown-schema trends do not survive the fallthrough migration');
-  assert(window.localStorage.getItem(KEY + '-corrupt-backup') === unknownRaw, 'unknown-schema store with trends is stashed before migration drops them');
+  assert(unknownLoaded.trends.length === 1 && unknownLoaded.trends[0].name === 'T', 'unknown-schema trends survive the fallthrough migration too');
+  assert(window.localStorage.getItem(KEY + '-corrupt-backup') === unknownRaw, 'unknown-schema store with trends is stashed as a backup before migration');
   const badTrendsRaw = JSON.stringify({ schema: 3, ideas: [], trends: 'oops' });
   window.localStorage.setItem(KEY, badTrendsRaw);
   const badTrendsLoaded = L.loadStore();
@@ -2074,6 +2074,26 @@ async function main() {
   const bigFile = new window.File(['x'.repeat(1000001)], 'big.json', { type: 'application/json' });
   L.importJSONBackup(bigFile);
   assert(document.getElementById('import-json').textContent === 'File too large — over 1 MB', 'oversized backup file is refused before parsing');
+
+  // ---- v4.6.3: adversarial-audit fixes ----
+  console.log('audit fixes v4.6.3:');
+  const junkMix = L.importIdeasFromJSON(JSON.stringify([{ name: 'Real Co' }, 42, null, 'x', [1]]));
+  assert(!junkMix.error && junkMix.ideas.length === 1 && junkMix.ideas[0].name === 'Real Co' && junkMix.skipped.invalid === 4,
+    'non-object import entries are skipped and counted, never materialized as blank ideas (got ' + JSON.stringify(junkMix.skipped) + ')');
+  assert(L.importIdeasFromJSON('[1, "x", null]').error === 'empty', 'an import of only non-object entries is refused, not a blank-idea wipe');
+  const cappedIdea = L.normalizeIdea({ name: 'Tag Co', tags: [123, null, { a: 1 }, 'real', 't'.repeat(100)], thesis: { belief: 'b'.repeat(5000), falsify: 'f'.repeat(900) }, sealed: { belief: 's'.repeat(5000), falsify: 'g'.repeat(900), date: '2026-11-01' } });
+  assert(JSON.stringify(cappedIdea.tags) === JSON.stringify(['real', 't'.repeat(60)]), 'normalizeIdea drops non-string tags and caps each at 60 chars');
+  assert(cappedIdea.thesis.belief.length === 2000 && cappedIdea.thesis.falsify.length === 500, 'normalizeIdea caps thesis belief/falsify at the UI limits (2000/500)');
+  assert(cappedIdea.sealed.belief.length === 2000 && cappedIdea.sealed.falsify.length === 500, 'normalizeIdea caps sealed belief/falsify too');
+  const tagMd = L.journalToMarkdown([cappedIdea], '2026-11-26', []);
+  assert(!tagMd.includes('[object Object]') && tagMd.includes('- Tags: real,'), 'markdown export never prints [object Object] for tags');
+  assert(tagMd.includes('Check in by:') && !tagMd.includes('Review by:'), 'markdown export says "Check in by", not the work-word "Review by"');
+  const migTrends = L.migrateStore({ ideas: [{ name: 'A' }], trends: [{ name: 'Trend1', status: 'watching' }, { name: 'Trend2', status: 'chased', ideaId: 'gone' }], glossary: {}, quizProfile: null });
+  assert(migTrends.trends.length === 2 && migTrends.trends[0].name === 'Trend1', 'schema-less store migration carries its trends');
+  assert(migTrends.trends[1] && migTrends.trends[1].status === 'watching', 'migrated orphaned chased trend returns to Watching');
+  const migEntries = L.migrateStore({ entries: [{ name: 'Old', thesis: 't'.repeat(5000), falsify: 'f'.repeat(900), tags: [1, 'ok'] }] });
+  assert(migEntries.ideas[0].thesis.belief.length === 2000 && migEntries.ideas[0].thesis.falsify.length === 500 && JSON.stringify(migEntries.ideas[0].tags) === JSON.stringify(['ok']),
+    'v1 entry migration caps thesis and drops non-string tags');
 
   assert(typeof L.pctMove === 'function' && L.pctMove(55, 50) === 10 && L.pctMove(50, 50) === 0 && L.pctMove(1e308, 1) === null && L.pctMove(10, 0) === null && L.pctMove(100, -50) === null,
     'pctMove returns finite percents only (Infinity, divide-by-zero, and non-positive spot prices become null)');

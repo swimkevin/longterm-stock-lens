@@ -322,6 +322,33 @@ async function main() {
   assert(added10 && added10.trendId === 't-robo', 'discover boot: Enter adds the company, linked to its trend');
   assert(b10.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the discover boot');
 
+  // 16. Eleventh boot: a *completed* lesson quiz no longer blocks the auto
+  //     self-heal (its result is already saved), but a half-answered one does.
+  const b16 = await bootLater();
+  const w16 = b16.w, d16 = b16.d, L16 = b16.L;
+  w16.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('9.9.9') });
+  async function autoCheck16() {
+    L16.checkForUpdates(false);
+    await new Promise(r => setTimeout(r, 120));
+  }
+  d16.querySelector('.nav-btn[data-nav="learn"]').click();
+  const lesson16 = d16.querySelector('#glossary details');
+  lesson16.open = true;
+  const grids16 = () => d16.querySelector('#glossary details').querySelectorAll('.lesson-quiz .opt-grid');
+  assert(grids16().length === 3, 'lesson boot: first lesson shows 3 quiz questions (got ' + grids16().length + ')');
+  grids16()[0].querySelector('.opt-btn').click();
+  w16.sessionStorage.removeItem('lrl-healed-9.9.9');
+  await autoCheck16();
+  assert(w16.sessionStorage.getItem('lrl-healed-9.9.9') === null, 'auto-reload still skips with a half-answered lesson quiz');
+  grids16()[1].querySelector('.opt-btn').click();
+  grids16()[2].querySelector('.opt-btn').click();
+  const gloss16 = JSON.parse(w16.localStorage.getItem(KEY)).glossary || {};
+  assert(Object.values(gloss16).some(g => typeof g.best === 'number'), 'lesson boot: completing all 3 questions saves the best score');
+  w16.sessionStorage.removeItem('lrl-healed-9.9.9');
+  await autoCheck16();
+  assert(w16.sessionStorage.getItem('lrl-healed-9.9.9') === '1', 'auto-reload arms once the lesson quiz is complete and saved');
+  assert(b16.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the lesson boot');
+
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));

@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.6.2';
+const APP_VERSION = '4.6.3';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -738,7 +738,7 @@ function journalToMarkdown(ideas, stamp, trends) {
     lines.push('## ' + oneLine(e.name) + (e.tickers ? ' (' + oneLine(e.tickers) + ')' : ''));
     lines.push('');
     lines.push('- How sure I am: ' + (conv === null ? 'not set' : conv + ' / 5'));
-    lines.push('- Status: ' + (e.status || 'open') + ' · Written: ' + e.createdAt + ' · Review by: ' + reviewAtOf(e));
+    lines.push('- Status: ' + (e.status || 'open') + ' · Written: ' + e.createdAt + ' · Check in by: ' + reviewAtOf(e));
     if (e.tags && e.tags.length) lines.push('- Tags: ' + e.tags.map(t => oneLine(t)).join(', '));
     lines.push('');
     const sealedMd = (e.sealed && e.sealed.belief) ? e.sealed : (e.thesis || {});
@@ -806,6 +806,7 @@ function migrateStore(raw) {
   if (raw && Array.isArray(raw.entries)) entries = raw.entries;
   else if (raw && Array.isArray(raw.ideas)) {
     store.ideas = raw.ideas.map(normalizeIdea);
+    store.trends = resetOrphanedTrends(dedupeTrendIds((Array.isArray(raw.trends) ? raw.trends : []).map(normalizeTrend)), store.ideas);
     store.glossary = raw.glossary || {};
     store.quizProfile = raw.quizProfile || null;
     return store;
@@ -823,10 +824,10 @@ function migrateStore(raw) {
       ? Math.round(allDims.reduce((s, v) => s + v, 0) / allDims.length)
       : null;
     const idea = makeIdea(e.name || 'Untitled idea', e.tickers || '', t);
-    idea.tags = Array.isArray(e.tags) ? e.tags : [];
+    idea.tags = Array.isArray(e.tags) ? e.tags.filter(x => typeof x === 'string').map(x => capStr(x, 60)) : [];
     idea.thesis = {
-      belief: e.thesis || '',
-      falsify: e.falsify || '',
+      belief: typeof e.thesis === 'string' ? capStr(e.thesis, 2000) : '',
+      falsify: typeof e.falsify === 'string' ? capStr(e.falsify, 500) : '',
     };
     idea.conviction = conviction;
     idea.legacyScores = {
@@ -872,8 +873,14 @@ function normalizeIdea(rawIdea) {
   idea.thesis = Object.assign({ belief: '', falsify: '' }, idea.thesis);
   if (typeof idea.thesis.belief !== 'string') idea.thesis.belief = '';
   if (typeof idea.thesis.falsify !== 'string') idea.thesis.falsify = '';
+  idea.thesis.belief = capStr(idea.thesis.belief, 2000);
+  idea.thesis.falsify = capStr(idea.thesis.falsify, 500);
   if (idea.sealed && (typeof idea.sealed.belief !== 'string' || !idea.sealed.belief.trim() || !isPlausibleLocalDate(idea.sealed.date || ''))) delete idea.sealed;
   if (idea.sealed && typeof idea.sealed.falsify !== 'string') idea.sealed.falsify = '';
+  if (idea.sealed) {
+    idea.sealed.belief = capStr(idea.sealed.belief, 2000);
+    idea.sealed.falsify = capStr(idea.sealed.falsify, 500);
+  }
   if (typeof idea.conviction === 'number' && idea.conviction >= 1 && idea.conviction <= 5) idea.conviction = Math.round(idea.conviction);
   else idea.conviction = null;
   if (idea.conviction === null && idea.scores && typeof idea.scores === 'object') {
@@ -883,6 +890,7 @@ function normalizeIdea(rawIdea) {
   delete idea.scores;
   delete idea.weights;
   if (!Array.isArray(idea.tags)) idea.tags = [];
+  else idea.tags = idea.tags.filter(t => typeof t === 'string').map(t => capStr(t, 60));
   if (!Array.isArray(idea.notes)) idea.notes = [];
   if (!Array.isArray(idea.assumptions)) idea.assumptions = [];
   if (!Array.isArray(idea.reviewHistory)) idea.reviewHistory = [];
@@ -2951,15 +2959,17 @@ function importIdeasFromJSON(text) {
   const list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.ideas) ? parsed.ideas : null);
   if (!list) return { error: 'not-a-backup' };
   if (!list.length) return { error: 'empty' };
+  const skipped = { reviews: 0, sealed: 0, dates: 0, lists: 0, prices: 0, ideas: 0, invalid: 0 };
+  const usable = list.filter(raw => raw && typeof raw === 'object' && !Array.isArray(raw));
+  skipped.invalid = list.length - usable.length;
+  if (!usable.length) return { error: 'empty' };
   const seen = new Set();
-  const ideas = list.map(normalizeIdea).map(idea => {
+  const ideas = usable.map(normalizeIdea).map(idea => {
     while (seen.has(idea.id)) idea.id = newId('e');
     seen.add(idea.id);
     return idea;
   });
-  const skipped = { reviews: 0, sealed: 0, dates: 0, lists: 0, prices: 0, ideas: 0 };
-  list.forEach((raw, i) => {
-    if (!raw || typeof raw !== 'object') return;
+  usable.forEach((raw, i) => {
     const n = ideas[i];
     if (Array.isArray(raw.reviewHistory) && n.reviewHistory.length < raw.reviewHistory.length) {
       skipped.reviews += raw.reviewHistory.length - n.reviewHistory.length;
@@ -3029,6 +3039,7 @@ function importJSONBackup(file) {
       if (sk.lists) parts.push(sk.lists + ' list' + (sk.lists === 1 ? '' : 's') + ' reset');
       if (sk.prices) parts.push(sk.prices + ' price' + (sk.prices === 1 ? '' : 's') + ' skipped');
       if (sk.ideas) parts.push(sk.ideas + ' idea' + (sk.ideas === 1 ? '' : 's') + ' skipped — import takes at most ' + MAX_IMPORT_IDEAS + ' ideas');
+      if (sk.invalid) parts.push(sk.invalid + ' non-idea ' + (sk.invalid === 1 ? 'entry' : 'entries') + ' skipped');
       btn.textContent = saved
         ? 'Imported ' + res.ideas.length + (res.ideas.length === 1 ? ' idea' : ' ideas') + ' ✓' + (parts.length ? ' — ' + parts.join(', ') : '')
         : 'Import failed — not saved';
@@ -3107,7 +3118,7 @@ function init() {
           } else {
             const dirty = thesisDraftTimer !== null || quizDraft || !!discoverDraft ||
               Object.keys(trendLessonDrafts).some(k => trendLessonDrafts[k]) ||
-              Object.values(lessonQuizState).some(a => Array.isArray(a) && a.some(x => x !== null)) ||
+              Object.values(lessonQuizState).some(a => Array.isArray(a) && a.some(x => x !== null) && a.some(x => x === null)) ||
               (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) ||
               !!document.querySelector('.review-form') ||
               ($('qa-name') && $('qa-name').value.trim() !== '') ||

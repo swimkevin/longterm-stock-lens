@@ -2,9 +2,9 @@
 
 ## What the suite is
 
-Four files, run by `npm test` via `tests/run.js`: `tests/smoke.js` (712 assertions),
-`tests/edge-probe.js` (57 assertions), `tests/golden.js` (24 assertions), and
-`tests/properties.js` (13 assertions) — **806 assertions**, all
+Four files, run by `npm test` via `tests/run.js`: `tests/smoke.js` (722 assertions),
+`tests/edge-probe.js` (62 assertions), `tests/golden.js` (24 assertions), and
+`tests/properties.js` (13 assertions) — **821 assertions**, all
 passing. Counts are runtime assertion executions: every `assert()` call
 that runs prints one `  ok` line, and looped assertions count each
 execution, so the number tracks executed checks, not distinct
