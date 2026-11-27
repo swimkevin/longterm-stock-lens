@@ -5,7 +5,7 @@
 [![CI](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml/badge.svg)](https://github.com/swimkevin/longterm-stock-lens/actions/workflows/test.yml)
 ![vanilla JS](https://img.shields.io/badge/vanilla-JS-yellow)
 ![dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-821%20assertions-brightgreen)
+![tests](https://img.shields.io/badge/tests-837%20assertions-brightgreen)
 
 **Live demo → https://swimkevin.github.io/longterm-stock-lens/**
 
@@ -51,7 +51,7 @@ The **Scorecard** turns that record into hit rates by how sure you were, with ho
 - **Structure follows the funnel.** No dropdown menus, no buried pages: five always-visible tabs, trends merged into Ideas, accounts merged into Learn. A boot-time version check reloads the app once when a newer build exists, so a phone can never run a half-stale mix of old script and new page.
 - **Local-first by design.** All data lives in `localStorage` (schema-versioned, with migrations from v1 journal formats forward). No accounts, no server, nothing to leak. Export to JSON/Markdown is built in.
 - **Pure logic, tested in isolation.** Scoring, check-in scheduling, the scorecard math, sealing, and prompt building are pure functions exposed on `globalThis.LongTermLens`; rendering is a separate layer on top.
-- **821 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push. Owner-level rules (no SEC links, local-only dates, sealed theses stay sealed, zero code comments in shipped source) are enforced by tests, not by memory. A held-out golden suite (`tests/golden.js`, owned by fresh-eyes audits — the loop runs it but never edits it) re-proves the core loop end to end, and seeded property tests (`tests/properties.js`) pin invariants over the pure functions. Every regression test is verified to fail on the unfixed code before it ships.
+- **837 assertions, click-through included.** The jsdom suite boots the real page and *clicks through* the actual flows — adding ideas, locking in a thesis, checking in, XSS probes (all user text renders via `textContent` only), legacy-data migration, exports. Every fix ships with a regression test; CI runs the suite on every push. Owner-level rules (no SEC links, local-only dates, sealed theses stay sealed, zero code comments in shipped source) are enforced by tests, not by memory. A held-out golden suite (`tests/golden.js`, owned by fresh-eyes audits — the loop runs it but never edits it) re-proves the core loop end to end, and seeded property tests (`tests/properties.js`) pin invariants over the pure functions. Every regression test is verified to fail on the unfixed code before it ships.
 - **Design system, not vibes.** Token-based theming (light/dark), one accent color, one primary action per view, hairline surfaces. The UI benchmark is Claude/Linear restraint: nothing on screen that doesn't earn its place.
 - **Accessibility basics done properly:** focus rings, aria labels/pressed states, generous touch targets, `prefers-reduced-motion`, keyboard shortcut (⌘K jumps to quick-add).
 
@@ -66,7 +66,7 @@ python3 -m http.server 8000   # or any static server
 # → http://localhost:8000
 
 npm install   # dev-only: jsdom for the test suite
-npm test      # 821 assertions (smoke 722 + edge probes 62 + golden 24 + properties 13), via tests/run.js
+npm test      # 837 assertions (smoke 722 + edge probes 78 + golden 24 + properties 13), via tests/run.js
 npm run browser-pass   # 12 real-Chromium click-through checks, 0 console errors (needs a local Chromium; see docs/TESTING.md)
 ```
 

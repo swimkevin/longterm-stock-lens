@@ -2,7 +2,7 @@
 (function () {
 'use strict';
 
-const APP_VERSION = '4.6.3';
+const APP_VERSION = '4.6.4';
 
 function updateReloadURL(pathname, v, hash) {
   return pathname + '?v=' + encodeURIComponent(v) + (hash || '');
@@ -1009,6 +1009,7 @@ function showSaveFailure() {
   const n = document.createElement('div');
   n.id = 'save-failure-notice';
   n.className = 'notice-banner';
+  n.setAttribute('role', 'alert');
   n.textContent = 'Couldn\u2019t save \u2014 your browser storage may be full. Your latest change may not be kept.';
   const btn = document.createElement('button');
   btn.textContent = 'Dismiss';
@@ -1023,6 +1024,7 @@ function showCorruptNotice() {
     const n = document.createElement('div');
     n.id = 'corrupt-notice';
     n.className = 'notice-banner';
+    n.setAttribute('role', 'alert');
     n.textContent = 'Your saved data couldn\u2019t be read, so you\u2019re starting fresh \u2014 the unreadable copy is kept as a backup and new saves never overwrite it.';
     const btn = document.createElement('button');
     btn.textContent = 'Dismiss';

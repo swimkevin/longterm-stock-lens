@@ -1,5 +1,11 @@
 # Changelog — Long-Term Lens
 
+## [4.6.4] — 2026-11-27
+
+### Save-failure and corrupt-data banners are now announced to assistive tech
+
+A throwaway probe of the storage-quota path found the save-failure banner worked visually — it appears on a failed save, never stacks, dismisses, and re-shows on a fresh failure — but was invisible to assistive technology: the banner had no `role="alert"` and nothing was announced, so a screen-reader user adding an idea while storage was full heard nothing while the detail opened as if the save had worked. Both dynamically-inserted error banners (`showSaveFailure` and `showCorruptNotice`) now carry `role="alert"`, matching the `role="alert"` the form errors already use; no live-region call was added, so there is no double announcement. 16 new assertions (837 green); negative control verified — the two role pins fail on the unfixed code, and the banner-behavior pins pass there by design (they pin the unchanged behavior).
+
 ## [4.6.3] — 2026-11-26
 
 ### Adversarial-audit fixes, round 8: import honesty, normalize caps, migration carries trends, self-heal unblocked

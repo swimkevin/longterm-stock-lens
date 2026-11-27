@@ -349,6 +349,61 @@ async function main() {
   assert(w16.sessionStorage.getItem('lrl-healed-9.9.9') === '1', 'auto-reload arms once the lesson quiz is complete and saved');
   assert(b16.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the lesson boot');
 
+  // 17. Twelfth boot: a save failure is announced, not just shown — the
+  //     banner carries role=alert, stays single, dismisses, and re-shows.
+  const b17 = await bootLater();
+  const w17 = b17.w, d17 = b17.d;
+  const readStore17 = () => JSON.parse(w17.localStorage.getItem(KEY));
+  d17.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d17.querySelector('#qa-name').value = 'Edge Quota Co';
+  d17.querySelector('#qa-add').click();
+  assert(readStore17() && readStore17().ideas.some(i => i.name === 'Edge Quota Co'), 'save-failure boot: seed idea persists while storage works');
+  assert(d17.getElementById('save-failure-notice') === null, 'save-failure boot: no banner while storage works');
+  const origSetItem17 = w17.Storage.prototype.setItem;
+  w17.Storage.prototype.setItem = () => { throw new Error('quota'); };
+  d17.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d17.querySelector('#qa-name').value = 'Edge Fail Co';
+  d17.querySelector('#qa-add').click();
+  const banner17 = d17.getElementById('save-failure-notice');
+  assert(!!banner17, 'save-failure boot: quick-add under quota shows the banner');
+  assert(banner17 && banner17.getAttribute('role') === 'alert', 'save-failure boot: banner has role=alert so assistive tech announces it');
+  assert(banner17 && banner17.textContent.includes('storage may be full'), 'save-failure boot: banner copy names the storage problem');
+  assert(d17.querySelector('#idea-detail') && d17.querySelector('#idea-detail').textContent.includes('Edge Fail Co'),
+    'save-failure boot: failed-save idea still opens its detail from in-memory state');
+  d17.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d17.querySelector('#qa-name').value = 'Edge Fail Two';
+  d17.querySelector('#qa-add').click();
+  assert(d17.querySelectorAll('#save-failure-notice').length === 1, 'save-failure boot: a second failing save does not stack a second banner');
+  const dismiss17 = d17.querySelector('#save-failure-notice button');
+  assert(!!dismiss17 && dismiss17.textContent === 'Dismiss', 'save-failure boot: banner has a Dismiss button');
+  dismiss17.click();
+  assert(d17.getElementById('save-failure-notice') === null, 'save-failure boot: Dismiss removes the banner');
+  d17.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d17.querySelector('#qa-name').value = 'Edge Fail Three';
+  d17.querySelector('#qa-add').click();
+  assert(!!d17.getElementById('save-failure-notice'), 'save-failure boot: a fresh failure after dismiss re-shows the banner');
+  w17.Storage.prototype.setItem = origSetItem17;
+  const banner17b = d17.getElementById('save-failure-notice');
+  if (banner17b) banner17b.querySelector('button').click();
+  d17.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d17.querySelector('#qa-name').value = 'Edge Healed Co';
+  d17.querySelector('#qa-add').click();
+  assert(d17.getElementById('save-failure-notice') === null, 'save-failure boot: no banner once storage works again');
+  assert(readStore17().ideas.some(i => i.name === 'Edge Healed Co'), 'save-failure boot: idea persists once storage works again');
+  assert(b17.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the save-failure boot');
+
+  // 18. Thirteenth boot: the corrupt-data notice is the same banner shape,
+  //     so it carries role=alert too.
+  const b18 = await bootLater(w => {
+    w.localStorage.setItem(KEY + '-corrupt-backup', 'stale-backup');
+    w.localStorage.removeItem(KEY + '-corrupt-notice-dismissed');
+  });
+  const d18 = b18.d;
+  const corrupt18 = d18.getElementById('corrupt-notice');
+  assert(!!corrupt18, 'corrupt-notice boot: a leftover corrupt backup shows the notice');
+  assert(corrupt18 && corrupt18.getAttribute('role') === 'alert', 'corrupt-notice boot: notice has role=alert so assistive tech announces it');
+  assert(b18.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the corrupt-notice boot');
+
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));
