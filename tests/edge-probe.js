@@ -404,6 +404,72 @@ async function main() {
   assert(corrupt18 && corrupt18.getAttribute('role') === 'alert', 'corrupt-notice boot: notice has role=alert so assistive tech announces it');
   assert(b18.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the corrupt-notice boot');
 
+  // 19. Fourteenth boot: two back-to-back quick-adds create two ideas that
+  //     both render. (Id-distinctness is probe-verified only: newId mixes
+  //     Date.now with a 1e4 random draw, so a same-millisecond collision is
+  //     1-in-10000 — pinning it would make the suite depend on luck.)
+  const b19 = await bootLater();
+  const d19 = b19.d;
+  d19.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(d19.getElementById('ideas-count') !== null, 'quick-add boot: booted (ideas-count present)');
+  d19.querySelector('#qa-name').value = 'Alpha Co';
+  d19.querySelector('#qa-add').click();
+  d19.querySelector('.nav-btn[data-nav="ideas"]').click();
+  d19.querySelector('#qa-name').value = 'Beta Co';
+  d19.querySelector('#qa-add').click();
+  const store19 = JSON.parse(b19.w.localStorage.getItem(KEY));
+  assert(store19.ideas.length === 2, 'quick-add boot: two back-to-back quick-adds create two ideas (got ' + store19.ideas.length + ')');
+  d19.querySelector('.nav-btn[data-nav="ideas"]').click();
+  const list19 = d19.getElementById('ideas-list').textContent;
+  assert(list19.includes('Alpha Co') && list19.includes('Beta Co'), 'quick-add boot: both quick-added ideas render in the Ideas list');
+  assert(b19.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the quick-add boot');
+
+  // 20. Fifteenth-seventeenth boots: the Ideas count label is singular,
+  //     plural, and absent at zero — the ideasLabel branches.
+  function mkIdea20(id, name, reviewAt) {
+    return { id, name, tickers: '', status: 'open', createdAt: '2026-01-01',
+      updatedAt: '2026-01-01', thesis: { belief: 'b', falsify: 'f' }, sealed: null,
+      conviction: null, reviewMonths: 3, reviewAt, reviewHistory: [],
+      priceLog: [], notes: [], tags: [] };
+  }
+  const b20a = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [], trends: [], glossary: {}, quizProfile: null })));
+  b20a.d.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(b20a.d.getElementById('ideas-count').textContent === '', 'count-label boot: zero ideas shows no count label');
+  const b20b = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [mkIdea20('e1', 'Solo Co', '2027-01-01')], trends: [], glossary: {}, quizProfile: null })));
+  b20b.d.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(b20b.d.getElementById('ideas-count').textContent === '(1 idea)', 'count-label boot: one idea shows "(1 idea)"');
+  const b20c = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify({ schema: 3, ideas: [mkIdea20('e1', 'One Co', '2027-01-01'), mkIdea20('e2', 'Two Co', '2027-02-01')], trends: [], glossary: {}, quizProfile: null })));
+  b20c.d.querySelector('.nav-btn[data-nav="ideas"]').click();
+  assert(b20c.d.getElementById('ideas-count').textContent === '(2 ideas)', 'count-label boot: two ideas show "(2 ideas)"');
+  [b20a, b20b, b20c].forEach((b, i) => assert(b.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on count-label boot ' + i));
+
+  // 21. Eighteenth boot: the Check-ins queues sort by check-in date —
+  //     due cards earliest first, then a "Coming up" section in the same
+  //     order — and the upcoming meta names the spot price only where one
+  //     was recorded.
+  const cSeed21 = { schema: 3, ideas: [
+    mkIdea20('due-late', 'Due Feb', '2026-02-10'),
+    mkIdea20('due-early', 'Due Jan', '2026-01-05'),
+    Object.assign(mkIdea20('up-late', 'Up Jun', '2027-06-01'), { priceLog: [{ date: '2026-10-09', price: 50, note: 'spotted' }] }),
+    mkIdea20('up-early', 'Up Mar', '2027-03-01'),
+  ], trends: [], glossary: {}, quizProfile: null };
+  const b21 = await bootLater(w => w.localStorage.setItem(KEY, JSON.stringify(cSeed21)));
+  const d21 = b21.d;
+  d21.querySelector('.nav-btn[data-nav="reviews"]').click();
+  assert(d21.getElementById('reviews-list') !== null, 'queues boot: booted (reviews-list present)');
+  const due21 = Array.from(d21.querySelectorAll('#reviews-list .entry.due .entry-name')).map(n => n.textContent);
+  assert(JSON.stringify(due21) === JSON.stringify(['Due Jan', 'Due Feb']), 'queues boot: due cards sort earliest check-in first (got ' + JSON.stringify(due21) + ')');
+  assert(Array.from(d21.querySelectorAll('#reviews-list h2')).some(h => h.textContent === 'Coming up'), 'queues boot: "Coming up" heading renders when ideas are upcoming');
+  const up21 = Array.from(d21.querySelectorAll('#reviews-list .entry:not(.due) .entry-name')).map(n => n.textContent);
+  assert(JSON.stringify(up21) === JSON.stringify(['Up Mar', 'Up Jun']), 'queues boot: upcoming cards sort earliest check-in first (got ' + JSON.stringify(up21) + ')');
+  const upCards21 = Array.from(d21.querySelectorAll('#reviews-list .entry:not(.due)'));
+  const junMeta21 = upCards21.find(card => card.querySelector('.entry-name').textContent === 'Up Jun').textContent;
+  const marMeta21 = upCards21.find(card => card.querySelector('.entry-name').textContent === 'Up Mar').textContent;
+  assert(junMeta21.includes('spotted at $50'), 'queues boot: upcoming meta shows the spot price where one exists');
+  assert(!marMeta21.includes('spotted at'), 'queues boot: upcoming meta omits the spot fragment where none exists');
+  assert(marMeta21.includes('Check in on 2027-03-01'), 'queues boot: upcoming meta names the check-in date');
+  assert(b21.errs.filter(e => !e.includes('Not implemented')).length === 0, 'no script errors on the queues boot');
+
   console.log('script errors during probe:');
   assert(errors.length === 0, 'no script errors (' + errors.length + ')');
   errors.forEach(e => console.error('    ' + e));
